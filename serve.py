@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent
 HOST = "127.0.0.1"
 PORT = 8777
 GAME_PART_MAX_BYTES = 120000
-GAME_CACHE = "snes389"
+GAME_CACHE = "snes390"
 PLAYER_SAVE_DIR = ROOT / "player-saves"
 PLAYER_SAVE_ID_RE = re.compile(r"^[A-Z0-9]{6,16}$")
 PLAYER_SAVE_MAX_BYTES = 262144
@@ -60,7 +60,7 @@ PLAYER_BUILD_FLAG = (
 
 
 def apply_player_build_html(html):
-    html = re.sub(r"<title>Synth Flight[^<]*</title>", "<title>Synth Flight</title>", html)
+    html = re.sub(r"<title>Synth Flight[^<]*</title>", "<title>Synth Flight 2</title>", html)
     if "SYNTH_FLIGHT_PLAYER_BUILD" not in html:
         html = html.replace("<head>", "<head>\n" + PLAYER_BUILD_FLAG, 1)
     return html
@@ -124,7 +124,7 @@ def write_index_part_tags(part_count):
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     html = re.sub(
         r"<title>Synth Flight[^<]*</title>",
-        "<title>Synth Flight %s</title>" % GAME_CACHE,
+        "<title>Synth Flight 2 %s</title>" % GAME_CACHE,
         html,
         count=1,
     )
@@ -374,6 +374,6 @@ if __name__ == "__main__":
     offline = build_offline_html()
     n = len(list(ROOT.glob("game-part*.js")))
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
-    print("Synth Flight: http://%s:%s/  (%d js parts)" % (HOST, PORT, n))
+    print("Synth Flight 2: http://%s:%s/  (%d js parts)" % (HOST, PORT, n))
     print("Offline file: %s  (%d bytes)" % (offline, offline.stat().st_size))
     httpd.serve_forever()

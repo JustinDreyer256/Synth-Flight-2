@@ -1,9 +1,242 @@
+function persistSaveId(id) {
+  playerSaveId = normalizeSaveId(id) || playerSaveId || generateSaveId();
+  try { localStorage.setItem(SAVE_ID_STORAGE_KEY, playerSaveId); } catch (e) { /* storage blocked */ }
+  try { document.cookie = SAVE_ID_COOKIE + '=' + playerSaveId + '; Max-Age=63072000; Path=/; SameSite=Lax'; } catch (e) { /* cookies blocked */ }
+  try {
+    const nextHash = '#sf=' + playerSaveId;
+    if (location.hash !== nextHash) history.replaceState(null, '', location.pathname + location.search + nextHash);
+  } catch (e) { /* file:// or locked history */ }
+  return playerSaveId;
+}
+function ensurePlayerSaveId() {
+  if (playerSaveId) return persistSaveId(playerSaveId);
+  const fromHash = normalizeSaveId((location.hash.match(/sf=([A-Za-z0-9]+)/) || [])[1]);
+  let fromStore = '';
+  try { fromStore = normalizeSaveId(localStorage.getItem(SAVE_ID_STORAGE_KEY)); } catch (e) { fromStore = ''; }
+  return persistSaveId(fromHash || fromStore || readSaveIdCookie() || generateSaveId());
+}
+function collectDurableSave() {
+  return {
+    v: 1,
+    saveId: ensurePlayerSaveId(),
+    savedAt: Date.now(),
+    profile: {
+      best,
+      extraDifficultyUnlocked,
+      unlockedZones: Array.from(unlockedZones),
+      completedZones: Array.from(completedZones),
+      deathlessZones: Array.from(deathlessZones),
+      beatenDifficulties: Array.from(beatenDifficulties),
+      totalDistanceTraveled,
+      lifetimeDeathsByZone: lifetimeDeathsByZone.slice(),
+      zoneCompletionCounts: zoneCompletionCounts.slice(),
+      achievedRanks: Array.from(achievedRanks),
+      shipTrail: shipTrailStyle,
+      shipSkin: shipSkinStyle,
+    },
+    audio: {
+      sfxEnabled: audioSettings.sfxEnabled,
+      bgmEnabled: audioSettings.bgmEnabled,
+      sfxVolume: audioSettings.sfxVolume,
+      bgmVolume: audioSettings.bgmVolume,
+      chargeTelegraph: audioSettings.chargeTelegraph,
+      glowDanger: audioSettings.glowDanger,
+      lifeLost: audioSettings.lifeLost,
+      respawn: audioSettings.respawn,
+    },
+  };
+}
+function durableProgressScore(blob) {
+  if (!blob || !blob.profile) return 0;
+  const p = normalizePlayerProfile(blob.profile);
+  const deaths = p.lifetimeDeathsByZone.reduce((a, b) => a + b, 0);
+  const clears = p.zoneCompletionCounts.reduce((a, b) => a + b, 0);
+  return p.best + p.totalDistanceTraveled + deaths + clears * 10 + p.unlockedZones.length + p.completedZones.length + (p.extraDifficultyUnlocked ? 1000 : 0);
+}
+function mergeDurableSaves(blobs) {
+  const live = [];
+  for (let i = 0; i < blobs.length; i++) {
+    if (blobs[i] && blobs[i].profile) live.push(blobs[i]);
+  }
+  if (!live.length) return collectDurableSave();
+  live.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+  const newest = live[0];
+  const profiles = live.map((b) => normalizePlayerProfile(b.profile));
+  const union = (key) => {
+    const set = new Set();
+    profiles.forEach((p) => (p[key] || []).forEach((v) => set.add(v)));
+    return Array.from(set);
+  };
+  const maxArr = (key) => {
+    const out = new Array(13).fill(0);
+    profiles.forEach((p) => {
+      const arr = p[key] || [];
+      for (let i = 0; i < 13; i++) out[i] = Math.max(out[i], arr[i] || 0);
+    });
+    return out;
+  };
+  const newestProfile = normalizePlayerProfile(newest.profile);
+  const newestAudio = newest.audio || {};
+  return {
+    v: 1,
+    saveId: ensurePlayerSaveId(),
+    savedAt: Date.now(),
+    profile: {
+      best: Math.max.apply(null, profiles.map((p) => p.best || 0)),
+      extraDifficultyUnlocked: profiles.some((p) => p.extraDifficultyUnlocked),
+      unlockedZones: union('unlockedZones').length ? union('unlockedZones') : [0],
+      completedZones: union('completedZones'),
+      deathlessZones: union('deathlessZones'),
+      beatenDifficulties: union('beatenDifficulties'),
+      totalDistanceTraveled: Math.max.apply(null, profiles.map((p) => p.totalDistanceTraveled || 0)),
+      lifetimeDeathsByZone: maxArr('lifetimeDeathsByZone'),
+      zoneCompletionCounts: maxArr('zoneCompletionCounts'),
+      achievedRanks: union('achievedRanks'),
+      shipTrail: newestProfile.shipTrail,
+      shipSkin: newestProfile.shipSkin,
+    },
+    audio: {
+      sfxEnabled: typeof newestAudio.sfxEnabled === 'boolean' ? newestAudio.sfxEnabled : audioSettings.sfxEnabled,
+      bgmEnabled: typeof newestAudio.bgmEnabled === 'boolean' ? newestAudio.bgmEnabled : audioSettings.bgmEnabled,
+      sfxVolume: clampAudioVolume(newestAudio.sfxVolume, audioSettings.sfxVolume),
+      bgmVolume: clampAudioVolume(newestAudio.bgmVolume, audioSettings.bgmVolume),
+      chargeTelegraph: typeof newestAudio.chargeTelegraph === 'string' ? newestAudio.chargeTelegraph : audioSettings.chargeTelegraph,
+      glowDanger: typeof newestAudio.glowDanger === 'string' ? newestAudio.glowDanger : audioSettings.glowDanger,
+      lifeLost: typeof newestAudio.lifeLost === 'string' ? newestAudio.lifeLost : audioSettings.lifeLost,
+      respawn: typeof newestAudio.respawn === 'string' ? newestAudio.respawn : audioSettings.respawn,
+    },
+  };
+}
+function applyDurableSave(blob) {
+  if (!blob || !blob.profile) return;
+  const p = normalizePlayerProfile(blob.profile);
+  durableWriteLock = true;
+  best = p.best;
+  extraDifficultyUnlocked = p.extraDifficultyUnlocked;
+  unlockedZones = new Set(p.unlockedZones.length ? p.unlockedZones : [0]);
+  completedZones = new Set(p.completedZones);
+  deathlessZones = new Set(p.deathlessZones);
+  beatenDifficulties = new Set(p.beatenDifficulties);
+  totalDistanceTraveled = p.totalDistanceTraveled;
+  lifetimeDeathsByZone = p.lifetimeDeathsByZone;
+  zoneCompletionCounts = p.zoneCompletionCounts;
+  achievedRanks = new Set(p.achievedRanks);
+  if (typeof SHIP_TRAILS !== 'undefined' && SHIP_TRAILS.some((t) => t.id === p.shipTrail)) shipTrailStyle = p.shipTrail;
+  if (typeof SHIP_SKINS !== 'undefined' && SHIP_SKINS.some((s) => s.id === p.shipSkin)) shipSkinStyle = p.shipSkin;
+  if (blob.audio) {
+    if (typeof blob.audio.sfxEnabled === 'boolean') audioSettings.sfxEnabled = blob.audio.sfxEnabled;
+    if (typeof blob.audio.bgmEnabled === 'boolean') audioSettings.bgmEnabled = blob.audio.bgmEnabled;
+    if (blob.audio.sfxVolume != null) audioSettings.sfxVolume = clampAudioVolume(blob.audio.sfxVolume, audioSettings.sfxVolume);
+    if (blob.audio.bgmVolume != null) audioSettings.bgmVolume = clampAudioVolume(blob.audio.bgmVolume, audioSettings.bgmVolume);
+    if (typeof blob.audio.chargeTelegraph === 'string' && blob.audio.chargeTelegraph !== 'xCharge') audioSettings.chargeTelegraph = blob.audio.chargeTelegraph;
+    if (typeof blob.audio.glowDanger === 'string') audioSettings.glowDanger = blob.audio.glowDanger;
+    if (typeof blob.audio.lifeLost === 'string') audioSettings.lifeLost = blob.audio.lifeLost;
+    if (typeof blob.audio.respawn === 'string') audioSettings.respawn = blob.audio.respawn;
+  }
+  savePlayerProfile();
+  saveAudioSettings();
+  applyAudioSettings();
+  durableWriteLock = false;
+}
+function openDurableDb() {
+  return new Promise((resolve) => {
+    if (!window.indexedDB) {
+      resolve(null);
+      return;
+    }
+    const req = indexedDB.open(DURABLE_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(DURABLE_STORE)) db.createObjectStore(DURABLE_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+async function readIndexedDbSave() {
+  try {
+    const db = await openDurableDb();
+    if (!db) return null;
+    return await new Promise((resolve) => {
+      const tx = db.transaction(DURABLE_STORE, 'readonly');
+      const get = tx.objectStore(DURABLE_STORE).get('current');
+      get.onsuccess = () => resolve(get.result || null);
+      get.onerror = () => resolve(null);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+async function writeIndexedDbSave(blob) {
+  try {
+    const db = await openDurableDb();
+    if (!db) return;
+    await new Promise((resolve) => {
+      const tx = db.transaction(DURABLE_STORE, 'readwrite');
+      tx.objectStore(DURABLE_STORE).put(blob, 'current');
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch (e) { /* private mode / quota */ }
+}
+async function fetchServerSave(id) {
+  const saveId = normalizeSaveId(id);
+  if (!saveId || location.protocol === 'file:') return null;
+  try {
+    const res = await fetch('/api/player-save/' + saveId, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const blob = await res.json();
+    return blob && blob.profile ? blob : null;
+  } catch (e) {
+    return null;
+  }
+}
+async function putServerSave(blob) {
+  if (!blob || location.protocol === 'file:') return;
+  try {
+    await fetch('/api/player-save/' + ensurePlayerSaveId(), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(blob),
+    });
+  } catch (e) { /* offline or static host */ }
+}
+async function writeAllDurableLayers(blob) {
+  const payload = blob || collectDurableSave();
+  payload.saveId = ensurePlayerSaveId();
+  payload.savedAt = Date.now();
+  durableWriteLock = true;
+  savePlayerProfile();
+  saveAudioSettings();
+  durableWriteLock = false;
+  await writeIndexedDbSave(payload);
+  await putServerSave(payload);
+}
+function queueDurableSave() {
+  if (durableWriteLock) return;
+  clearTimeout(durableSaveTimer);
+  durableSaveTimer = setTimeout(() => {
+    writeAllDurableLayers(collectDurableSave());
+  }, 700);
+}
+async function hydrateDurableSave() {
+  ensurePlayerSaveId();
+  const local = collectDurableSave();
+  const [idb, server] = await Promise.all([readIndexedDbSave(), fetchServerSave(playerSaveId)]);
+  const merged = mergeDurableSaves([idb, server, local]);
+  if (durableProgressScore(merged) >= durableProgressScore(local) || (server && durableProgressScore(server) > 0) || (idb && durableProgressScore(idb) > durableProgressScore(local))) {
+    applyDurableSave(merged);
+  }
+  await writeAllDurableLayers(collectDurableSave());
+  durableHydrated = true;
+  if (state === 'settings' || state === 'options' || state === 'home' || state === 'statistics' || state === 'achievements') updateOverlay();
+}
 function exportPlayerSaveFile() {
   const blob = collectDurableSave();
   const text = JSON.stringify(blob, null, 2);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  a.download = 'synth-flight-save-' + blob.saveId + '.json';
+  a.download = 'synth-flight-2-save-' + blob.saveId + '.json';
   document.body.appendChild(a);
   a.click();
   setTimeout(() => {
@@ -2987,282 +3220,5 @@ function playBoltZapImpact() {
   playNoiseBurst({ duration: 0.08, filterFreq: 5200, filterType: 'highpass', volume: 0.2, when: t0 });
   playSynth({ type: 'sawtooth', freq: 2400, freqEnd: 80, duration: 0.12, attack: 0.001, decay: 0.03, sustain: 0.2, release: 0.05, volume: 0.16, filterType: 'highpass', filterFreq: 600, delaySend: 0.1, when: t0 });
   playSynth({ type: 'sine', freq: 110, freqEnd: 42, duration: 0.14, attack: 0.001, decay: 0.04, sustain: 0.28, release: 0.06, volume: 0.22, filterFreq: 280, delaySend: 0, when: t0 });
-}
-
-function playEmpDischarge() {
-  if (!audioUnlocked || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  const hi = 698;
-  const lo = 349;
-  for (let i = 0; i < 16; i++) {
-    const drop = 1 - i * 0.022;
-    playSynth({
-      type: 'square',
-      freq: (i % 2 ? hi : lo) * drop,
-      duration: 0.02,
-      attack: 0.001,
-      decay: 0.004,
-      sustain: 0.75,
-      release: 0.008,
-      volume: 0.16 * (1 - i * 0.035),
-      filterType: 'lowpass',
-      filterFreq: 2600,
-      delaySend: 0.04,
-      when: t0 + i * 0.017,
-    });
-  }
-  playNoiseBurst({ duration: 0.22, filterFreq: 2400, filterType: 'bandpass', filterQ: 1.4, volume: 0.07, when: t0 });
-}
-
-function playDroneBuzz() {
-  playSecurityDroneHit();
-}
-
-function playSecurityDroneHit() {
-  if (!audioUnlocked || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  playNoiseBurst({ duration: 0.05, filterFreq: 3800, filterType: 'highpass', volume: 0.22, when: t0 });
-  playNoiseBurst({ duration: 0.11, filterFreq: 340, filterEnd: 110, filterType: 'lowpass', filterQ: 0.55, volume: 0.4, when: t0 });
-  playNoiseBurst({ duration: 0.045, filterFreq: 1700, filterType: 'bandpass', filterQ: 2.2, volume: 0.2, when: t0 + 0.016 });
-  playSynth({ type: 'sine', freq: 86, freqEnd: 36, duration: 0.14, attack: 0.001, decay: 0.04, sustain: 0.3, release: 0.06, volume: 0.28, filterFreq: 220, delaySend: 0, when: t0 });
-  playSynth({ type: 'triangle', freq: 280, freqEnd: 95, duration: 0.09, attack: 0.001, decay: 0.025, sustain: 0.22, release: 0.04, volume: 0.12, filterFreq: 700, delaySend: 0, when: t0 });
-  playSynth({ type: 'sine', freq: 980, freqEnd: 240, duration: 0.07, attack: 0.001, decay: 0.018, sustain: 0.18, release: 0.04, volume: 0.12, filterFreq: 2600, delaySend: 0.08, when: t0 });
-}
-
-function playAlienDroneSpawn() {
-  if (!audioUnlocked || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  playNoiseBurst({ duration: 0.22, filterFreq: 1600, filterEnd: 4200, filterType: 'bandpass', filterQ: 1.8, volume: 0.16, delaySend: 0.1, when: t0 });
-  playSynth({
-    type: 'sawtooth', freq: 620, freqEnd: 380, duration: 0.2,
-    attack: 0.012, decay: 0.05, sustain: 0.45, release: 0.08,
-    volume: 0.1, filterType: 'bandpass', filterFreq: 1400, filterQ: 2.2, delaySend: 0.12, when: t0,
-  });
-  playSynth({
-    type: 'sawtooth', freq: 655, freqEnd: 400, duration: 0.2,
-    attack: 0.014, decay: 0.05, sustain: 0.4, release: 0.08,
-    volume: 0.07, filterType: 'bandpass', filterFreq: 1600, filterQ: 2.4, delaySend: 0.12, when: t0,
-  });
-  playSynth({
-    type: 'sine', freq: 2400, freqEnd: 1100, duration: 0.12,
-    attack: 0.004, decay: 0.03, sustain: 0.3, release: 0.05,
-    volume: 0.1, filterFreq: 4500, delaySend: 0.16, when: t0,
-  });
-}
-
-function playGravityWoom() {
-  playSynth({ type: 'sine', freq: 70, freqEnd: 28, duration: 0.28, attack: 0.02, decay: 0.08, sustain: 0.55, release: 0.1, volume: 0.32, filterFreq: 160, delaySend: 0.1 });
-  playNoiseBurst({ duration: 0.18, filterFreq: 160, filterType: 'lowpass', volume: 0.2 });
-}
-
-function playBossSlam() {
-  playNoiseBurst({ duration: 0.22, filterFreq: 240, filterEnd: 90, filterType: 'lowpass', filterQ: 0.5, volume: 0.5 });
-  playSynth({ type: 'sine', freq: 52, freqEnd: 28, duration: 0.22, attack: 0.004, decay: 0.06, sustain: 0.4, release: 0.1, volume: 0.34, filterFreq: 140, delaySend: 0 });
-}
-
-function playMeteorRingImpact() {
-  if (!audioUnlocked || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  playNoiseBurst({ duration: 0.1, filterFreq: 5200, filterType: 'highpass', volume: 0.48, when: t0 });
-  playNoiseBurst({ duration: 0.28, filterFreq: 900, filterEnd: 140, filterType: 'lowpass', filterQ: 0.4, volume: 0.62, when: t0 });
-  playNoiseBurst({ duration: 0.18, filterFreq: 1600, filterEnd: 280, filterType: 'bandpass', filterQ: 0.7, volume: 0.38, when: t0 });
-  playSynth({ type: 'sine', freq: 58, freqEnd: 18, duration: 0.85, attack: 0.002, decay: 0.12, sustain: 0.5, release: 0.28, volume: 0.52, filterFreq: 140, delaySend: 0, when: t0 });
-  playSynth({ type: 'sine', freq: 36, freqEnd: 16, duration: 1.05, attack: 0.004, decay: 0.16, sustain: 0.45, release: 0.32, volume: 0.36, filterFreq: 90, delaySend: 0, when: t0 });
-  playSynth({ type: 'sawtooth', freq: 78, freqEnd: 26, duration: 0.42, attack: 0.002, decay: 0.08, sustain: 0.3, release: 0.14, volume: 0.14, filterType: 'lowpass', filterFreq: 420, filterEnd: 90, delaySend: 0, when: t0 });
-  playEntranceRumble({ when: t0, duration: 1.85, volStart: 0.55, volEnd: 0.08, filtStart: 380, filtEnd: 70 });
-  playNoiseBurst({ duration: 0.55, filterFreq: 280, filterEnd: 1600, filterType: 'lowpass', volume: 0.32, delaySend: 0.12, when: t0 + 0.05 });
-  playNoiseBurst({ duration: 0.7, filterFreq: 1400, filterEnd: 220, filterType: 'highpass', volume: 0.18, delaySend: 0.1, when: t0 + 0.16 });
-  playSynth({ type: 'sine', freq: 42, freqEnd: 20, duration: 0.7, attack: 0.02, decay: 0.18, sustain: 0.4, release: 0.22, volume: 0.22, filterFreq: 110, delaySend: 0, when: t0 + 0.22 });
-}
-
-function playHotEmberRoar() {
-  if (!audioUnlocked || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  playNoiseBurst({ duration: 0.4, filterFreq: 480, filterEnd: 1600, filterType: 'bandpass', filterQ: 0.65, volume: 0.46, delaySend: 0.1, when: t0 });
-  playNoiseBurst({ duration: 0.36, filterFreq: 4200, filterEnd: 1600, filterType: 'highpass', filterQ: 0.7, volume: 0.3, delaySend: 0.12, when: t0 });
-  playNoiseBurst({ duration: 0.22, filterFreq: 2200, filterEnd: 650, filterType: 'bandpass', filterQ: 1.5, volume: 0.26, when: t0 + 0.03 });
-  playNoiseBurst({ duration: 0.05, filterFreq: 3400, filterType: 'bandpass', filterQ: 3.4, volume: 0.3, when: t0 + 0.02 });
-  playNoiseBurst({ duration: 0.04, filterFreq: 2700, filterType: 'bandpass', filterQ: 3.0, volume: 0.24, when: t0 + 0.08 });
-  playNoiseBurst({ duration: 0.05, filterFreq: 3900, filterType: 'bandpass', filterQ: 3.6, volume: 0.22, when: t0 + 0.14 });
-  playNoiseBurst({ duration: 0.04, filterFreq: 2100, filterType: 'bandpass', filterQ: 2.6, volume: 0.2, when: t0 + 0.21 });
-  playSynth({
-    type: 'sawtooth', freq: 86, freqEnd: 44, duration: 0.3,
-    attack: 0.014, decay: 0.08, sustain: 0.4, release: 0.1,
-    volume: 0.13, filterType: 'lowpass', filterFreq: 560, filterEnd: 160, delaySend: 0, when: t0,
-  });
-}
-
-function playHotEmberImpact() {
-  if (!audioUnlocked || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  playNoiseBurst({ duration: 0.16, filterFreq: 2600, filterEnd: 700, filterType: 'bandpass', filterQ: 1.3, volume: 0.38, when: t0 });
-  playNoiseBurst({ duration: 0.12, filterFreq: 4800, filterType: 'highpass', volume: 0.24, when: t0 });
-  playNoiseBurst({ duration: 0.14, filterFreq: 900, filterEnd: 220, filterType: 'lowpass', volume: 0.2, when: t0 });
-}
-
-function playKeyPickup() {
-  if (!audioUnlocked || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  const notes = [784, 1047, 1319, 1568, 2093];
-  notes.forEach((freq, i) => {
-    const when = t0 + i * 0.052;
-    playSynth({
-      type: 'sine', freq, duration: 0.16,
-      attack: 0.004, decay: 0.04, sustain: 0.5, release: 0.09,
-      volume: 0.24 - i * 0.02, filterFreq: 4400, delaySend: 0.32, when,
-    });
-    playSynth({
-      type: 'triangle', freq: freq * 2, duration: 0.1,
-      attack: 0.002, decay: 0.03, sustain: 0.28, release: 0.05,
-      volume: 0.07, filterFreq: 5200, delaySend: 0.24, when,
-    });
-  });
-  playSynth({
-    type: 'sine', freq: 2637, freqEnd: 3136, duration: 0.32,
-    attack: 0.012, decay: 0.08, sustain: 0.4, release: 0.14,
-    volume: 0.11, filterFreq: 5600, delaySend: 0.45, when: t0 + 0.24,
-  });
-  playNoiseBurst({
-    duration: 0.1, filterFreq: 4800, filterType: 'highpass', volume: 0.07,
-    delaySend: 0.2, when: t0 + 0.015,
-  });
-}
-
-function sfxHazardFire(type) {
-  if (type === 'fireball') {
-    playBowserFireball();
-    return;
-  }
-  if (type === 'boomerang') {
-    playBoomerangPass();
-    return;
-  }
-  if (type === 'flameWallTelegraph') {
-    sfxFireBossFlameWallTelegraph();
-    return;
-  }
-  if (type === 'flameWallActive') {
-    startMoltenFlameWallSound();
-    return;
-  }
-  if (type === 'barrageTelegraph') {
-    sfxFireBossBarrageTelegraph();
-    return;
-  }
-  if (type === 'coreFlame') {
-    sfxFireBossEmberLaunch();
-    return;
-  }
-  if (type === 'coreCrossfireTelegraph') {
-    sfxCoreCrossfireTelegraph();
-    return;
-  }
-  if (type === 'coreCrossfireActive') {
-    sfxCoreCrossfireVolley();
-    return;
-  }
-  if (type === 'coreCrossfireGap') {
-    return;
-  }
-  if (type === 'coreBulkheadTelegraph') {
-    sfxCoreBulkheadTelegraph();
-    return;
-  }
-  if (type === 'coreBulkheadActive') {
-    startCoreBulkheadHoldSound();
-    return;
-  }
-  if (type === 'coreEmpTelegraph') {
-    sfxCoreEmpTelegraph();
-    return;
-  }
-  if (type === 'coreEmpPulse') {
-    sfxCoreEmpPulse();
-    return;
-  }
-  if (type === 'coreTesla') {
-    sfxCoreTeslaBurst();
-    return;
-  }
-  if (type === 'stormchargebolttelegraph') {
-    playStormChargeTelegraph();
-    return;
-  }
-  if (type === 'stormchargebolt') {
-    playStormThunderStrike();
-    return;
-  }
-  if (!sfxHazardRateOk('fire:' + type, 70)) return;
-  if (type === 'bossvolleytelegraph') {
-    playTrackingLockOn();
-    return;
-  }
-  if (type === 'bossvolley') {
-    playBulletVolley();
-    return;
-  }
-  if (type === 'bossdrone') {
-    return;
-  }
-  if (type === 'accesskey') {
-    playKeyPickup();
-    return;
-  }
-  if (type === 'bosschargebeamtelegraph') {
-    playChargeTelegraph(lastBossChargeBeamSfx);
-    return;
-  }
-  if (type === 'bosschargebeam') {
-    playChargeBeamFire(lastBossChargeBeamSfx);
-    return;
-  }
-  if (type === 'bossdiagonalring' || type === 'bossragepulse') {
-    playMeteorRingImpact();
-    return;
-  }
-  const family = hazardFamily(type);
-  if (family === 'laser') {
-    if (isHazardTelegraph(type) && isChargeBeamType(type)) playChargeWhine();
-    else if (isHazardTelegraph(type)) playLockOn();
-    else if (isChargeBeamType(type)) playBeamFire();
-    else playEnergyShot();
-  } else if (family === 'fire') {
-    if (isHazardTelegraph(type)) {
-      playNoiseBurst({ duration: 0.16, filterFreq: 280, filterEnd: 900, filterType: 'lowpass', volume: 0.2 });
-      playSynth({ type: 'sine', freq: 90, freqEnd: 140, duration: 0.16, attack: 0.02, decay: 0.05, sustain: 0.4, release: 0.05, volume: 0.12, filterFreq: 400, delaySend: 0 });
-    } else {
-      playNoiseBurst({ duration: 0.22, filterFreq: 380, filterEnd: 1100, filterType: 'bandpass', filterQ: 0.55, volume: 0.34 });
-      playNoiseBurst({ duration: 0.08, filterFreq: 2200, filterType: 'bandpass', filterQ: 1.4, volume: 0.16, when: audioCtx.currentTime + 0.05 });
-      playSynth({ type: 'sine', freq: 68, freqEnd: 46, duration: 0.2, attack: 0.02, decay: 0.08, sustain: 0.4, release: 0.08, volume: 0.16, filterFreq: 180, delaySend: 0 });
-    }
-  } else if (family === 'electric') {
-    playElectricCrackles({ count: 6, spacing: 0.012, volume: 0.26 });
-    playSynth({ type: 'sawtooth', freq: 2100, freqEnd: 220, duration: 0.07, attack: 0.001, decay: 0.02, sustain: 0.25, release: 0.04, volume: 0.14, filterType: 'highpass', filterFreq: 900, filterQ: 0.7, delaySend: 0.08 });
-  } else if (family === 'plasma') {
-    playPlasmaShot();
-  } else if (family === 'whoosh') {
-    playNoiseBurst({ duration: 0.18, filterFreq: 420, filterEnd: 2400, filterType: 'lowpass', filterQ: 0.6, volume: 0.28 });
-  } else if (family === 'nova') {
-    playSynth({ type: 'sine', freq: 90, freqEnd: 280, duration: 0.16, attack: 0.02, decay: 0.05, sustain: 0.5, release: 0.04, volume: 0.2, filterFreq: 800, delaySend: 0.12 });
-    playNoiseBurst({ duration: 0.28, filterFreq: 700, filterEnd: 180, filterType: 'lowpass', volume: 0.42, when: audioCtx.currentTime + 0.12 });
-    playSynth({ type: 'sine', freq: 140, freqEnd: 40, duration: 0.22, attack: 0.004, decay: 0.06, sustain: 0.35, release: 0.08, volume: 0.24, filterFreq: 300, delaySend: 0, when: audioCtx.currentTime + 0.12 });
-  } else if (family === 'drone') {
-    playSecurityDroneHit();
-  } else if (family === 'metal') {
-    playMetalClank();
-  } else if (family === 'bossHeavy') {
-    playBossSlam();
-  } else if (family === 'gravity') {
-    playGravityWoom();
-  } else if (family === 'echo') {
-    playSynth({ type: 'sine', freq: 640, freqEnd: 480, duration: 0.08, attack: 0.002, decay: 0.02, sustain: 0.3, release: 0.1, volume: 0.22, filterFreq: 2200, delaySend: 0.55 });
-  } else if (family === 'rock') {
-    playRockThud();
-  } else if (family === 'drip') {
-    playSynth({ type: 'sine', freq: 1480, freqEnd: 420, duration: 0.07, attack: 0.001, decay: 0.02, sustain: 0.2, release: 0.05, volume: 0.28, filterFreq: 2800, delaySend: 0.12 });
-    playNoiseBurst({ duration: 0.05, filterFreq: 2600, filterType: 'bandpass', filterQ: 4.5, volume: 0.14, delaySend: 0.1 });
-  } else if (family === 'key') {
-    playKeyPickup();
-  }
 }
 

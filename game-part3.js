@@ -1,3 +1,247 @@
+function onCanvasPointerRelease(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  pointerHolding = false;
+  endPress();
+}
+canvas.addEventListener('pointerdown', onCanvasPointerDown, { passive: false });
+canvas.addEventListener('pointerup', onCanvasPointerRelease);
+canvas.addEventListener('pointercancel', onCanvasPointerRelease);
+window.addEventListener('blur', () => {
+  pointerHolding = false;
+  if (!keyHolding) endPress();
+});
+
+const pauseToggleBtn = document.getElementById('pause-toggle');
+pauseToggleBtn.addEventListener('pointerup', () => {
+  focusGameKeyboardInput();
+  if (state === 'playing') pauseGame();
+  else if (state === 'paused') resumeGame();
+});
+
+function updateBackgroundParticles(theme) {
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  if (theme.bgStyle === 'matrix') {
+    for (let p of bgParticles) {
+      p.y += p.speed;
+      p.x += p.drift || 0;
+      if (p.x < -8) p.x = W + 8;
+      if (p.x > W + 8) p.x = -8;
+      if (p.y - p.len > PLAY_BOTTOM) {
+        p.y = PLAY_TOP - p.len;
+        p.x = Math.random() * W;
+      }
+    }
+  } else if (theme.bgStyle === 'stars') {
+    for (let p of bgParticles) {
+      p.x -= p.speed;
+      if (p.x < 0) {
+        p.x = W;
+        p.y = PLAY_TOP + Math.random() * playHeight;
+      }
+    }
+  } else if (theme.bgStyle === 'frozen') {
+    for (let p of bgParticles) {
+      p.y += p.speed;
+      p.x -= p.drift;
+      if (p.y > PLAY_BOTTOM || p.x < -4) {
+        p.y = PLAY_TOP - 4;
+        p.x = Math.random() * W;
+      }
+    }
+  } else if (theme.bgStyle === 'embers') {
+    const rushBoost = 0.85 + 0.45 * (theme.scrollMult || 1);
+    for (let p of bgParticles) {
+      p.x -= p.speed * rushBoost;
+      if (p.kind === 'spark') p.y -= p.lift || 0;
+      if (p.x < -p.len) {
+        p.x = W + 20 + Math.random() * 40;
+        p.y = PLAY_TOP + Math.random() * playHeight;
+      }
+      if (p.kind === 'spark' && p.y < PLAY_TOP) p.y = PLAY_BOTTOM;
+    }
+  } else if (theme.bgStyle === 'ruins') {
+    for (let p of bgParticles) {
+      p.y -= p.speed;
+      p.x += p.drift;
+      if (p.y < PLAY_TOP) {
+        p.y = PLAY_BOTTOM;
+        p.x = Math.random() * W;
+      }
+    }
+  } else if (theme.bgStyle === 'toxic') {
+    for (let p of bgParticles) {
+      p.wobble = (p.wobble || 0) + 0.02;
+      p.y -= p.speed;
+      p.x += p.drift + Math.sin(p.wobble) * 0.12;
+      if (p.y < PLAY_TOP) {
+        p.y = PLAY_BOTTOM;
+        p.x = Math.random() * W;
+      }
+    }
+  } else if (theme.bgStyle === 'station') {
+    for (let p of bgParticles) {
+      p.x -= p.speed;
+      p.y += Math.sin(frame * 0.01 + p.x * 0.02) * 0.15;
+      if (p.x < 0) {
+        p.x = W;
+        p.y = PLAY_TOP + Math.random() * playHeight;
+      }
+    }
+  } else if (theme.bgStyle === 'void') {
+    for (let p of bgParticles) {
+      p.x -= p.speed;
+      if (p.x < 0) {
+        p.x = W;
+        p.y = PLAY_TOP + Math.random() * playHeight;
+      }
+    }
+  } else if (theme.bgStyle === 'storm') {
+    for (let p of bgParticles) {
+      p.y += p.speed;
+      p.x -= p.speed * 0.35; // rain falls at an angle
+      if (p.y - p.len > PLAY_BOTTOM || p.x < -20) {
+        p.y = PLAY_TOP - p.len;
+        p.x = Math.random() * W;
+      }
+    }
+  }
+}
+
+function beginWarp(targetIndex) {
+  if (isPracticeRun && typeof targetIndex !== 'number') {
+    // practice runs only ever play the one selected zone -- any attempt to
+    // sequentially advance to "the next zone" ends the run instead
+    if (tryAwardDeathless()) savePlayerProfile();
+    endPracticeRun();
+    return;
+  }
+  if (typeof targetIndex !== 'number' && !devSessionActive) {
+    // normal, sequential advance (not a dev jump, a dev-session zone that's
+    // still being auto-scrolled through, or the initial jump into a
+    // practice zone -- all of which either pass an explicit targetIndex or
+    // set devSessionActive) means the zone being left has just been
+    // successfully flown all the way through, for real
+    let profileChanged = false;
+    if (!completedZones.has(themeIndex)) {
+      completedZones.add(themeIndex);
+      profileChanged = true;
+    }
+    zoneCompletionCounts[themeIndex] = (zoneCompletionCounts[themeIndex] || 0) + 1;
+    profileChanged = true;
+    if (tryAwardDeathless()) profileChanged = true;
+    if (profileChanged) savePlayerProfile();
+  }
+  warpActive = true;
+  sfxWarp();
+  warpTimer = WARP_DURATION;
+  nextThemeIndex = (typeof targetIndex === 'number') ? targetIndex : (themeIndex + 1) % THEMES.length;
+  prefetchThemeBgm(nextThemeIndex);
+  stopAllBoomerangSounds();
+  gates = [];
+  portalObject = null;
+  // distance keeps accumulating even through long boss/mini-boss zones,
+  // where the normal distance-based zone-advance check is intentionally
+  // paused -- without this sync, the resulting gap between distance and
+  // themeLevelReached would immediately fire that check again on the very
+  // first frame of the new zone, skipping straight past it
+  themeLevelReached = Math.max(themeLevelReached, Math.floor(distance / THEME_DISTANCE));
+}
+
+function finishWarp() {
+  warpActive = false;
+  themeIndex = nextThemeIndex;
+  zoneStartDistance = distance;
+  zoneStartFrame = frame;
+  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
+  ship.vy = 0;
+  devGracePeriodEndFrame = Math.max(devGracePeriodEndFrame, frame + WARP_LANDING_GRACE_PERIOD);
+  diedInCurrentZone = false;
+  initBackgroundParticles(currentTheme());
+  reseedZoneObstacles(ship.x + 420);
+  if (!unlockedZones.has(themeIndex)) {
+    unlockedZones.add(themeIndex);
+    savePlayerProfile();
+  }
+}
+
+function spawnMiniBossDeathAshParticle() {
+  if (!miniBoss) return;
+  const a = Math.random() * Math.PI * 2;
+  const dist = miniBoss.maxR * (0.3 + Math.random() * 0.7);
+  miniBossDeathAshParticles.push({
+    x: miniBoss.x + Math.cos(a) * dist,
+    y: miniBoss.y + Math.sin(a) * dist,
+    vx: -(0.5 + Math.random() * 1.5), // drifts left, matching the game's own scroll direction
+    vy: (Math.random() - 0.5) * 0.6,
+    flutterPhase: Math.random() * Math.PI * 2,
+    flutterSpeed: 0.05 + Math.random() * 0.05,
+    size: 2 + Math.random() * 3,
+    rotation: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.1,
+    life: 0,
+    maxLife: 60 + Math.random() * 60
+  });
+}
+
+function spawnCoreDeathDebris() {
+  if (!miniBoss) return;
+  const a = Math.random() * Math.PI * 2;
+  const dist = miniBoss.maxR * (0.3 + Math.random() * 0.7);
+  coreDeathDebris.push({
+    x: miniBoss.x + Math.cos(a) * dist,
+    y: miniBoss.y + Math.sin(a) * dist,
+    vx: -(0.5 + Math.random() * 1.5), // drifts left, matching the game's scroll direction
+    vy: (Math.random() - 0.5) * 0.8,
+    rotation: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.15,
+    size: 3 + Math.random() * 4,
+    life: 0,
+    maxLife: 60 + Math.random() * 60
+  });
+}
+
+// ==================== REACTOR CORE boss state machine ====================
+// entirely separate from the fire boss above -- own states (all prefixed
+// 'core'), own variables, own collision checks done inline rather than
+// through the shared gates array. Stays at its resting position the whole
+// fight (never charges), cycling through 5 attacks then a power-down death.
+function computeCrossfireBeamYs(safeSlot) {
+  return CORE_CROSSFIRE_SLOT_FRACS.map((frac, i) => i).filter(i => i !== safeSlot).map(i => {
+    const jitter = (Math.random() * 2 - 1) * CORE_CROSSFIRE_SLOT_JITTER;
+    return PLAY_TOP + (CORE_CROSSFIRE_SLOT_FRACS[i] + jitter) * (PLAY_BOTTOM - PLAY_TOP);
+  });
+}
+
+function updateCoreSparks(phaseStartFrame, targetCount, shipTop, shipBottom, shipR) {
+  const elapsed = frame - phaseStartFrame;
+  if (coreSparkSpawned < targetCount && elapsed >= coreSparkSpawned * CORE_SPARK_SPAWN_INTERVAL) {
+    const baseFrac = CORE_SPARK_BASE_FRACS[coreSparkSpawned % CORE_SPARK_BASE_FRACS.length];
+    const baseY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * baseFrac;
+    coreSparks.push({
+      x: miniBoss.x,
+      spawnX: miniBoss.x,
+      baseY: baseY,
+      y: baseY,
+      phase: (coreSparkSpawned % 2) * Math.PI // alternate starting phase for variety
+    });
+    coreSparkSpawned++;
+    sfxHazardFire('corespark');
+  }
+  for (let i = coreSparks.length - 1; i >= 0; i--) {
+    const s = coreSparks[i];
+    s.x -= CORE_SPARK_SPEED_X;
+    const travelled = s.spawnX - s.x;
+    s.y = s.baseY + CORE_SPARK_AMPLITUDE * Math.sin(CORE_SPARK_FREQUENCY * travelled + s.phase);
+    s.y = Math.max(PLAY_TOP + CORE_SPARK_R, Math.min(PLAY_BOTTOM - CORE_SPARK_R, s.y));
+    const dx = ship.x - s.x, dy = ship.y - s.y;
+    if (Math.sqrt(dx * dx + dy * dy) < shipR + CORE_SPARK_R) {
+      tryEndGame('corespark');
+      break;
+    }
+    if (s.x < -50) coreSparks.splice(i, 1);
+  }
+}
+
 function beginCoreBulkhead(moving) {
   miniBossAttackState = 'coreBulkheadTelegraph';
   coreBulkheadIsMoving = !!moving;
@@ -1338,6 +1582,32 @@ function update() {
           }
         }
       }
+      if (th.iceChunks) {
+        const shipR = SHIP_W * 0.4;
+        for (const g of gates) {
+          if (g.type !== 'asteroid') continue;
+          const dx = ship.x - g.x;
+          const dy = ship.y - g.y;
+          if (Math.sqrt(dx * dx + dy * dy) < shipR + g.r) tryEndGame('asteroid');
+        }
+      }
+      }
+      if (th.iceChunks) {
+        for (const g of gates) {
+          if (g.type === 'asteroid') g.x -= effScroll;
+        }
+        if (portalObject) {
+          const portalSafeX = portalObject.x - 40;
+          gates = gates.filter(g => g.type !== 'asteroid' || g.x + g.r < portalSafeX);
+        }
+        gates = gates.filter(g => g.type !== 'asteroid' || g.x + g.r > -80);
+        iceChunkSpawnX -= effScroll;
+        const horizon = terrainSegments[terrainSegments.length - 1].x - 8;
+        if (!portalObject && iceChunkSpawnX <= horizon) {
+          const entry = th.iceChunkPattern[iceChunkPatternIndex % th.iceChunkPattern.length];
+          if (!spawnWouldHitPortal(iceChunkSpawnX, 48)) spawnIceChunkCluster(iceChunkSpawnX);
+          iceChunkSpawnX += entry.spacing;
+        }
       }
     } else {
       for (let g of gates) {
@@ -2252,7 +2522,7 @@ let bgmGain = null;
 let delayInput = null;
 let audioUnlocked = false;
 
-const AUDIO_SETTINGS_STORAGE_KEY = 'synthFlightAudioSettings';
+const AUDIO_SETTINGS_STORAGE_KEY = 'synthFlight2AudioSettings';
 const DEFAULT_SFX_VOLUME = 0.64;
 const DEFAULT_BGM_VOLUME = 0.26;
 function clampAudioVolume(value, fallback) {
@@ -2357,237 +2627,4 @@ function readSaveIdCookie() {
     }
   } catch (e) { /* cookies blocked */ }
   return '';
-}
-function persistSaveId(id) {
-  playerSaveId = normalizeSaveId(id) || playerSaveId || generateSaveId();
-  try { localStorage.setItem(SAVE_ID_STORAGE_KEY, playerSaveId); } catch (e) { /* storage blocked */ }
-  try { document.cookie = SAVE_ID_COOKIE + '=' + playerSaveId + '; Max-Age=63072000; Path=/; SameSite=Lax'; } catch (e) { /* cookies blocked */ }
-  try {
-    const nextHash = '#sf=' + playerSaveId;
-    if (location.hash !== nextHash) history.replaceState(null, '', location.pathname + location.search + nextHash);
-  } catch (e) { /* file:// or locked history */ }
-  return playerSaveId;
-}
-function ensurePlayerSaveId() {
-  if (playerSaveId) return persistSaveId(playerSaveId);
-  const fromHash = normalizeSaveId((location.hash.match(/sf=([A-Za-z0-9]+)/) || [])[1]);
-  let fromStore = '';
-  try { fromStore = normalizeSaveId(localStorage.getItem(SAVE_ID_STORAGE_KEY)); } catch (e) { fromStore = ''; }
-  return persistSaveId(fromHash || fromStore || readSaveIdCookie() || generateSaveId());
-}
-function collectDurableSave() {
-  return {
-    v: 1,
-    saveId: ensurePlayerSaveId(),
-    savedAt: Date.now(),
-    profile: {
-      best,
-      extraDifficultyUnlocked,
-      unlockedZones: Array.from(unlockedZones),
-      completedZones: Array.from(completedZones),
-      deathlessZones: Array.from(deathlessZones),
-      beatenDifficulties: Array.from(beatenDifficulties),
-      totalDistanceTraveled,
-      lifetimeDeathsByZone: lifetimeDeathsByZone.slice(),
-      zoneCompletionCounts: zoneCompletionCounts.slice(),
-      achievedRanks: Array.from(achievedRanks),
-      shipTrail: shipTrailStyle,
-      shipSkin: shipSkinStyle,
-    },
-    audio: {
-      sfxEnabled: audioSettings.sfxEnabled,
-      bgmEnabled: audioSettings.bgmEnabled,
-      sfxVolume: audioSettings.sfxVolume,
-      bgmVolume: audioSettings.bgmVolume,
-      chargeTelegraph: audioSettings.chargeTelegraph,
-      glowDanger: audioSettings.glowDanger,
-      lifeLost: audioSettings.lifeLost,
-      respawn: audioSettings.respawn,
-    },
-  };
-}
-function durableProgressScore(blob) {
-  if (!blob || !blob.profile) return 0;
-  const p = normalizePlayerProfile(blob.profile);
-  const deaths = p.lifetimeDeathsByZone.reduce((a, b) => a + b, 0);
-  const clears = p.zoneCompletionCounts.reduce((a, b) => a + b, 0);
-  return p.best + p.totalDistanceTraveled + deaths + clears * 10 + p.unlockedZones.length + p.completedZones.length + (p.extraDifficultyUnlocked ? 1000 : 0);
-}
-function mergeDurableSaves(blobs) {
-  const live = [];
-  for (let i = 0; i < blobs.length; i++) {
-    if (blobs[i] && blobs[i].profile) live.push(blobs[i]);
-  }
-  if (!live.length) return collectDurableSave();
-  live.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
-  const newest = live[0];
-  const profiles = live.map((b) => normalizePlayerProfile(b.profile));
-  const union = (key) => {
-    const set = new Set();
-    profiles.forEach((p) => (p[key] || []).forEach((v) => set.add(v)));
-    return Array.from(set);
-  };
-  const maxArr = (key) => {
-    const out = new Array(13).fill(0);
-    profiles.forEach((p) => {
-      const arr = p[key] || [];
-      for (let i = 0; i < 13; i++) out[i] = Math.max(out[i], arr[i] || 0);
-    });
-    return out;
-  };
-  const newestProfile = normalizePlayerProfile(newest.profile);
-  const newestAudio = newest.audio || {};
-  return {
-    v: 1,
-    saveId: ensurePlayerSaveId(),
-    savedAt: Date.now(),
-    profile: {
-      best: Math.max.apply(null, profiles.map((p) => p.best || 0)),
-      extraDifficultyUnlocked: profiles.some((p) => p.extraDifficultyUnlocked),
-      unlockedZones: union('unlockedZones').length ? union('unlockedZones') : [0],
-      completedZones: union('completedZones'),
-      deathlessZones: union('deathlessZones'),
-      beatenDifficulties: union('beatenDifficulties'),
-      totalDistanceTraveled: Math.max.apply(null, profiles.map((p) => p.totalDistanceTraveled || 0)),
-      lifetimeDeathsByZone: maxArr('lifetimeDeathsByZone'),
-      zoneCompletionCounts: maxArr('zoneCompletionCounts'),
-      achievedRanks: union('achievedRanks'),
-      shipTrail: newestProfile.shipTrail,
-      shipSkin: newestProfile.shipSkin,
-    },
-    audio: {
-      sfxEnabled: typeof newestAudio.sfxEnabled === 'boolean' ? newestAudio.sfxEnabled : audioSettings.sfxEnabled,
-      bgmEnabled: typeof newestAudio.bgmEnabled === 'boolean' ? newestAudio.bgmEnabled : audioSettings.bgmEnabled,
-      sfxVolume: clampAudioVolume(newestAudio.sfxVolume, audioSettings.sfxVolume),
-      bgmVolume: clampAudioVolume(newestAudio.bgmVolume, audioSettings.bgmVolume),
-      chargeTelegraph: typeof newestAudio.chargeTelegraph === 'string' ? newestAudio.chargeTelegraph : audioSettings.chargeTelegraph,
-      glowDanger: typeof newestAudio.glowDanger === 'string' ? newestAudio.glowDanger : audioSettings.glowDanger,
-      lifeLost: typeof newestAudio.lifeLost === 'string' ? newestAudio.lifeLost : audioSettings.lifeLost,
-      respawn: typeof newestAudio.respawn === 'string' ? newestAudio.respawn : audioSettings.respawn,
-    },
-  };
-}
-function applyDurableSave(blob) {
-  if (!blob || !blob.profile) return;
-  const p = normalizePlayerProfile(blob.profile);
-  durableWriteLock = true;
-  best = p.best;
-  extraDifficultyUnlocked = p.extraDifficultyUnlocked;
-  unlockedZones = new Set(p.unlockedZones.length ? p.unlockedZones : [0]);
-  completedZones = new Set(p.completedZones);
-  deathlessZones = new Set(p.deathlessZones);
-  beatenDifficulties = new Set(p.beatenDifficulties);
-  totalDistanceTraveled = p.totalDistanceTraveled;
-  lifetimeDeathsByZone = p.lifetimeDeathsByZone;
-  zoneCompletionCounts = p.zoneCompletionCounts;
-  achievedRanks = new Set(p.achievedRanks);
-  if (typeof SHIP_TRAILS !== 'undefined' && SHIP_TRAILS.some((t) => t.id === p.shipTrail)) shipTrailStyle = p.shipTrail;
-  if (typeof SHIP_SKINS !== 'undefined' && SHIP_SKINS.some((s) => s.id === p.shipSkin)) shipSkinStyle = p.shipSkin;
-  if (blob.audio) {
-    if (typeof blob.audio.sfxEnabled === 'boolean') audioSettings.sfxEnabled = blob.audio.sfxEnabled;
-    if (typeof blob.audio.bgmEnabled === 'boolean') audioSettings.bgmEnabled = blob.audio.bgmEnabled;
-    if (blob.audio.sfxVolume != null) audioSettings.sfxVolume = clampAudioVolume(blob.audio.sfxVolume, audioSettings.sfxVolume);
-    if (blob.audio.bgmVolume != null) audioSettings.bgmVolume = clampAudioVolume(blob.audio.bgmVolume, audioSettings.bgmVolume);
-    if (typeof blob.audio.chargeTelegraph === 'string' && blob.audio.chargeTelegraph !== 'xCharge') audioSettings.chargeTelegraph = blob.audio.chargeTelegraph;
-    if (typeof blob.audio.glowDanger === 'string') audioSettings.glowDanger = blob.audio.glowDanger;
-    if (typeof blob.audio.lifeLost === 'string') audioSettings.lifeLost = blob.audio.lifeLost;
-    if (typeof blob.audio.respawn === 'string') audioSettings.respawn = blob.audio.respawn;
-  }
-  savePlayerProfile();
-  saveAudioSettings();
-  applyAudioSettings();
-  durableWriteLock = false;
-}
-function openDurableDb() {
-  return new Promise((resolve) => {
-    if (!window.indexedDB) {
-      resolve(null);
-      return;
-    }
-    const req = indexedDB.open(DURABLE_DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(DURABLE_STORE)) db.createObjectStore(DURABLE_STORE);
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => resolve(null);
-  });
-}
-async function readIndexedDbSave() {
-  try {
-    const db = await openDurableDb();
-    if (!db) return null;
-    return await new Promise((resolve) => {
-      const tx = db.transaction(DURABLE_STORE, 'readonly');
-      const get = tx.objectStore(DURABLE_STORE).get('current');
-      get.onsuccess = () => resolve(get.result || null);
-      get.onerror = () => resolve(null);
-    });
-  } catch (e) {
-    return null;
-  }
-}
-async function writeIndexedDbSave(blob) {
-  try {
-    const db = await openDurableDb();
-    if (!db) return;
-    await new Promise((resolve) => {
-      const tx = db.transaction(DURABLE_STORE, 'readwrite');
-      tx.objectStore(DURABLE_STORE).put(blob, 'current');
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-    });
-  } catch (e) { /* private mode / quota */ }
-}
-async function fetchServerSave(id) {
-  const saveId = normalizeSaveId(id);
-  if (!saveId || location.protocol === 'file:') return null;
-  try {
-    const res = await fetch('/api/player-save/' + saveId, { cache: 'no-store' });
-    if (!res.ok) return null;
-    const blob = await res.json();
-    return blob && blob.profile ? blob : null;
-  } catch (e) {
-    return null;
-  }
-}
-async function putServerSave(blob) {
-  if (!blob || location.protocol === 'file:') return;
-  try {
-    await fetch('/api/player-save/' + ensurePlayerSaveId(), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(blob),
-    });
-  } catch (e) { /* offline or static host */ }
-}
-async function writeAllDurableLayers(blob) {
-  const payload = blob || collectDurableSave();
-  payload.saveId = ensurePlayerSaveId();
-  payload.savedAt = Date.now();
-  durableWriteLock = true;
-  savePlayerProfile();
-  saveAudioSettings();
-  durableWriteLock = false;
-  await writeIndexedDbSave(payload);
-  await putServerSave(payload);
-}
-function queueDurableSave() {
-  if (durableWriteLock) return;
-  clearTimeout(durableSaveTimer);
-  durableSaveTimer = setTimeout(() => {
-    writeAllDurableLayers(collectDurableSave());
-  }, 700);
-}
-async function hydrateDurableSave() {
-  ensurePlayerSaveId();
-  const local = collectDurableSave();
-  const [idb, server] = await Promise.all([readIndexedDbSave(), fetchServerSave(playerSaveId)]);
-  const merged = mergeDurableSaves([idb, server, local]);
-  if (durableProgressScore(merged) >= durableProgressScore(local) || (server && durableProgressScore(server) > 0) || (idb && durableProgressScore(idb) > durableProgressScore(local))) {
-    applyDurableSave(merged);
-  }
-  await writeAllDurableLayers(collectDurableSave());
-  durableHydrated = true;
-  if (state === 'settings' || state === 'options' || state === 'home' || state === 'statistics' || state === 'achievements') updateOverlay();
 }

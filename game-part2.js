@@ -1,3 +1,37 @@
+function clampGhostShipToPlayfield() {
+  const minY = PLAY_TOP + SHIP_H / 2 + 0.5;
+  const maxY = PLAY_BOTTOM - SHIP_H / 2 - 0.5;
+  if (ship.y < minY) { ship.y = minY; if (ship.vy < 0) ship.vy = 0; }
+  if (ship.y > maxY) { ship.y = maxY; if (ship.vy > 0) ship.vy = 0; }
+}
+
+function tryEndGame(hazardType) {
+  if (state !== 'playing') return;
+  if (ghostMode) return;
+  if (bossFinalChargeActive || bossExplosionActive || bossFullyDefeated) return; // victory is already secured -- nothing can kill the player during the boss's death sequence or the fly-off that follows
+  const t = gameNowMs();
+  if (t < invincibilityEndTime) return; // currently within an active protection window -- ignore this collision entirely
+  sfxHazardImpact(hazardType);
+  const maxFreeHits = DIFFICULTY_CONFIG[selectedDifficulty]?.freeHitsPerLife || 0;
+  if (maxFreeHits > 0 && freeHitsUsedThisLife < maxFreeHits && t >= freeHitCooldownEndTime) {
+    // forgiven hit grants a fresh protection window, then the free-pass
+    // cooldown so it cannot be chained indefinitely. Normal only gets this
+    // once per life; Easy / Overdrive can repeat after the cooldown.
+    freeHitsUsedThisLife += 1;
+    invincibilityEndTime = t + INVINCIBILITY_DURATION_MS;
+    freeHitCooldownEndTime = t + FREE_HIT_COOLDOWN_MS;
+    return;
+  }
+  const moltenSpecialHit = hazardType === 'charging' || hazardType === 'chargingClose'
+    || hazardType === 'coreFlame' || hazardType === 'barrageActive';
+  // cave / island contact is an out-of-bounds wall, not a hazard: losing
+  // a life here must not carry the hit-cycle mercy window into the next life
+  const wallLike = hazardType === 'terrain';
+  endGame(!wallLike, moltenSpecialHit ? { playCollision: false } : undefined);
+}
+let nextThemeIndex = 0;
+let bgParticles = [];
+
 function currentTheme() {
   return THEMES[themeIndex];
 }
@@ -1759,6 +1793,31 @@ function spawnAsteroidCluster(x) {
   return entry.spacing;
 }
 
+function spawnIceChunkCluster(x) {
+  const th = currentTheme();
+  const entry = th.iceChunkPattern[iceChunkPatternIndex % th.iceChunkPattern.length];
+  iceChunkPatternIndex++;
+  const minR = 13, maxR = 22;
+  for (const a of entry.chunks) {
+    const cx = x + (a.xJitter || 0);
+    const bounds = terrainBoundsAt(cx) || terrainBoundsAt(x);
+    const top = bounds ? bounds.top : PLAY_TOP;
+    const bottom = bounds ? bounds.bottom : PLAY_BOTTOM;
+    const r = minR + a.rFrac * (maxR - minR);
+    const pad = r + 16;
+    const span = Math.max(1, (bottom - pad) - (top + pad));
+    gates.push({
+      type: 'asteroid',
+      x: cx,
+      y: top + pad + a.yFrac * span,
+      r: r,
+      rotSeed: a.xJitter || 0,
+      spin: 0.012,
+      passed: false
+    });
+  }
+}
+
 function spawnFireball() {
   const th = currentTheme();
   const playHeight = PLAY_BOTTOM - PLAY_TOP;
@@ -2310,10 +2369,58 @@ function initTerrain() {
   }
 }
 
+function buildGlacierCourse() {
+  // One pass. The tunnel still kinks in straight facets. The high run is
+  // pressed to the ceiling and the low run to the floor, and the two are
+  // different lengths and different cuts so the level does not mirror itself.
+  const facet = (center, n) => Array(n).fill(center);
+  const centers = [
+    ...facet(0.50, 3), ...facet(0.40, 2), ...facet(0.32, 2),
+    ...facet(0.28, 5), ...facet(0.36, 2), ...facet(0.29, 4), ...facet(0.40, 2),
+    ...facet(0.28, 6), ...facet(0.34, 3), ...facet(0.30, 4), ...facet(0.43, 2),
+    ...facet(0.28, 5), ...facet(0.37, 3), ...facet(0.31, 4), ...facet(0.28, 3),
+    ...facet(0.39, 2), ...facet(0.30, 5), ...facet(0.35, 2), ...facet(0.28, 4),
+    ...facet(0.40, 2), ...facet(0.52, 2), ...facet(0.64, 2), ...facet(0.72, 2),
+    ...facet(0.70, 6), ...facet(0.62, 2), ...facet(0.73, 4), ...facet(0.66, 3),
+    ...facet(0.72, 5), ...facet(0.64, 2), ...facet(0.73, 4), ...facet(0.68, 3),
+    ...facet(0.71, 2),
+    ...facet(0.64, 2), ...facet(0.54, 2), ...facet(0.46, 3),
+    ...facet(0.38, 2), ...facet(0.48, 3), ...facet(0.34, 2), ...facet(0.44, 4),
+    ...facet(0.36, 2), ...facet(0.50, 3), ...facet(0.40, 2),
+    ...facet(0.58, 2), ...facet(0.70, 2),
+    ...facet(0.68, 2), ...facet(0.73, 2), ...facet(0.64, 2), ...facet(0.71, 3),
+    ...facet(0.66, 2), ...facet(0.73, 2), ...facet(0.60, 2), ...facet(0.69, 3),
+    ...facet(0.73, 2), ...facet(0.65, 2), ...facet(0.72, 4), ...facet(0.67, 2),
+    ...facet(0.60, 2), ...facet(0.48, 2), ...facet(0.34, 2),
+    ...facet(0.28, 4), ...facet(0.36, 2), ...facet(0.28, 3), ...facet(0.42, 2),
+    ...facet(0.30, 3), ...facet(0.28, 5),
+    ...facet(0.40, 2), ...facet(0.55, 2), ...facet(0.68, 3), ...facet(0.73, 4),
+    ...facet(0.66, 2), ...facet(0.72, 3), ...facet(0.64, 2), ...facet(0.70, 4),
+    ...facet(0.60, 2), ...facet(0.48, 3),
+    ...facet(0.56, 3), ...facet(0.42, 2), ...facet(0.32, 3), ...facet(0.28, 4),
+    ...facet(0.38, 2), ...facet(0.50, 2), ...facet(0.66, 3), ...facet(0.73, 3),
+    ...facet(0.62, 2), ...facet(0.70, 4), ...facet(0.54, 2), ...facet(0.40, 3),
+    ...facet(0.30, 2), ...facet(0.46, 3), ...facet(0.62, 2), ...facet(0.72, 3),
+    ...facet(0.58, 2), ...facet(0.44, 3), ...facet(0.34, 2)
+  ];
+  return centers.map(centerFrac => ({ centerFrac, top: 0, bottom: 0 }));
+}
+
+let glacierCourseCache = null;
+function glacierCourse(segmentIndex) {
+  if (!glacierCourseCache) glacierCourseCache = buildGlacierCourse();
+  const i = Math.max(0, Math.min(glacierCourseCache.length - 1, segmentIndex));
+  return glacierCourseCache[i];
+}
+
 function addTerrainSegment() {
   const th = currentTheme();
   const spacing = th.terrainSpacing || 34;
   const last = terrainSegments[terrainSegments.length - 1];
+  // Glacier teeth are local. Steering from the notched wall makes the next
+  // segment treat a spike as the new cave and stacks the following tooth on it.
+  const steerTop = last.baseTop != null ? last.baseTop : last.topY;
+  const steerBottom = last.baseBottom != null ? last.baseBottom : last.bottomY;
   const margin = 20;
   const playHeight = PLAY_BOTTOM - PLAY_TOP;
   terrainSegmentsSinceEntry++;
@@ -2338,7 +2445,7 @@ function addTerrainSegment() {
       // funnel wide open for a clean run into the portal, instead of
       // continuing to generate normal (possibly tight) cave shape
       const wideGap = playHeight * 0.9;
-      const lastCenter = (last.topY + last.bottomY) / 2;
+      const lastCenter = (steerTop + steerBottom) / 2;
       const minCenter = PLAY_TOP + wideGap / 2;
       const maxCenter = PLAY_BOTTOM - wideGap / 2;
       const target = Math.max(minCenter, Math.min(maxCenter, lastCenter));
@@ -2380,6 +2487,10 @@ function addTerrainSegment() {
         patternIndex++;
         terrainMeanderIndex = 0;
       }
+      if (th.iceChunks) {
+        const course = glacierCourse(Math.max(0, Math.floor(terrainLevelX / spacing) - 1));
+        entry = { centerFrac: course.centerFrac };
+      }
 
       const gapMult = entry.gapMult !== undefined ? entry.gapMult : 1;
       const entryGap = baseGap * gapMult;
@@ -2398,7 +2509,7 @@ function addTerrainSegment() {
         terrainWaypointIslandTarget = 0;
       }
 
-      const holdLastCenter = (last.topY + last.bottomY) / 2;
+      const holdLastCenter = (steerTop + steerBottom) / 2;
       const fullDelta = Math.abs(terrainWaypointTarget - holdLastCenter);
       terrainWaypointSegLeft = Math.max(1, Math.ceil(fullDelta / Math.max(1, maxDeltaPerSegment)));
       if (entry.fork) terrainWaypointSegLeft = Math.max(terrainWaypointSegLeft, 10);
@@ -2412,8 +2523,8 @@ function addTerrainSegment() {
       terrainWaypointIslandBias = (entry.fork && entry.fork.islandBias) ? entry.fork.islandBias : 0;
     }
 
-    const lastCenter = (last.topY + last.bottomY) / 2;
-    const lastGap = last.bottomY - last.topY;
+    const lastCenter = (steerTop + steerBottom) / 2;
+    const lastGap = steerBottom - steerTop;
 
     const centerStep = (terrainWaypointTarget - lastCenter) / terrainWaypointSegLeft;
     const gapStep = (terrainWaypointGapTarget - lastGap) / terrainWaypointSegLeft;
@@ -2490,8 +2601,31 @@ function addTerrainSegment() {
     }
   }
 
-  const nextTop = last.topY + (targetTop - last.topY) * rampFactor;
-  const nextBottom = last.bottomY + (targetBottom - last.bottomY) * rampFactor;
+  let nextTop = steerTop + (targetTop - steerTop) * rampFactor;
+  let nextBottom = steerBottom + (targetBottom - steerBottom) * rampFactor;
+  const baseTopY = nextTop;
+  const baseBottomY = nextBottom;
+  if (th.iceChunks && !portalObject && rampFactor >= 1) {
+    const course = glacierCourse(Math.floor(terrainLevelX / spacing));
+    let topN = course.top;
+    let botN = course.bottom;
+    const room = (nextBottom - nextTop) - minGapPx;
+    const pinch = topN + botN;
+    if (pinch > room && pinch > 0) {
+      const scale = Math.max(0, room) / pinch;
+      topN *= scale;
+      botN *= scale;
+    }
+    nextTop += topN;
+    nextBottom -= botN;
+    nextTop = Math.max(PLAY_TOP + margin, nextTop);
+    nextBottom = Math.min(PLAY_BOTTOM - margin, nextBottom);
+    if (nextBottom - nextTop < minGapPx) {
+      const mid = (nextTop + nextBottom) / 2;
+      nextTop = mid - minGapPx / 2;
+      nextBottom = mid + minGapPx / 2;
+    }
+  }
   const lastIslandCenter = (last.islandTop + last.islandBottom) / 2;
   const nextIslandTop = lastIslandCenter + (targetIslandTop - lastIslandCenter) * rampFactor;
   const nextIslandBottom = lastIslandCenter + (targetIslandBottom - lastIslandCenter) * rampFactor;
@@ -2499,6 +2633,8 @@ function addTerrainSegment() {
     x: last.x + spacing,
     topY: nextTop,
     bottomY: nextBottom,
+    baseTop: baseTopY,
+    baseBottom: baseBottomY,
     islandTop: nextIslandTop,
     islandBottom: nextIslandBottom,
     islandShape: terrainWaypointIslandShape,
@@ -2582,6 +2718,17 @@ function initBackgroundParticles(theme) {
         r: 0.6 + Math.random() * 1.8,
         alpha: 0.3 + Math.random() * 0.7,
         speed: 0.3 + Math.random() * 1.4
+      });
+    }
+  } else if (theme.bgStyle === 'frozen') {
+    for (let i = 0; i < 56; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 1 + Math.random() * 2.4,
+        alpha: 0.35 + Math.random() * 0.55,
+        speed: 0.6 + Math.random() * 1.6,
+        drift: 0.4 + Math.random() * 1.1
       });
     }
     } else if (theme.bgStyle === 'embers') {
@@ -2710,6 +2857,8 @@ function reseedZoneObstacles(startX) {
   supernovaEventsSpawned = currentTheme().supernovaEvents ? currentTheme().supernovaEvents.map(() => false) : [];
   extraHubCounter = 0;
   extraHubPatternIndex = 0;
+  iceChunkPatternIndex = 0;
+  iceChunkSpawnX = W + 700;
   if (currentTheme().obstacleShape === 'terrain') {
     initTerrain();
   } else if (currentTheme().obstacleShape !== 'none') {
@@ -3360,238 +3509,3 @@ function onCanvasPointerDown(e) {
   try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
   canvasStartPress();
 }
-function onCanvasPointerRelease(e) {
-  if (e.pointerType === 'mouse' && e.button !== 0) return;
-  pointerHolding = false;
-  endPress();
-}
-canvas.addEventListener('pointerdown', onCanvasPointerDown, { passive: false });
-canvas.addEventListener('pointerup', onCanvasPointerRelease);
-canvas.addEventListener('pointercancel', onCanvasPointerRelease);
-window.addEventListener('blur', () => {
-  pointerHolding = false;
-  if (!keyHolding) endPress();
-});
-
-const pauseToggleBtn = document.getElementById('pause-toggle');
-pauseToggleBtn.addEventListener('pointerup', () => {
-  focusGameKeyboardInput();
-  if (state === 'playing') pauseGame();
-  else if (state === 'paused') resumeGame();
-});
-
-function updateBackgroundParticles(theme) {
-  const playHeight = PLAY_BOTTOM - PLAY_TOP;
-  if (theme.bgStyle === 'matrix') {
-    for (let p of bgParticles) {
-      p.y += p.speed;
-      p.x += p.drift || 0;
-      if (p.x < -8) p.x = W + 8;
-      if (p.x > W + 8) p.x = -8;
-      if (p.y - p.len > PLAY_BOTTOM) {
-        p.y = PLAY_TOP - p.len;
-        p.x = Math.random() * W;
-      }
-    }
-  } else if (theme.bgStyle === 'stars') {
-    for (let p of bgParticles) {
-      p.x -= p.speed;
-      if (p.x < 0) {
-        p.x = W;
-        p.y = PLAY_TOP + Math.random() * playHeight;
-      }
-    }
-  } else if (theme.bgStyle === 'embers') {
-    const rushBoost = 0.85 + 0.45 * (theme.scrollMult || 1);
-    for (let p of bgParticles) {
-      p.x -= p.speed * rushBoost;
-      if (p.kind === 'spark') p.y -= p.lift || 0;
-      if (p.x < -p.len) {
-        p.x = W + 20 + Math.random() * 40;
-        p.y = PLAY_TOP + Math.random() * playHeight;
-      }
-      if (p.kind === 'spark' && p.y < PLAY_TOP) p.y = PLAY_BOTTOM;
-    }
-  } else if (theme.bgStyle === 'ruins') {
-    for (let p of bgParticles) {
-      p.y -= p.speed;
-      p.x += p.drift;
-      if (p.y < PLAY_TOP) {
-        p.y = PLAY_BOTTOM;
-        p.x = Math.random() * W;
-      }
-    }
-  } else if (theme.bgStyle === 'toxic') {
-    for (let p of bgParticles) {
-      p.wobble = (p.wobble || 0) + 0.02;
-      p.y -= p.speed;
-      p.x += p.drift + Math.sin(p.wobble) * 0.12;
-      if (p.y < PLAY_TOP) {
-        p.y = PLAY_BOTTOM;
-        p.x = Math.random() * W;
-      }
-    }
-  } else if (theme.bgStyle === 'station') {
-    for (let p of bgParticles) {
-      p.x -= p.speed;
-      p.y += Math.sin(frame * 0.01 + p.x * 0.02) * 0.15;
-      if (p.x < 0) {
-        p.x = W;
-        p.y = PLAY_TOP + Math.random() * playHeight;
-      }
-    }
-  } else if (theme.bgStyle === 'void') {
-    for (let p of bgParticles) {
-      p.x -= p.speed;
-      if (p.x < 0) {
-        p.x = W;
-        p.y = PLAY_TOP + Math.random() * playHeight;
-      }
-    }
-  } else if (theme.bgStyle === 'storm') {
-    for (let p of bgParticles) {
-      p.y += p.speed;
-      p.x -= p.speed * 0.35; // rain falls at an angle
-      if (p.y - p.len > PLAY_BOTTOM || p.x < -20) {
-        p.y = PLAY_TOP - p.len;
-        p.x = Math.random() * W;
-      }
-    }
-  }
-}
-
-function beginWarp(targetIndex) {
-  if (isPracticeRun && typeof targetIndex !== 'number') {
-    // practice runs only ever play the one selected zone -- any attempt to
-    // sequentially advance to "the next zone" ends the run instead
-    if (tryAwardDeathless()) savePlayerProfile();
-    endPracticeRun();
-    return;
-  }
-  if (typeof targetIndex !== 'number' && !devSessionActive) {
-    // normal, sequential advance (not a dev jump, a dev-session zone that's
-    // still being auto-scrolled through, or the initial jump into a
-    // practice zone -- all of which either pass an explicit targetIndex or
-    // set devSessionActive) means the zone being left has just been
-    // successfully flown all the way through, for real
-    let profileChanged = false;
-    if (!completedZones.has(themeIndex)) {
-      completedZones.add(themeIndex);
-      profileChanged = true;
-    }
-    zoneCompletionCounts[themeIndex] = (zoneCompletionCounts[themeIndex] || 0) + 1;
-    profileChanged = true;
-    if (tryAwardDeathless()) profileChanged = true;
-    if (profileChanged) savePlayerProfile();
-  }
-  warpActive = true;
-  sfxWarp();
-  warpTimer = WARP_DURATION;
-  nextThemeIndex = (typeof targetIndex === 'number') ? targetIndex : (themeIndex + 1) % THEMES.length;
-  prefetchThemeBgm(nextThemeIndex);
-  stopAllBoomerangSounds();
-  gates = [];
-  portalObject = null;
-  // distance keeps accumulating even through long boss/mini-boss zones,
-  // where the normal distance-based zone-advance check is intentionally
-  // paused -- without this sync, the resulting gap between distance and
-  // themeLevelReached would immediately fire that check again on the very
-  // first frame of the new zone, skipping straight past it
-  themeLevelReached = Math.max(themeLevelReached, Math.floor(distance / THEME_DISTANCE));
-}
-
-function finishWarp() {
-  warpActive = false;
-  themeIndex = nextThemeIndex;
-  zoneStartDistance = distance;
-  zoneStartFrame = frame;
-  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
-  ship.vy = 0;
-  devGracePeriodEndFrame = Math.max(devGracePeriodEndFrame, frame + WARP_LANDING_GRACE_PERIOD);
-  diedInCurrentZone = false;
-  initBackgroundParticles(currentTheme());
-  reseedZoneObstacles(ship.x + 420);
-  if (!unlockedZones.has(themeIndex)) {
-    unlockedZones.add(themeIndex);
-    savePlayerProfile();
-  }
-}
-
-function spawnMiniBossDeathAshParticle() {
-  if (!miniBoss) return;
-  const a = Math.random() * Math.PI * 2;
-  const dist = miniBoss.maxR * (0.3 + Math.random() * 0.7);
-  miniBossDeathAshParticles.push({
-    x: miniBoss.x + Math.cos(a) * dist,
-    y: miniBoss.y + Math.sin(a) * dist,
-    vx: -(0.5 + Math.random() * 1.5), // drifts left, matching the game's own scroll direction
-    vy: (Math.random() - 0.5) * 0.6,
-    flutterPhase: Math.random() * Math.PI * 2,
-    flutterSpeed: 0.05 + Math.random() * 0.05,
-    size: 2 + Math.random() * 3,
-    rotation: Math.random() * Math.PI * 2,
-    rotSpeed: (Math.random() - 0.5) * 0.1,
-    life: 0,
-    maxLife: 60 + Math.random() * 60
-  });
-}
-
-function spawnCoreDeathDebris() {
-  if (!miniBoss) return;
-  const a = Math.random() * Math.PI * 2;
-  const dist = miniBoss.maxR * (0.3 + Math.random() * 0.7);
-  coreDeathDebris.push({
-    x: miniBoss.x + Math.cos(a) * dist,
-    y: miniBoss.y + Math.sin(a) * dist,
-    vx: -(0.5 + Math.random() * 1.5), // drifts left, matching the game's scroll direction
-    vy: (Math.random() - 0.5) * 0.8,
-    rotation: Math.random() * Math.PI * 2,
-    rotSpeed: (Math.random() - 0.5) * 0.15,
-    size: 3 + Math.random() * 4,
-    life: 0,
-    maxLife: 60 + Math.random() * 60
-  });
-}
-
-// ==================== REACTOR CORE boss state machine ====================
-// entirely separate from the fire boss above -- own states (all prefixed
-// 'core'), own variables, own collision checks done inline rather than
-// through the shared gates array. Stays at its resting position the whole
-// fight (never charges), cycling through 5 attacks then a power-down death.
-function computeCrossfireBeamYs(safeSlot) {
-  return CORE_CROSSFIRE_SLOT_FRACS.map((frac, i) => i).filter(i => i !== safeSlot).map(i => {
-    const jitter = (Math.random() * 2 - 1) * CORE_CROSSFIRE_SLOT_JITTER;
-    return PLAY_TOP + (CORE_CROSSFIRE_SLOT_FRACS[i] + jitter) * (PLAY_BOTTOM - PLAY_TOP);
-  });
-}
-
-function updateCoreSparks(phaseStartFrame, targetCount, shipTop, shipBottom, shipR) {
-  const elapsed = frame - phaseStartFrame;
-  if (coreSparkSpawned < targetCount && elapsed >= coreSparkSpawned * CORE_SPARK_SPAWN_INTERVAL) {
-    const baseFrac = CORE_SPARK_BASE_FRACS[coreSparkSpawned % CORE_SPARK_BASE_FRACS.length];
-    const baseY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * baseFrac;
-    coreSparks.push({
-      x: miniBoss.x,
-      spawnX: miniBoss.x,
-      baseY: baseY,
-      y: baseY,
-      phase: (coreSparkSpawned % 2) * Math.PI // alternate starting phase for variety
-    });
-    coreSparkSpawned++;
-    sfxHazardFire('corespark');
-  }
-  for (let i = coreSparks.length - 1; i >= 0; i--) {
-    const s = coreSparks[i];
-    s.x -= CORE_SPARK_SPEED_X;
-    const travelled = s.spawnX - s.x;
-    s.y = s.baseY + CORE_SPARK_AMPLITUDE * Math.sin(CORE_SPARK_FREQUENCY * travelled + s.phase);
-    s.y = Math.max(PLAY_TOP + CORE_SPARK_R, Math.min(PLAY_BOTTOM - CORE_SPARK_R, s.y));
-    const dx = ship.x - s.x, dy = ship.y - s.y;
-    if (Math.sqrt(dx * dx + dy * dy) < shipR + CORE_SPARK_R) {
-      tryEndGame('corespark');
-      break;
-    }
-    if (s.x < -50) coreSparks.splice(i, 1);
-  }
-}
-

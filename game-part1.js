@@ -37,7 +37,7 @@ if (!DEV_TOOLS_ENABLED) {
   if (document.body) document.body.classList.add('player-build');
 }
 
-const GAME_STORAGE_PREFIX = 'synthFlight:';
+const GAME_STORAGE_PREFIX = 'synthFlight2:';
 window.storage = {
   get(key) {
     let value = null;
@@ -256,27 +256,41 @@ function diamondForkWaypoints(pad, gap, forkExtra, wpExtra) {
 // ---- Themes ----
 const THEMES = [
   {
-    name: 'SYNTHWAVE',
-    skyTop: '#1a0b3a', skyMid: '#2a0f4a', skyBottom: '#120523',
-    accentA: '#ff2079', accentB: '#0ff0fc',
-    barTop: '#3a0f5c', barBottom: '#1a0630',
-    bgStyle: 'grid',
+    name: 'GLACIER',
+    skyTop: '#07131c', skyMid: '#1a4a62', skyBottom: '#c5dbe8',
+    accentA: '#f4fbff', accentB: '#79d6ff',
+    barTop: '#123246', barBottom: '#071018',
+    bgStyle: 'frozen',
     ampMult: 1.0, freqMult: 1.0,
     gravityMult: 1.0, liftMult: 1.0,
-    pulseGap: false,
-    // centerFrac: vertical position (0=top of play area, 1=bottom)
-    // ampFrac: oscillation size, as a fraction of the max safe swing at that position
-    // freq/phase: oscillation speed/starting point -- fixed, not randomized
-    // spacing: pixels until the NEXT gate in this list
+    pulseGap: false, obstacleShape: 'terrain', scrollMult: 1,
+    gapFractionStart: 0.48, gapConstant: true,
+    terrainSpacing: 42,
+    iceChunks: true,
+    // The live route is buildGlacierCourse(). These points are only a fallback.
     pattern: [
-      { centerFrac: 0.50, ampFrac: 0.25, freq: 0.018, phase: 0.00, spacing: 300 },
-      { centerFrac: 0.30, ampFrac: 0.40, freq: 0.014, phase: 1.57, spacing: 320 },
-      { centerFrac: 0.70, ampFrac: 0.35, freq: 0.022, phase: 3.14, spacing: 300 },
-      { centerFrac: 0.50, ampFrac: 0.55, freq: 0.016, phase: 0.78, spacing: 340 },
-      { centerFrac: 0.20, ampFrac: 0.30, freq: 0.020, phase: 2.36, spacing: 300 },
-      { centerFrac: 0.80, ampFrac: 0.40, freq: 0.018, phase: 4.71, spacing: 320 },
-      { centerFrac: 0.45, ampFrac: 0.50, freq: 0.024, phase: 1.05, spacing: 300 },
-      { centerFrac: 0.60, ampFrac: 0.28, freq: 0.015, phase: 5.50, spacing: 310 }
+      { centerFrac: 0.28 },
+      { centerFrac: 0.16 },
+      { centerFrac: 0.10 }, { centerFrac: 0.18 }, { centerFrac: 0.08 }, { centerFrac: 0.15 },
+      { centerFrac: 0.22 }, { centerFrac: 0.11 }, { centerFrac: 0.19 }, { centerFrac: 0.07 },
+      { centerFrac: 0.14 }, { centerFrac: 0.21 }, { centerFrac: 0.09 }, { centerFrac: 0.17 },
+      { centerFrac: 0.12 }, { centerFrac: 0.20 }, { centerFrac: 0.08 }, { centerFrac: 0.16 },
+      { centerFrac: 0.13 }, { centerFrac: 0.23 }, { centerFrac: 0.10 }, { centerFrac: 0.18 },
+      { centerFrac: 0.14 }, { centerFrac: 0.09 },
+      { centerFrac: 0.78 },
+      { centerFrac: 0.86 }, { centerFrac: 0.93 }, { centerFrac: 0.82 }, { centerFrac: 0.90 },
+      { centerFrac: 0.78 }, { centerFrac: 0.88 }, { centerFrac: 0.94 }, { centerFrac: 0.83 },
+      { centerFrac: 0.91 }, { centerFrac: 0.79 }, { centerFrac: 0.87 }, { centerFrac: 0.94 },
+      { centerFrac: 0.84 }, { centerFrac: 0.77 }, { centerFrac: 0.89 }, { centerFrac: 0.81 },
+      { centerFrac: 0.92 }, { centerFrac: 0.85 }, { centerFrac: 0.80 }, { centerFrac: 0.91 },
+      { centerFrac: 0.86 }, { centerFrac: 0.93 }
+    ],
+    // yFrac is 0-1 inside the open channel, not the full screen.
+    iceChunkPattern: [
+      { spacing: 460, chunks: [{ xJitter: 0, yFrac: 0.48, rFrac: 0.35 }] },
+      { spacing: 520, chunks: [{ xJitter: -36, yFrac: 0.28, rFrac: 0.5 }, { xJitter: 48, yFrac: 0.74, rFrac: 0.3 }] },
+      { spacing: 440, chunks: [{ xJitter: 18, yFrac: 0.62, rFrac: 0.45 }] },
+      { spacing: 560, chunks: [{ xJitter: 0, yFrac: 0.36, rFrac: 0.25 }] }
     ]
   },
   {
@@ -982,21 +996,19 @@ let zoneSelectPreviewIdx = 0;
 // Pause menu, so it doesn't strand the player on the wrong screen
 let settingsReturnState = 'options';
 
-// unified, persisted player profile: best distance, the 4th difficulty
-// unlock, and which zones have been reached (unlocking them for Zone
-// Select). Migrates from the older, separate localStorage keys this game
-// used before, so existing players don't lose their progress.
-const PROFILE_STORAGE_KEY = 'synthFlightProfile';
-const SAVE_ID_STORAGE_KEY = 'synthFlightSaveId';
-const SAVE_ID_COOKIE = 'sfid';
-const DURABLE_DB_NAME = 'synthFlightDurable';
+// Sequel profile store. Names stay off the original Synth Flight keys so a
+// shared browser origin cannot read or erase that game's saves.
+const PROFILE_STORAGE_KEY = 'synthFlight2Profile';
+const SAVE_ID_STORAGE_KEY = 'synthFlight2SaveId';
+const SAVE_ID_COOKIE = 'sf2id';
+const DURABLE_DB_NAME = 'synthFlight2Durable';
 const DURABLE_STORE = 'profile';
 const SAVE_ID_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 let playerSaveId = '';
 let durableWriteLock = false;
 let durableSaveTimer = 0;
 let durableHydrated = false;
-const ZONE_SHOTS_KEY = 'synthFlightZoneShotsV19';
+const ZONE_SHOTS_KEY = 'synthFlight2ZoneShotsV19';
 const PREVIEW_STILL_W = 640;
 const PREVIEW_STILL_ASPECT = 860 / 412;
 let zoneScreenshots = {};
@@ -1327,8 +1339,10 @@ function generateAndStoreZoneStill(themeIdx) {
     drawMiniBossBarrage(theme);
     drawMiniBossFlameWall(theme);
     drawReactorCoreAttacks(theme);
-    if (theme.obstacleShape === 'terrain') drawTerrain(theme);
-    else drawGates(theme);
+    if (theme.obstacleShape === 'terrain') {
+      drawTerrain(theme);
+      if (theme.iceChunks) drawGates(theme);
+    } else drawGates(theme);
     if (theme.isBossZone) {
       drawBossArenaBarrierWall(theme, boss);
       drawBossArenaVignette(theme, boss);
@@ -1417,8 +1431,8 @@ function loadPlayerProfile() {
     const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
     if (raw) return normalizePlayerProfile(JSON.parse(raw));
   } catch (e) { /* corrupted profile data -- fall through to legacy keys/defaults */ }
-  const legacyBest = parseInt(localStorage.getItem('synthFlightBest') || '0', 10) || 0;
-  const legacyExtra = localStorage.getItem('synthFlightExtraDifficultyUnlocked') === 'true';
+  const legacyBest = parseInt(localStorage.getItem('synthFlight2Best') || '0', 10) || 0;
+  const legacyExtra = localStorage.getItem('synthFlight2ExtraDifficultyUnlocked') === 'true';
   return normalizePlayerProfile({ best: legacyBest, extraDifficultyUnlocked: legacyExtra, unlockedZones: [0] });
 }
 function savePlayerProfile() {
@@ -1445,8 +1459,8 @@ function resetPlayerProfile() {
   savePlayerProfile();
   zoneScreenshots = {};
   try {
-    localStorage.removeItem('synthFlightBest');
-    localStorage.removeItem('synthFlightExtraDifficultyUnlocked');
+    localStorage.removeItem('synthFlight2Best');
+    localStorage.removeItem('synthFlight2ExtraDifficultyUnlocked');
     localStorage.removeItem(ZONE_SHOTS_KEY);
   } catch (e) { /* fine if this fails -- savePlayerProfile() above already wrote the new, authoritative key */ }
 }
@@ -2052,6 +2066,8 @@ let lastSpawnX = 0;
 let fireballSpawnCounter = 0;
 let extraFireballCounter = 0;
 let extraFireballPatternIndex = 0;
+let iceChunkPatternIndex = 0;
+let iceChunkSpawnX = 0;
 let extraToxicCounter = 0;
 let extraToxicPatternIndex = 0;
 let extraGeyserCounter = 0;
@@ -2117,38 +2133,4 @@ let devGracePeriodEndFrame = -1; // freezes ship physics (no gravity/lift) after
 const DEV_GRACE_PERIOD_DURATION = 600; // 10s at 60fps -- generous time to navigate the dev panel
 const WARP_LANDING_GRACE_PERIOD = 60; // 1s -- brief safety window right as a new zone begins. Gravity/lift physics run continuously during the warp tunnel itself (a purely visual effect a player isn't expected to actively fly through), which can leave the ship sitting close to the boundary by the time the new zone is actually visible; this gives a beat to see and react rather than dying before the player's first real frame in the zone
 let fireballSpeedMult = 1.6; // lowered from the initial 2.4 per feedback -- live-tunable via dev panel
-
-function clampGhostShipToPlayfield() {
-  const minY = PLAY_TOP + SHIP_H / 2 + 0.5;
-  const maxY = PLAY_BOTTOM - SHIP_H / 2 - 0.5;
-  if (ship.y < minY) { ship.y = minY; if (ship.vy < 0) ship.vy = 0; }
-  if (ship.y > maxY) { ship.y = maxY; if (ship.vy > 0) ship.vy = 0; }
-}
-
-function tryEndGame(hazardType) {
-  if (state !== 'playing') return;
-  if (ghostMode) return;
-  if (bossFinalChargeActive || bossExplosionActive || bossFullyDefeated) return; // victory is already secured -- nothing can kill the player during the boss's death sequence or the fly-off that follows
-  const t = gameNowMs();
-  if (t < invincibilityEndTime) return; // currently within an active protection window -- ignore this collision entirely
-  sfxHazardImpact(hazardType);
-  const maxFreeHits = DIFFICULTY_CONFIG[selectedDifficulty]?.freeHitsPerLife || 0;
-  if (maxFreeHits > 0 && freeHitsUsedThisLife < maxFreeHits && t >= freeHitCooldownEndTime) {
-    // forgiven hit grants a fresh protection window, then the free-pass
-    // cooldown so it cannot be chained indefinitely. Normal only gets this
-    // once per life; Easy / Overdrive can repeat after the cooldown.
-    freeHitsUsedThisLife += 1;
-    invincibilityEndTime = t + INVINCIBILITY_DURATION_MS;
-    freeHitCooldownEndTime = t + FREE_HIT_COOLDOWN_MS;
-    return;
-  }
-  const moltenSpecialHit = hazardType === 'charging' || hazardType === 'chargingClose'
-    || hazardType === 'coreFlame' || hazardType === 'barrageActive';
-  // cave / island contact is an out-of-bounds wall, not a hazard: losing
-  // a life here must not carry the hit-cycle mercy window into the next life
-  const wallLike = hazardType === 'terrain';
-  endGame(!wallLike, moltenSpecialHit ? { playCollision: false } : undefined);
-}
-let nextThemeIndex = 0;
-let bgParticles = [];
 

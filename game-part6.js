@@ -1,3 +1,516 @@
+function stopBgm() {
+  stopSynthBgm();
+  stopFileBgm(0.08);
+}
+
+function playBgm(profileName) {
+  if (!audioUnlocked || !BGM_PROFILES[profileName]) return;
+  initAudio();
+  if (bgmFileTrackId) stopFileBgm(0.12);
+  if (bgmCurrentProfileName === profileName && bgmSchedulerId !== null) return;
+  stopSynthBgm();
+  bgmCurrentProfileName = profileName;
+  bgmCurrentStep = 0;
+  bgmNextStepTime = audioCtx.currentTime + 0.05;
+  bgmSchedulerId = setInterval(bgmSchedulerTick, BGM_LOOKAHEAD_MS);
+}
+
+function startHtmlBgm(track) {
+  if (audioSettings.muted) return;
+  stopSynthBgm();
+  const prevEl = bgmHtmlAudio;
+  const el = getBgmElement(track.src);
+  // Keep file-backed music on the HTMLAudio output instead of routing it
+  // through MediaElementAudioSource. itch.io may serve game assets from a
+  // separate CDN origin; browsers deliberately silence cross-origin media
+  // when it is connected to Web Audio, even though direct playback is valid.
+  el.volume = (!audioSettings.muted && audioSettings.bgmEnabled)
+    ? Math.max(0, Math.min(1, audioSettings.bgmVolume * 0.8))
+    : 0;
+  el.loop = track.loopEnd == null;
+  const offset = track.start != null ? track.start : 0;
+  try { el.currentTime = offset; } catch (e) { /* not seekable yet */ }
+  const playAttempt = el.play();
+  if (playAttempt && playAttempt.catch) {
+    playAttempt.catch(() => {
+      if (bgmFileTrackId !== track.id) return;
+      bgmFileTrackId = null;
+      playBgm('standard');
+      // Keep the failed file marked for this zone so the draw loop does not
+      // cancel the synth fallback and retry a rejected play() every frame.
+      bgmFileTrackId = track.id;
+    });
+  }
+  bgmHtmlAudio = el;
+  bgmFileGainNode = null;
+  bgmFileTrackId = track.id;
+  bgmActiveFileTrack = track;
+  if (prevEl && prevEl !== el) {
+    try { prevEl.pause(); } catch (e) { /* already paused */ }
+  }
+}
+
+function playFileBgm(trackId, opts) {
+  if (!audioUnlocked || audioSettings.muted) return;
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  const track = bgmFileTrackById(trackId);
+  if (!track) return;
+  if (bgmFileTrackId === track.id && !(opts && opts.restart)) return;
+  bgmFileLoadToken++;
+  bgmFileTrackId = track.id;
+  startHtmlBgm(track);
+}
+
+function restartBossFileBgm() {
+  const th = currentTheme();
+  if (!th || !(th.isBossZone || th.isMiniBossZone)) return;
+  const track = currentFileBgmTrack();
+  if (!track) return;
+  playFileBgm(track.id, { restart: true });
+}
+
+function tickFileBgmLoop() {
+  const el = bgmHtmlAudio;
+  const track = bgmActiveFileTrack;
+  if (!el || !track || track.loopEnd == null || el.paused) return;
+  const loopStart = track.loopStart != null ? track.loopStart : (track.start || 0);
+  if (el.currentTime >= track.loopEnd - 0.03) {
+    try { el.currentTime = loopStart; } catch (e) { /* ignore */ }
+  }
+}
+
+function prefetchBgmTrack(trackId) {
+  const track = bgmFileTrackById(trackId);
+  if (!track) return;
+  getBgmElement(track.src);
+}
+
+function prefetchThemeBgm(themeIdx) {
+  for (const track of BGM_FILE_TRACKS) {
+    if (track.themeIndex === themeIdx) prefetchBgmTrack(track.id);
+  }
+}
+
+// ---- Sound tester (checklist catalog) ----
+let previewLoopNodes = [];
+let previewLoopId = null;
+
+function sfxArp(freqs, duty = 0.25, volume = 0.38, step = 0.05) {
+  const steps = freqs.map((freq, i) => ({ freq, time: step + (i === freqs.length - 1 ? 0.05 : 0) }));
+  playPulseTone({
+    dutyCycle: duty,
+    freqSteps: steps,
+    duration: step * freqs.length + 0.04,
+    attack: 0.002, decay: 0.015, sustain: 0.65, release: 0.04, volume,
+  });
+}
+
+function sfxTelegraph(freq) {
+  sfxArp([freq, freq, freq * 1.25], 0.125, 0.34, 0.065);
+}
+
+function sfxSlam(freq) {
+  playNoiseBurst({ duration: 0.12, filterFreq: Math.max(180, freq * 4), filterEnd: 90, filterType: 'lowpass', volume: 0.36 });
+  playSynth({ type: 'sine', freq: freq, freqEnd: freq * 0.45, duration: 0.14, attack: 0.002, decay: 0.04, sustain: 0.3, release: 0.06, volume: 0.28, filterFreq: 400, delaySend: 0 });
+}
+
+function isGlowDangerTesterLoop() {
+  return typeof previewLoopId === 'string' && previewLoopId.startsWith('shipGlow');
+}
+
+function stopSfxPreviewLoops() {
+  previewLoopId = null;
+  glowDangerPreviewUrgency = -1;
+  stopLiftSound();
+  stopGlowDangerSound();
+  stopFireballBreathSound();
+  stopToxicHazardSounds();
+  stopDustStormSound();
+  stopMeteorStreakSound();
+  stopStormSkiesHazardSounds();
+  stopMovingDoorSound();
+  stopBlackHoleSound();
+  stopMoltenCoreIdleSound();
+  stopMoltenFlameWallSound();
+  stopMoltenSqueezeSound();
+  stopMoltenDeathAshSound();
+  stopCoreBulkheadHoldSound();
+  stopCoreOverload(0.04);
+  if (!audioCtx) {
+    previewLoopNodes = [];
+    return;
+  }
+  const now = audioCtx.currentTime;
+  previewLoopNodes.forEach((node) => {
+    try { node.stop(now + 0.05); } catch (e) { /* already stopped */ }
+  });
+  previewLoopNodes = [];
+}
+
+function startPreviewPulseLoop(freq, duty = 0.125, volume = 0.08) {
+  stopSfxPreviewLoops();
+  if (!audioUnlocked || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.value = freq;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = duty <= 0.15 ? 500 : 900;
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(volume, now + 0.08);
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(sfxGain);
+  osc.start(now);
+  previewLoopNodes.push(osc);
+}
+
+function startPreviewNoiseLoop(filterFreq, volume = 0.06) {
+  stopSfxPreviewLoops();
+  if (!audioUnlocked || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = filterFreq;
+  const gain = audioCtx.createGain();
+  gain.gain.value = volume;
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(sfxGain);
+  source.start(now);
+  previewLoopNodes.push(source);
+}
+
+function startPreviewPulsingOrbLoop() {
+  if (!audioUnlocked || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  const out = audioCtx.createGain();
+  out.gain.value = 0.17;
+  out.connect(sfxGain);
+
+  const lfo = audioCtx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 1 / 5.8;
+
+  const drone = audioCtx.createOscillator();
+  drone.type = 'sine';
+  drone.frequency.value = 112;
+  const dGain = audioCtx.createGain();
+  dGain.gain.value = 0.12;
+  const lfoPitch = audioCtx.createGain();
+  lfoPitch.gain.value = 54;
+  lfo.connect(lfoPitch);
+  lfoPitch.connect(drone.frequency);
+  drone.connect(dGain);
+  dGain.connect(out);
+
+  const bloom = audioCtx.createOscillator();
+  bloom.type = 'triangle';
+  bloom.frequency.value = 196;
+  const bFilt = audioCtx.createBiquadFilter();
+  bFilt.type = 'lowpass';
+  bFilt.frequency.value = 1100;
+  const bGain = audioCtx.createGain();
+  bGain.gain.value = 0.05;
+  const lfoBloom = audioCtx.createGain();
+  lfoBloom.gain.value = 88;
+  lfo.connect(lfoBloom);
+  lfoBloom.connect(bloom.frequency);
+  const lfoFilt = audioCtx.createGain();
+  lfoFilt.gain.value = 780;
+  lfo.connect(lfoFilt);
+  lfoFilt.connect(bFilt.frequency);
+  bloom.connect(bFilt);
+  bFilt.connect(bGain);
+  bGain.connect(out);
+
+  const noise = createGlowDangerNoise();
+  const nFilt = audioCtx.createBiquadFilter();
+  nFilt.type = 'bandpass';
+  nFilt.frequency.value = 740;
+  nFilt.Q.value = 1.1;
+  const nGain = audioCtx.createGain();
+  nGain.gain.value = 0.07;
+  const lfoNoise = audioCtx.createGain();
+  lfoNoise.gain.value = 500;
+  lfo.connect(lfoNoise);
+  lfoNoise.connect(nFilt.frequency);
+  noise.connect(nFilt);
+  nFilt.connect(nGain);
+  nGain.connect(out);
+
+  const lfoVol = audioCtx.createGain();
+  lfoVol.gain.value = 0.055;
+  lfo.connect(lfoVol);
+  lfoVol.connect(out.gain);
+
+  drone.start(now);
+  bloom.start(now);
+  noise.start(now);
+  lfo.start(now);
+  previewLoopNodes.push(drone, bloom, noise, lfo);
+  playPulsingOrbBloom(1);
+}
+
+function playSfxCatalogEntry(entry) {
+  unlockAudio();
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (entry.kind === 'loop') {
+    if (previewLoopId === entry.id) {
+      stopSfxPreviewLoops();
+      stopBgm();
+      return false;
+    }
+    stopSfxPreviewLoops();
+    stopBgm();
+    previewLoopId = entry.id;
+    entry.play();
+    return true;
+  }
+  if (entry.kind === 'bgm') {
+    if (entry.trackId) {
+      if (bgmFileTrackId === entry.trackId && bgmHtmlAudio && !bgmHtmlAudio.paused) {
+        stopBgm();
+        return false;
+      }
+      stopSfxPreviewLoops();
+      playFileBgm(entry.trackId);
+      previewLoopId = entry.id;
+      return true;
+    }
+    const profileName = typeof entry.profile === 'function' ? entry.profile() : entry.profile;
+    if (bgmCurrentProfileName === profileName && bgmSchedulerId !== null) {
+      stopBgm();
+      return false;
+    }
+    stopSfxPreviewLoops();
+    playBgm(profileName);
+    previewLoopId = entry.id;
+    return true;
+  }
+  stopSfxPreviewLoops();
+  entry.play();
+  return false;
+}
+
+function stopAllSoundTesterAudio() {
+  stopSfxPreviewLoops();
+  stopBgm();
+}
+
+function playGlowDangerTesterStyle(id) {
+  audioSettings.glowDanger = id;
+  saveAudioSettings();
+  refreshSfxGlowDangerUi();
+  glowDangerPreviewUrgency = 0.85;
+  stopGlowDangerSound();
+  startGlowDangerSound();
+  updateGlowDangerUrgency();
+}
+
+function refreshSfxGlowDangerUi() {
+  const kind = document.getElementById('sfx-glow-danger-kind');
+  if (kind) kind.textContent = `LOOP — ${currentGlowDangerLabel()} — arrows change style`;
+}
+
+function refreshSfxLifeLostUi() {
+  const kind = document.getElementById('sfx-life-lost-kind');
+  if (kind) kind.textContent = `ONE-SHOT — ${currentLifeLostLabel()} — arrows change style`;
+}
+
+function refreshSfxRespawnUi() {
+  const kind = document.getElementById('sfx-respawn-kind');
+  if (kind) kind.textContent = `ONE-SHOT — ${currentRespawnLabel()} — arrows change style`;
+}
+
+const SFX_CATALOG = [
+  { id: 'uiClick', section: '1. UI / Menu', name: 'Generic button click', kind: 'oneshot', play: () => sfxUiClick() },
+  { id: 'uiDiffCycle', section: '1. UI / Menu', name: 'Difficulty cycle prev/next', kind: 'oneshot', play: () => sfxArp([880, 988, 880], 0.25, 0.36, 0.04) },
+  { id: 'uiOpenSettings', section: '1. UI / Menu', name: 'Menu open — Settings', kind: 'oneshot', play: () => sfxArp([523, 659, 784], 0.25, 0.36) },
+  { id: 'uiOpenAchievements', section: '1. UI / Menu', name: 'Menu open — Achievements', kind: 'oneshot', play: () => sfxArp([659, 784, 988], 0.25, 0.36) },
+  { id: 'uiOpenStatistics', section: '1. UI / Menu', name: 'Menu open — Statistics', kind: 'oneshot', play: () => sfxArp([392, 523, 659], 0.25, 0.34) },
+  { id: 'uiOpenZoneSelect', section: '1. UI / Menu', name: 'Menu open — Zone Select', kind: 'oneshot', play: () => sfxArp([440, 554, 740], 0.125, 0.36) },
+  { id: 'uiOpenPause', section: '1. UI / Menu', name: 'Menu open — Pause', kind: 'oneshot', play: () => sfxPause() },
+  { id: 'uiBack', section: '1. UI / Menu', name: 'Back / cancel', kind: 'oneshot', play: () => sfxArp([784, 523], 0.25, 0.34, 0.055) },
+  { id: 'uiConfirmDanger', section: '1. UI / Menu', name: 'Confirm dangerous action', kind: 'oneshot', play: () => { playNoiseBurst({ duration: 0.08, filterFreq: 1200, volume: 0.3 }); sfxArp([311, 233], 0.5, 0.4, 0.07); } },
+  { id: 'uiStartGame', section: '1. UI / Menu', name: 'Start game', kind: 'oneshot', play: () => sfxStart() },
+  { id: 'uiResume', section: '1. UI / Menu', name: 'Resume game', kind: 'oneshot', play: () => sfxArp([440, 659, 880], 0.25, 0.36) },
+  { id: 'uiUseContinue', section: '1. UI / Menu', name: 'Use continue', kind: 'oneshot', play: () => sfxContinueUsed() },
+  { id: 'uiQuitHome', section: '1. UI / Menu', name: 'Quit to home', kind: 'oneshot', play: () => sfxArp([659, 494, 330], 0.25, 0.36, 0.06) },
+  { id: 'uiZonePreview', section: '1. UI / Menu', name: 'Zone preview', kind: 'oneshot', play: () => sfxArp([740, 880], 0.125, 0.28, 0.04) },
+  { id: 'uiWarpToZone', section: '1. UI / Menu', name: 'Warp to zone (confirm)', kind: 'oneshot', play: () => sfxWarp() },
+  { id: 'uiAchievement', section: '1. UI / Menu', name: 'Achievement unlocked', kind: 'oneshot', play: () => sfxArp([784, 988, 1175, 1568], 0.25, 0.4, 0.06) },
+  { id: 'uiRankEarned', section: '1. UI / Menu', name: 'Rank earned', kind: 'oneshot', play: () => sfxArp([523, 659, 784, 1047, 1319], 0.25, 0.42, 0.07) },
+  { id: 'uiDistanceMilestone', section: '1. UI / Menu', name: 'Distance milestone reached', kind: 'oneshot', play: () => sfxArp([659, 831, 988], 0.125, 0.38, 0.07) },
+  { id: 'uiOverdriveUnlock', section: '1. UI / Menu', name: 'Overdrive difficulty unlocked', kind: 'oneshot', play: () => sfxOverdriveUnlock() },
+
+  { id: 'shipThrust', section: '2. Ship & Core Loop', name: 'Lift / thrust (tester only — off in gameplay)', kind: 'loop', play: () => startLiftSound() },
+  { id: 'shipCollision', section: '2. Ship & Core Loop', name: 'Collision / death', kind: 'oneshot', play: () => sfxCollision() },
+  { id: 'shipGhostHit', section: '2. Ship & Core Loop', name: 'Easy ghost hit (free pass)', kind: 'oneshot', play: () => sfxGhostHit() },
+  { id: 'shipGlowDanger', section: '2. Ship & Core Loop', name: 'Easy glow / death window (danger)', kind: 'loop', play: () => { glowDangerPreviewUrgency = 0.85; startGlowDangerSound(); updateGlowDangerUrgency(); } },
+  { id: 'shipGlowSiren', section: '2. Ship & Core Loop', name: 'Glow danger — Siren Pulse', kind: 'loop', play: () => playGlowDangerTesterStyle('siren') },
+  { id: 'shipGlowOverheat', section: '2. Ship & Core Loop', name: 'Glow danger — Overheat', kind: 'loop', play: () => playGlowDangerTesterStyle('overheat') },
+  { id: 'shipGlowKlaxon', section: '2. Ship & Core Loop', name: 'Glow danger — Red Alert', kind: 'loop', play: () => playGlowDangerTesterStyle('klaxon') },
+  { id: 'shipGlowMeltdown', section: '2. Ship & Core Loop', name: 'Glow danger — Meltdown', kind: 'loop', play: () => playGlowDangerTesterStyle('meltdown') },
+  { id: 'shipRespawn', section: '2. Ship & Core Loop', name: 'Respawn', kind: 'oneshot', play: () => sfxRespawn() },
+  { id: 'shipLifeLost', section: '2. Ship & Core Loop', name: 'Life lost transition', kind: 'oneshot', play: () => sfxLifeLost() },
+  { id: 'shipContinueUsed', section: '2. Ship & Core Loop', name: 'Continue used (extra life)', kind: 'oneshot', play: () => sfxContinueUsed() },
+  { id: 'shipGameOver', section: '2. Ship & Core Loop', name: 'Game over', kind: 'oneshot', play: () => sfxGameOver() },
+  { id: 'shipWarp', section: '2. Ship & Core Loop', name: 'Zone transition / warp', kind: 'oneshot', play: () => sfxWarp() },
+  { id: 'shipNewBest', section: '2. Ship & Core Loop', name: 'New best distance', kind: 'oneshot', play: () => sfxNewBest() },
+  { id: 'shipVictory', section: '2. Ship & Core Loop', name: 'Victory fanfare', kind: 'bgm', profile: 'victory', play: () => {} },
+
+  { id: 'hzGate', section: '3. Zone Hazards', name: 'Gate pillar impact', kind: 'oneshot', play: () => sfxHazardImpact('gate') },
+  { id: 'hzAsteroid', section: '3. Zone Hazards', name: 'Asteroid cluster', kind: 'oneshot', play: () => sfxHazardImpact('asteroid') },
+  { id: 'hzHbar', section: '3. Zone Hazards', name: 'H-bar cluster', kind: 'oneshot', play: () => sfxHazardImpact('hbar') },
+  { id: 'hzPendulum', section: '3. Zone Hazards', name: 'Pendulum impact', kind: 'oneshot', play: () => sfxHazardImpact('pendulum') },
+  { id: 'hzPendulumSwoosh', section: '3. Zone Hazards', name: 'Pendulum swoosh', kind: 'oneshot', play: () => playPendulumSwoosh() },
+  { id: 'hzLbolt', section: '3. Zone Hazards', name: 'Floating bolt impact', kind: 'oneshot', play: () => sfxHazardImpact('lbolt') },
+  { id: 'hzAcid', section: '3. Zone Hazards', name: 'Acid drip (proximity)', kind: 'loop', play: () => { startToxicAcidSound(); updateToxicAcidMix(0.85); } },
+  { id: 'hzVortex', section: '3. Zone Hazards', name: 'Wind vortex (proximity)', kind: 'loop', play: () => { startWindVortexSound(); updateWindVortexMix(0.85); } },
+  { id: 'hzTurretFire', section: '3. Zone Hazards', name: 'Turret fire', kind: 'oneshot', play: () => sfxHazardFire('turretshot') },
+  { id: 'hzTurretShot', section: '3. Zone Hazards', name: 'Turret shot travel/impact', kind: 'oneshot', play: () => sfxHazardImpact('turretshot') },
+  { id: 'hzSearchlight', section: '3. Zone Hazards', name: 'Searchlight sweep / detect', kind: 'oneshot', play: () => sfxHazardImpact('searchlight') },
+  { id: 'hzCorruption', section: '3. Zone Hazards', name: 'Signal corruption (loop)', kind: 'loop', play: () => startPreviewPulseLoop(73, 0.125, 0.07) },
+  { id: 'hzEmp', section: '3. Zone Hazards', name: 'EMP burst', kind: 'oneshot', play: () => playEmpDischarge() },
+  { id: 'hzPulseOrb', section: '3. Zone Hazards', name: 'Pulsing orb (expand / contract)', kind: 'loop', play: () => startPreviewPulsingOrbLoop() },
+  { id: 'hzBoomerang', section: '3. Zone Hazards', name: 'Boomerang throw/return (selected)', kind: 'oneshot', play: () => playBoomerangPass() },
+  { id: 'hzBoomerangBlade', section: '3. Zone Hazards', name: 'Boomerang — Blade whoosh', kind: 'oneshot', play: () => { boomerangPassStyle = 'blade'; playBoomerangPassBlade(); } },
+  { id: 'hzBoomerangWood', section: '3. Zone Hazards', name: 'Boomerang — Wooden spin', kind: 'oneshot', play: () => { boomerangPassStyle = 'wood'; playBoomerangPassWood(); } },
+  { id: 'hzBoomerangNeon', section: '3. Zone Hazards', name: 'Boomerang — Neon disc', kind: 'oneshot', play: () => { boomerangPassStyle = 'neon'; playBoomerangPassNeon(); } },
+  { id: 'hzBoomerangChop', section: '3. Zone Hazards', name: 'Boomerang — Spin chops (in fight)', kind: 'oneshot', play: () => { boomerangPassStyle = 'chop'; playBoomerangPassChop(); } },
+  { id: 'hzBoomerangDoppler', section: '3. Zone Hazards', name: 'Boomerang — Deep doppler', kind: 'oneshot', play: () => { boomerangPassStyle = 'doppler'; playBoomerangPassDoppler(); } },
+  { id: 'hzBoomerangRing', section: '3. Zone Hazards', name: 'Boomerang — Ringing blade', kind: 'oneshot', play: () => { boomerangPassStyle = 'ring'; playBoomerangPassRing(); } },
+  { id: 'hzLensing', section: '3. Zone Hazards', name: 'Lensing zone (loop)', kind: 'loop', play: () => startPreviewPulseLoop(55, 0.5, 0.06) },
+  { id: 'hzSupernova', section: '3. Zone Hazards', name: 'Supernova buildup + explosion', kind: 'oneshot', play: () => sfxHazardFire('supernova') },
+  { id: 'hzNovaDebris', section: '3. Zone Hazards', name: 'Supernova debris', kind: 'oneshot', play: () => sfxHazardImpact('supernovadebris') },
+  { id: 'hzLaserGrid', section: '3. Zone Hazards', name: 'Laser grid', kind: 'oneshot', play: () => sfxHazardImpact('lasergrid') },
+  { id: 'hzDroneBuzz', section: '3. Zone Hazards', name: 'Security drone hit (Neon City)', kind: 'oneshot', play: () => sfxHazardImpact('securitydrone') },
+  { id: 'hzFireball', section: '3. Zone Hazards', name: 'Fireball breath (proximity)', kind: 'oneshot', play: () => playBowserFireball() },
+  { id: 'hzGeyser', section: '3. Zone Hazards', name: 'Toxic geyser (proximity)', kind: 'loop', play: () => { startToxicGeyserSound(); updateToxicGeyserMix(0.85); } },
+  { id: 'hzGeyserErupt', section: '3. Zone Hazards', name: 'Toxic geyser eruption', kind: 'oneshot', play: () => playGeyserEruption(1) },
+  { id: 'hzBlackHole', section: '3. Zone Hazards', name: 'Black hole (proximity)', kind: 'loop', play: () => { startBlackHoleSound(); updateBlackHoleMix(0.85, 0.7); } },
+  { id: 'hzLightning', section: '3. Zone Hazards', name: 'Lightning bolt', kind: 'oneshot', play: () => sfxHazardImpact('lightning') },
+  { id: 'hzToxic', section: '3. Zone Hazards', name: 'Toxic pool (proximity)', kind: 'loop', play: () => { startToxicPoolSound(); updateToxicPoolMix(0.85); } },
+  { id: 'hzOrbiter', section: '3. Zone Hazards', name: 'Orbiter (loop)', kind: 'loop', play: () => startPreviewPulseLoop(220, 0.25, 0.06) },
+  { id: 'hzSparkHub', section: '3. Zone Hazards', name: 'Spark hub (loop)', kind: 'loop', play: () => startPreviewPulseLoop(440, 0.125, 0.05) },
+  { id: 'hzSparkShot', section: '3. Zone Hazards', name: 'Spark projectile', kind: 'oneshot', play: () => sfxHazardFire('sparkprojectile') },
+  { id: 'hzDoor', section: '3. Zone Hazards', name: 'Moving door impact', kind: 'oneshot', play: () => sfxHazardImpact('movingdoor') },
+  { id: 'hzDoorProx', section: '3. Zone Hazards', name: 'Moving door (proximity)', kind: 'loop', play: () => { startMovingDoorSound(); updateMovingDoorMix(0.85, 0.8); } },
+  { id: 'hzSpecialDoor', section: '3. Zone Hazards', name: 'Special door', kind: 'oneshot', play: () => sfxHazardImpact('specialdoor') },
+  { id: 'hzAccessKey', section: '3. Zone Hazards', name: 'Access key pickup (item chime)', kind: 'oneshot', play: () => playKeyPickup() },
+  { id: 'hzArcPlanet', section: '3. Zone Hazards', name: 'Arc planet (loop)', kind: 'loop', play: () => startPreviewPulseLoop(82, 0.25, 0.05) },
+  { id: 'hzShootingStar', section: '3. Zone Hazards', name: 'Meteor streak (proximity)', kind: 'loop', play: () => { startMeteorStreakSound(); updateMeteorStreakMix(0.85, 1); } },
+  { id: 'hzWreckage', section: '3. Zone Hazards', name: 'Wreckage / creak', kind: 'oneshot', play: () => sfxHazardImpact('wreckage') },
+  { id: 'hzEcho', section: '3. Zone Hazards', name: 'Echo trail', kind: 'oneshot', play: () => sfxHazardImpact('echotrail') },
+  { id: 'hzStorm', section: '3. Zone Hazards', name: 'Dust tornado (proximity)', kind: 'loop', play: () => { startDustStormSound(); updateDustStormMix(0.85, 1); } },
+  { id: 'hzBillboard', section: '3. Zone Hazards', name: 'Billboard (likely silent)', kind: 'oneshot', play: () => sfxHazardImpact('billboard') },
+  { id: 'hzCloudArc', section: '3. Zone Hazards', name: 'Storm cloud arc (proximity)', kind: 'loop', play: () => { startStormCloudSound(); updateStormCloudMix(0.85, 1); } },
+  { id: 'hzStormChargeTel', section: '3. Zone Hazards', name: 'Storm charge bolt telegraph', kind: 'oneshot', play: () => playStormChargeTelegraph() },
+  { id: 'hzStormThunder', section: '3. Zone Hazards', name: 'Storm charge bolt thunder', kind: 'oneshot', play: () => playStormThunderStrike() },
+
+  { id: 'coreCharge', section: '4. Mini-Boss (Reactor Core)', name: 'Charging / charging-close', kind: 'oneshot', play: () => sfxFireBossChargeDash() },
+  { id: 'coreIdle', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core idle / bob', kind: 'loop', play: () => startMoltenCoreIdleSound({ preview: true }) },
+  { id: 'coreBodyHit', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core body hit', kind: 'oneshot', play: () => sfxFireBossBodyHit() },
+  { id: 'coreBarrageTel', section: '4. Mini-Boss (Reactor Core)', name: 'Barrage telegraph', kind: 'oneshot', play: () => sfxFireBossBarrageTelegraph() },
+  { id: 'coreBarrage', section: '4. Mini-Boss (Reactor Core)', name: 'Ember wave launch', kind: 'oneshot', play: () => sfxFireBossEmberLaunch() },
+  { id: 'coreSqueeze', section: '4. Mini-Boss (Reactor Core)', name: 'Squeeze walls', kind: 'loop', play: () => startMoltenSqueezeSound({ preview: true }) },
+  { id: 'coreEmberHit', section: '4. Mini-Boss (Reactor Core)', name: 'Ember hit', kind: 'oneshot', play: () => sfxFireBossEmberHit() },
+  { id: 'coreSqueezeHit', section: '4. Mini-Boss (Reactor Core)', name: 'Squeeze wall hit', kind: 'oneshot', play: () => sfxFireBossSqueezeHit() },
+  { id: 'moltenDeath', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core dying / dim', kind: 'oneshot', play: () => sfxFireBossDeath() },
+  { id: 'moltenAsh', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core ashing', kind: 'loop', play: () => startMoltenDeathAshSound({ preview: true }) },
+  { id: 'moltenDisperse', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core disperse', kind: 'oneshot', play: () => sfxFireBossDisperse() },
+  { id: 'coreBulkTel', section: '4. Mini-Boss (Reactor Core)', name: 'Core bulkhead close', kind: 'oneshot', play: () => sfxCoreBulkheadTelegraph() },
+  { id: 'coreBulkLock', section: '4. Mini-Boss (Reactor Core)', name: 'Core bulkhead lock', kind: 'oneshot', play: () => sfxCoreBulkheadLock() },
+  { id: 'coreBulkHold', section: '4. Mini-Boss (Reactor Core)', name: 'Core bulkhead hold', kind: 'loop', play: () => startCoreBulkheadHoldSound({ preview: true }) },
+  { id: 'coreBulk', section: '4. Mini-Boss (Reactor Core)', name: 'Core bulkhead hit', kind: 'oneshot', play: () => sfxHazardImpact('coreBulkheadActive') },
+  { id: 'coreCrossTel', section: '4. Mini-Boss (Reactor Core)', name: 'Core crossfire telegraph (silent)', kind: 'oneshot', play: () => sfxHazardFire('coreCrossfireTelegraph') },
+  { id: 'coreCross', section: '4. Mini-Boss (Reactor Core)', name: 'Core crossfire volley (laser active, once)', kind: 'oneshot', play: () => sfxHazardFire('coreCrossfireActive') },
+  { id: 'coreCrossGap', section: '4. Mini-Boss (Reactor Core)', name: 'Core crossfire gap (silent)', kind: 'oneshot', play: () => sfxHazardFire('coreCrossfireGap') },
+  { id: 'coreEmpTel', section: '4. Mini-Boss (Reactor Core)', name: 'Core EMP telegraph', kind: 'oneshot', play: () => sfxCoreEmpTelegraph() },
+  { id: 'coreEmp', section: '4. Mini-Boss (Reactor Core)', name: 'Core EMP wave launch', kind: 'oneshot', play: () => sfxCoreEmpPulse() },
+  { id: 'coreLaserTel', section: '4. Mini-Boss (Reactor Core)', name: 'Core laser telegraph', kind: 'oneshot', play: () => sfxHazardFire('coreLaserTelegraph') },
+  { id: 'coreLaser', section: '4. Mini-Boss (Reactor Core)', name: 'Core laser active', kind: 'oneshot', play: () => sfxHazardFire('coreLaserActive') },
+  { id: 'coreOrbit', section: '4. Mini-Boss (Reactor Core)', name: 'Core orbit barrage', kind: 'oneshot', play: () => sfxHazardFire('coreOrbit') },
+  { id: 'coreOrbitHit', section: '4. Mini-Boss (Reactor Core)', name: 'Core orbit hit', kind: 'oneshot', play: () => sfxHazardImpact('coreOrbit') },
+  { id: 'coreEmerge', section: '4. Mini-Boss (Reactor Core)', name: 'Core sphere emerge', kind: 'oneshot', play: () => sfxCoreEmerge() },
+  { id: 'coreGate', section: '4. Mini-Boss (Reactor Core)', name: 'Core gate open', kind: 'oneshot', play: () => sfxCoreGateOpen() },
+  { id: 'coreEyeTrack', section: '4. Mini-Boss (Reactor Core)', name: 'Core eye beam track', kind: 'oneshot', play: () => sfxCoreEyeBeamTrack() },
+  { id: 'coreEyeLock', section: '4. Mini-Boss (Reactor Core)', name: 'Core eye beam lock', kind: 'oneshot', play: () => sfxCoreEyeBeamLock() },
+  { id: 'coreEyeFire', section: '4. Mini-Boss (Reactor Core)', name: 'Core eye beam fire', kind: 'oneshot', play: () => sfxCoreEyeBeamFire() },
+  { id: 'coreEyeHit', section: '4. Mini-Boss (Reactor Core)', name: 'Core eye beam hit', kind: 'oneshot', play: () => sfxHazardImpact('coreEyeBeam') },
+  { id: 'coreTeslaCharge', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla charge (silent)', kind: 'oneshot', play: () => sfxCoreTeslaCharge() },
+  { id: 'coreTesla', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla burst (selected)', kind: 'oneshot', play: () => sfxCoreTeslaBurst() },
+  { id: 'coreTeslaContra', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Contra blast', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'contra'; sfxCoreTeslaBurstContra(); } },
+  { id: 'coreTeslaThick', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Thick pew', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'thick'; sfxCoreTeslaBurstThick(); } },
+  { id: 'coreTeslaChord', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Stacked chord', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'chord'; sfxCoreTeslaBurstChord(); } },
+  { id: 'coreTeslaCoil', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Coil snap', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'coil'; sfxCoreTeslaBurstCoil(); } },
+  { id: 'coreTeslaSpray', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Filter spray', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'spray'; sfxCoreTeslaBurstSpray(); } },
+  { id: 'coreTeslaFan', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Fan pellets (previous)', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'fan'; sfxCoreTeslaBurstFan(); } },
+  { id: 'coreTeslaHit', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla hit', kind: 'oneshot', play: () => sfxHazardImpact('coreTesla') },
+  { id: 'coreFlameTel', section: '4. Mini-Boss (Reactor Core)', name: 'Flame wall telegraph', kind: 'oneshot', play: () => sfxFireBossFlameWallTelegraph() },
+  { id: 'coreFlame', section: '4. Mini-Boss (Reactor Core)', name: 'Flame wall active', kind: 'loop', play: () => startMoltenFlameWallSound({ preview: true }) },
+  { id: 'coreSpark', section: '4. Mini-Boss (Reactor Core)', name: 'Core spark deploy', kind: 'oneshot', play: () => sfxHazardFire('corespark') },
+  { id: 'coreDying', section: '4. Mini-Boss (Reactor Core)', name: 'Core dying (unused wall death)', kind: 'oneshot', play: () => sfxCoreDying() },
+  { id: 'coreOverloadBuild', section: '4. Mini-Boss (Reactor Core)', name: 'Core overload buildup', kind: 'oneshot', play: () => sfxCoreOverload() },
+  { id: 'coreOverload', section: '4. Mini-Boss (Reactor Core)', name: 'Core overload dying', kind: 'oneshot', play: () => sfxCoreOverload() },
+  { id: 'coreOverloadFlash', section: '4. Mini-Boss (Reactor Core)', name: 'Core overload flash', kind: 'oneshot', play: () => sfxCoreOverloadFlash() },
+  { id: 'coreOverloadBreak', section: '4. Mini-Boss (Reactor Core)', name: 'Core overload breakdown', kind: 'oneshot', play: () => sfxCoreOverloadBreakdown() },
+  { id: 'coreReturn', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core return', kind: 'oneshot', play: () => sfxMiniBossReturn() },
+  { id: 'coreExit', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core exit', kind: 'oneshot', play: () => sfxFireBossExit() },
+
+  { id: 'sigEntrance', section: '5. Final Boss (The Signal)', name: 'Boss entrance', kind: 'oneshot', play: () => sfxSignalEntrance() },
+  { id: 'sigAttack', section: '5. Final Boss (The Signal)', name: 'Boss attack (generic)', kind: 'oneshot', play: () => sfxHazardFire('bossattack') },
+  { id: 'sigBeamTel', section: '5. Final Boss (The Signal)', name: 'Charge beam telegraph (selected)', kind: 'oneshot', play: () => playChargeTelegraph({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
+  { id: 'sigBeamTelX', section: '5. Final Boss (The Signal)', name: 'Charge telegraph — X Charge', kind: 'oneshot', play: () => playMegaManCharge({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
+  { id: 'sigBeamTelSweep', section: '5. Final Boss (The Signal)', name: 'Charge telegraph — Sweep Whine', kind: 'oneshot', play: () => playChargeSweep({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
+  { id: 'sigBeamTelBeat', section: '5. Final Boss (The Signal)', name: 'Charge telegraph — Heartbeat', kind: 'oneshot', play: () => playChargeHeartbeat({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
+  { id: 'sigBeamTelStatic', section: '5. Final Boss (The Signal)', name: 'Charge telegraph — Static Build', kind: 'oneshot', play: () => playChargeStatic({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
+  { id: 'sigBeam', section: '5. Final Boss (The Signal)', name: 'Charge beam active', kind: 'oneshot', play: () => playChargeBeamFire({ size: 1, duration: framesToSeconds(BOSS_CHARGE_BEAM_FIRE_DURATION) }) },
+  { id: 'sigRage', section: '5. Final Boss (The Signal)', name: 'Rage pulse (meteor ring)', kind: 'oneshot', play: () => sfxHazardFire('bossragepulse') },
+  { id: 'sigDrone', section: '5. Final Boss (The Signal)', name: 'Ember drone spawn (silent in play — tester only)', kind: 'oneshot', play: () => playHotEmberRoar() },
+  { id: 'sigRing', section: '5. Final Boss (The Signal)', name: 'Diagonal ring attack', kind: 'oneshot', play: () => playMeteorRingImpact() },
+  { id: 'sigVolleyTel', section: '5. Final Boss (The Signal)', name: 'Volley telegraph', kind: 'oneshot', play: () => playTrackingLockOn() },
+  { id: 'sigVolley', section: '5. Final Boss (The Signal)', name: 'Volley active (shotgun burst)', kind: 'oneshot', play: () => sfxHazardFire('bossvolley') },
+  { id: 'sigEmber', section: '5. Final Boss (The Signal)', name: 'Ember / ash (loop)', kind: 'loop', play: () => startPreviewNoiseLoop(900, 0.05) },
+  { id: 'sigPhase', section: '5. Final Boss (The Signal)', name: 'Phase 2→3 strain / lock-in', kind: 'oneshot', play: () => sfxSignalPhaseStrain() },
+  { id: 'sigPhase5', section: '5. Final Boss (The Signal)', name: 'Phase 4→5 shatter / eclipse', kind: 'oneshot', play: () => sfxSignalPhaseEclipse() },
+  { id: 'sigFinalCharge', section: '5. Final Boss (The Signal)', name: 'Final charge / shake (into boom)', kind: 'oneshot', play: () => sfxSignalFinalCharge() },
+  { id: 'sigExplosion', section: '5. Final Boss (The Signal)', name: 'Explosion / white-out', kind: 'oneshot', play: () => sfxSignalExplosion() },
+  { id: 'sigSilenced', section: '5. Final Boss (The Signal)', name: 'Aftermath (wall recedes, after white-out)', kind: 'oneshot', play: () => sfxSignalSilenced() },
+
+  { id: 'bgmMenu', section: '6. Background Music', name: 'Menu / home loop (synth)', kind: 'bgm', profile: 'menu', play: () => {} },
+  { id: 'bgmVictory', section: '6. Background Music', name: 'Victory — Neon Rise (synth)', kind: 'bgm', profile: 'victory', play: () => {} },
+  { id: 'bgmGameOver', section: '6. Background Music', name: 'Game over stinger', kind: 'oneshot', play: () => sfxGameOver() },
+  { id: 'bgm01', section: '6. Background Music', name: '01 Glacier', kind: 'bgm', trackId: 'bgm-01-glacier', play: () => {} },
+  { id: 'bgm02', section: '6. Background Music', name: '02 Gravity Well', kind: 'bgm', trackId: 'bgm-02-gravity-well', play: () => {} },
+  { id: 'bgm03', section: '6. Background Music', name: '03 Deep Space', kind: 'bgm', trackId: 'bgm-03-deep-space', play: () => {} },
+  { id: 'bgm04', section: '6. Background Music', name: '04 Inferno', kind: 'bgm', trackId: 'bgm-04-inferno', play: () => {} },
+  { id: 'bgm05a', section: '6. Background Music', name: '05 Molten Core (boss)', kind: 'bgm', trackId: 'bgm-05-molten-core-boss', play: () => {} },
+  { id: 'bgm05b', section: '6. Background Music', name: '05 Molten Core (escape)', kind: 'bgm', trackId: 'bgm-05-molten-core', play: () => {} },
+  { id: 'bgm06', section: '6. Background Music', name: '06 Storm Skies', kind: 'bgm', trackId: 'bgm-06-storm-skies', play: () => {} },
+  { id: 'bgm07', section: '6. Background Music', name: '07 Ancient Ruins', kind: 'bgm', trackId: 'bgm-07-ancient-ruins', play: () => {} },
+  { id: 'bgm08', section: '6. Background Music', name: '08 Toxic Wasteland', kind: 'bgm', trackId: 'bgm-08-toxic-wasteland', play: () => {} },
+  { id: 'bgm09', section: '6. Background Music', name: '09 Derelict Station', kind: 'bgm', trackId: 'bgm-09-derelict-station', play: () => {} },
+  { id: 'bgm10a', section: '6. Background Music', name: '10 Reactor Core (phases 1–7)', kind: 'bgm', trackId: 'bgm-10-reactor-core-p1', play: () => {} },
+  { id: 'bgm10b', section: '6. Background Music', name: '10 Reactor Core (phase 8)', kind: 'bgm', trackId: 'bgm-10-reactor-core-p8', play: () => {} },
+  { id: 'bgm11', section: '6. Background Music', name: '11 The Void', kind: 'bgm', trackId: 'bgm-11-the-void', play: () => {} },
+  { id: 'bgm12', section: '6. Background Music', name: '12 Neon City', kind: 'bgm', trackId: 'bgm-12-neon-city', play: () => {} },
+  { id: 'bgm13a', section: '6. Background Music', name: '13 The Signal (phases 1–2)', kind: 'bgm', trackId: 'bgm-13-the-signal-p1', play: () => {} },
+  { id: 'bgm13b', section: '6. Background Music', name: '13 The Signal (phases 3–4)', kind: 'bgm', trackId: 'bgm-13-the-signal-p3', play: () => {} },
+  { id: 'bgm13c', section: '6. Background Music', name: '13 The Signal (phase 5)', kind: 'bgm', trackId: 'bgm-13-the-signal-p5', play: () => {} },
+];
+
 function buildSfxTesterUi() {
   const list = document.getElementById('sfx-tester-list');
   if (!list) return;
@@ -2191,964 +2704,3 @@ function drawBoss(theme) {
 // alongside the existing sky/grid color transition (same colorProgress
 // value). purely decorative atmosphere -- does not touch the boss
 // sprite or any gameplay object
-function drawCorruptedBackgroundSun(theme, colorProgress) {
-  if (colorProgress <= 0) return;
-  const sunCX = W * 0.75;
-  const sunCY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.25;
-  const sunR = (PLAY_BOTTOM - PLAY_TOP) * 0.17;
-  ctx.save();
-  ctx.globalAlpha = colorProgress * 0.85;
-  const sunGrad = ctx.createLinearGradient(0, sunCY - sunR, 0, sunCY + sunR);
-  sunGrad.addColorStop(0, '#ffd23f');
-  sunGrad.addColorStop(0.5, theme.phase3AccentA);
-  sunGrad.addColorStop(1, theme.phase3AccentB);
-  ctx.beginPath();
-  ctx.arc(sunCX, sunCY, sunR, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.fillStyle = sunGrad;
-  ctx.fillRect(sunCX - sunR, sunCY - sunR, sunR * 2, sunR * 2);
-  ctx.fillStyle = theme.phase3SkyTop;
-  for (let i = 0; i < 5; i++) {
-    const y = sunCY + sunR * 0.15 * i - 2;
-    ctx.fillRect(sunCX - sunR, y, sunR * 2, 3 + i);
-  }
-  ctx.restore();
-}
-
-function drawCorruptedGlitchBlocks(theme, colorProgress) {
-  if (colorProgress <= 0) return;
-  ctx.save();
-  const blocks = [
-    { x: 0.03, y: 0.15, w: 60, h: 8 }, { x: 0.10, y: 0.15, w: 8, h: 40 },
-    { x: 0.03, y: 0.30, w: 100, h: 5 }, { x: 0.15, y: 0.22, w: 5, h: 60 },
-    { x: 0.06, y: 0.40, w: 40, h: 5 }, { x: 0.02, y: 0.45, w: 5, h: 25 },
-    { x: 0.12, y: 0.10, w: 30, h: 5 }, { x: 0.08, y: 0.35, w: 5, h: 15 }
-  ];
-  for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i];
-    const flicker = Math.sin(frame * 0.15 + i * 2.3) > 0.1 ? 1 : 0.2;
-    ctx.globalAlpha = colorProgress * flicker * 0.7;
-    ctx.fillStyle = theme.phase3AccentA;
-    ctx.shadowColor = theme.phase3AccentA;
-    ctx.shadowBlur = 4;
-    const bx = W * b.x, by = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * b.y;
-    ctx.fillRect(bx, by, b.w, b.h);
-  }
-  ctx.restore();
-}
-
-function drawCorruptedSmoke(theme, colorProgress) {
-  if (colorProgress <= 0) return;
-  ctx.save();
-  const wisps = [
-    { x: 0.15, seed: 0 }, { x: 0.35, seed: 1.7 }, { x: 0.55, seed: 3.1 },
-    { x: 0.75, seed: 4.5 }, { x: 0.9, seed: 5.8 }
-  ];
-  for (const w of wisps) {
-    const baseX = W * w.x + Math.sin(frame * 0.008 + w.seed) * 20;
-    const baseY = PLAY_BOTTOM;
-    const height = (PLAY_BOTTOM - PLAY_TOP) * 0.35;
-    const grad = ctx.createLinearGradient(baseX, baseY, baseX, baseY - height);
-    grad.addColorStop(0, theme.phase3AccentA + '00');
-    grad.addColorStop(0.3, theme.phase3AccentA + '40');
-    grad.addColorStop(1, theme.phase3AccentA + '00');
-    ctx.fillStyle = grad;
-    ctx.globalAlpha = colorProgress * 0.6;
-    ctx.beginPath();
-    ctx.ellipse(baseX, baseY - height * 0.5, 25, height * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-// true converging perspective grid for phase 3+, replacing the flat
-// uniform grid -- horizontal lines use 1/depth spacing (classic
-// perspective-floor trick: line at "depth" d sits at horizonY +
-// groundHeight/d, which naturally bunches lines together near the
-// horizon and spreads them out near the viewer) and vertical lines
-// all converge to a single vanishing point at the horizon
-// deterministic ember particle seeds -- generated once so particles
-// stay consistent frame to frame rather than jittering randomly
-const BOSS_ASH_EMBERS = (() => {
-  const embers = [];
-  for (let i = 0; i < 45; i++) {
-    const seed = i * 12.9898;
-    const pseudoRand = (n) => { const x = Math.sin(n) * 43758.5453; return x - Math.floor(x); };
-    embers.push({
-      xFrac: pseudoRand(seed),
-      yFrac: pseudoRand(seed + 1),
-      size: 1 + pseudoRand(seed + 2) * 2.5,
-      brightness: 0.4 + pseudoRand(seed + 3) * 0.6,
-      driftSpeed: 0.15 + pseudoRand(seed + 4) * 0.35,
-      flickerSeed: pseudoRand(seed + 5) * 100,
-      xDrift: (pseudoRand(seed + 6) - 0.5) * 0.3
-    });
-  }
-  return embers;
-})();
-
-function drawVolcanicAshBackground(theme, progress) {
-  if (progress <= 0) return;
-  ctx.save();
-
-  // darkening overlay for the hazy, dim atmosphere
-  ctx.globalAlpha = progress * 0.55;
-  ctx.fillStyle = bossAshGrayVariant ? '#0a0a0a' : '#0a0505';
-  ctx.fillRect(0, PLAY_TOP, W, PLAY_BOTTOM - PLAY_TOP);
-
-  // soft dark smoke blobs in the corners -- skipped for the gray
-  // variant, whose reference shows a clean backdrop with no smoke
-  if (!bossAshGrayVariant) {
-    ctx.globalAlpha = progress * 0.4;
-    const smokeSpots = [
-      { x: W * 0.08, y: PLAY_TOP + 20, r: 90 },
-      { x: W * 0.02, y: PLAY_TOP + 60, r: 60 },
-      { x: W * 0.95, y: PLAY_BOTTOM - 30, r: 100 },
-      { x: W * 0.88, y: PLAY_BOTTOM - 70, r: 65 }
-    ];
-    for (const s of smokeSpots) {
-      const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
-      grad.addColorStop(0, 'rgba(40,35,35,0.8)');
-      grad.addColorStop(1, 'rgba(40,35,35,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  // glowing embers, drifting slowly upward and wrapping
-  const playHeight = PLAY_BOTTOM - PLAY_TOP;
-  for (const e of BOSS_ASH_EMBERS) {
-    const riseOffset = ((frame * e.driftSpeed) % (playHeight + 40)) / playHeight;
-    let y = PLAY_TOP + ((e.yFrac - riseOffset) % 1 + 1) % 1 * playHeight;
-    const x = W * ((e.xFrac + Math.sin(frame * 0.01 + e.flickerSeed) * e.xDrift * 0.05 + 1) % 1);
-    const flicker = 0.6 + 0.4 * Math.sin(frame * 0.08 + e.flickerSeed);
-    ctx.globalAlpha = progress * e.brightness * flicker;
-    ctx.fillStyle = '#ff5020';
-    ctx.shadowColor = '#ff5020';
-    ctx.shadowBlur = e.size * 2.5;
-    ctx.beginPath();
-    ctx.arc(x, y, e.size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-function drawPerspectiveGrid(theme, colorProgress) {
-  if (colorProgress <= 0) return;
-  const horizonY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.58;
-  const vanishX = W / 2;
-  const groundHeight = PLAY_BOTTOM - horizonY;
-
-  ctx.save();
-  ctx.strokeStyle = theme.phase3AccentA;
-  ctx.lineWidth = 1;
-
-  // horizontal lines, slowly scrolling toward the viewer over time
-  const scrollPhase = (frame * SCROLL_SPEED * (theme.scrollMult || 1) * 0.01) % 1;
-  const numLines = 14;
-  for (let i = 1; i <= numLines; i++) {
-    const depth = i + scrollPhase;
-    const y = horizonY + groundHeight / depth;
-    if (y > PLAY_BOTTOM || y < horizonY) continue;
-    const fadeIn = Math.min(1, (y - horizonY) / (groundHeight * 0.15));
-    ctx.globalAlpha = colorProgress * fadeIn;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
-    ctx.stroke();
-  }
-
-  // vertical lines converging to the vanishing point, fanning out to
-  // well beyond the visible width at the bottom edge
-  ctx.globalAlpha = colorProgress * 0.8;
-  const numVLines = 16;
-  const spread = W * 2.2;
-  for (let i = -numVLines; i <= numVLines; i++) {
-    const bottomX = vanishX + (i / numVLines) * spread;
-    ctx.beginPath();
-    ctx.moveTo(vanishX, horizonY);
-    ctx.lineTo(bottomX, PLAY_BOTTOM);
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
-
-function drawSynthwaveScene(top, bottom) {
-  const h = Math.max(1, bottom - top);
-  const t = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
-  const skyGrad = ctx.createLinearGradient(0, top, 0, bottom);
-  skyGrad.addColorStop(0, '#1a0836');
-  skyGrad.addColorStop(0.42, '#2a1050');
-  skyGrad.addColorStop(0.62, '#16082c');
-  skyGrad.addColorStop(1, '#0e041c');
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, top, W, h);
-
-  const sunCX = W * 0.5;
-  const sunR = Math.min(W, h) * 0.27;
-  const sunCY = top + h * 0.36;
-  const horizonY = Math.min(bottom, sunCY + sunR * 0.98);
-  const skyH = Math.max(1, horizonY - top);
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, top, W, skyH);
-  ctx.clip();
-  ctx.fillStyle = '#ffffff';
-  for (let i = 0; i < 78; i++) {
-    const hx = Math.sin(i * 12.9898 + 78.233) * 43758.5453;
-    const hy = Math.sin(i * 39.346 + 11.135) * 23421.631;
-    const hs = Math.sin(i * 7.13 + 4.2) * 9123.17;
-    const fx = hx - Math.floor(hx);
-    const fy = hy - Math.floor(hy);
-    const fs = hs - Math.floor(hs);
-    const sx = fx * W;
-    const sy = top + fy * skyH;
-    const ddx = sx - sunCX;
-    const ddy = sy - sunCY;
-    if (ddx * ddx + ddy * ddy < sunR * sunR * 1.08) continue;
-    const twinkle = 0.28 + 0.72 * (0.5 + 0.5 * Math.sin(t * (0.9 + fs * 2.1) + i * 1.7));
-    ctx.globalAlpha = (0.18 + fs * 0.55) * twinkle;
-    ctx.beginPath();
-    ctx.arc(sx, sy, 0.7 + fs * 1.15, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-
-  ctx.save();
-  const bloomPulse = 0.94 + 0.08 * Math.sin(t * 0.55);
-  const bloomR = sunR * 1.92 * bloomPulse;
-  const bloom = ctx.createRadialGradient(sunCX, sunCY, sunR * 0.35, sunCX, sunCY, bloomR);
-  bloom.addColorStop(0, 'rgba(255, 214, 120, 0.42)');
-  bloom.addColorStop(0.28, 'rgba(255, 150, 120, 0.22)');
-  bloom.addColorStop(0.55, 'rgba(255, 80, 160, 0.12)');
-  bloom.addColorStop(0.78, 'rgba(140, 40, 180, 0.05)');
-  bloom.addColorStop(1, 'rgba(40, 10, 60, 0)');
-  ctx.fillStyle = bloom;
-  ctx.beginPath();
-  ctx.arc(sunCX, sunCY, bloomR, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  const sunGrad = ctx.createLinearGradient(0, sunCY - sunR, 0, sunCY + sunR);
-  sunGrad.addColorStop(0, '#ffe98a');
-  sunGrad.addColorStop(0.38, '#ffcc5a');
-  sunGrad.addColorStop(0.68, '#ff7a9a');
-  sunGrad.addColorStop(1, '#ff3d9a');
-  ctx.save();
-  ctx.shadowColor = 'rgba(255, 170, 110, 0.7)';
-  ctx.shadowBlur = sunR * (0.38 + 0.08 * Math.sin(t * 0.55));
-  ctx.beginPath();
-  ctx.arc(sunCX, sunCY, sunR, 0, Math.PI * 2);
-  ctx.fillStyle = sunGrad;
-  ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(sunCX, sunCY, sunR, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.fillStyle = '#0a0418';
-  const bandCount = 8;
-  const bandStart = sunCY - sunR * 0.1;
-  const bandSpan = sunR * 0.7;
-  for (let i = 0; i < bandCount; i++) {
-    const t = i / (bandCount - 1);
-    const y = bandStart + t * bandSpan;
-    const thickness = sunR * (0.014 + t * 0.028);
-    ctx.fillRect(sunCX - sunR, y, sunR * 2, thickness);
-  }
-  ctx.restore();
-
-  ctx.save();
-  const vanishX = W / 2;
-  const groundHeight = Math.max(1, bottom - horizonY);
-  ctx.strokeStyle = '#ff4db8';
-  ctx.lineWidth = 1.15;
-  const scrollPhase = (t * 0.32) % 1;
-  const numLines = 16;
-  for (let i = 1; i <= numLines; i++) {
-    const depth = i + scrollPhase;
-    const y = horizonY + groundHeight / depth;
-    if (y > bottom || y < horizonY) continue;
-    const fadeIn = Math.min(1, (y - horizonY) / (groundHeight * 0.12));
-    ctx.globalAlpha = 0.55 * fadeIn;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 0.5;
-  const numVLines = 16;
-  const spread = W * 2.4;
-  for (let i = -numVLines; i <= numVLines; i++) {
-    const bottomX = vanishX + (i / numVLines) * spread;
-    ctx.beginPath();
-    ctx.moveTo(vanishX, horizonY);
-    ctx.lineTo(bottomX, bottom);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawHomeBackground() {
-  drawSynthwaveScene(0, H);
-}
-
-function drawMenuBackground() {
-  drawSynthwaveScene(PLAY_TOP, PLAY_BOTTOM);
-}
-
-function drawInfernoHeatBackdrop(theme) {
-  const playHeight = PLAY_BOTTOM - PLAY_TOP;
-
-  const floorGlow = ctx.createLinearGradient(0, PLAY_BOTTOM - playHeight * 0.28, 0, PLAY_BOTTOM);
-  floorGlow.addColorStop(0, 'rgba(255, 40, 0, 0)');
-  floorGlow.addColorStop(0.55, 'rgba(255, 70, 10, 0.10)');
-  floorGlow.addColorStop(1, 'rgba(255, 140, 20, 0.22)');
-  ctx.fillStyle = floorGlow;
-  ctx.fillRect(0, PLAY_BOTTOM - playHeight * 0.28, W, playHeight * 0.28);
-
-  const roofGlow = ctx.createLinearGradient(0, PLAY_TOP, 0, PLAY_TOP + playHeight * 0.16);
-  roofGlow.addColorStop(0, 'rgba(255, 80, 20, 0.14)');
-  roofGlow.addColorStop(1, 'rgba(255, 40, 0, 0)');
-  ctx.fillStyle = roofGlow;
-  ctx.fillRect(0, PLAY_TOP, W, playHeight * 0.16);
-
-  ctx.strokeStyle = 'rgba(255, 90, 20, 0.18)';
-  ctx.lineWidth = 1.2;
-  for (let i = 0; i < bgParticles.length; i++) {
-    const p = bgParticles[i];
-    ctx.beginPath();
-    ctx.moveTo(p.x + (p.len || 12), p.y);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-  }
-}
-
-function drawToxicWastelandBackdrop(theme) {
-  const playHeight = PLAY_BOTTOM - PLAY_TOP;
-  const scroll = frame * 0.22;
-
-  const sunX = W * 0.78;
-  const sunY = PLAY_TOP + playHeight * 0.28;
-  const sunR = playHeight * 0.34;
-  const sun = ctx.createRadialGradient(sunX, sunY, sunR * 0.12, sunX, sunY, sunR);
-  sun.addColorStop(0, 'rgba(210, 190, 70, 0.16)');
-  sun.addColorStop(0.35, 'rgba(120, 130, 40, 0.08)');
-  sun.addColorStop(1, 'rgba(40, 50, 10, 0)');
-  ctx.fillStyle = sun;
-  ctx.beginPath();
-  ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, PLAY_TOP, W, playHeight);
-  ctx.clip();
-
-  for (let i = 0; i < 3; i++) {
-    const fy = PLAY_TOP + playHeight * (0.22 + i * 0.2);
-    const fx = ((W * 0.45 * i - scroll * (0.4 + i * 0.12)) % (W + 320)) - 160;
-    const haze = ctx.createRadialGradient(fx, fy, 0, fx, fy, 220);
-    haze.addColorStop(0, `rgba(140, 150, 55, ${0.07 - i * 0.015})`);
-    haze.addColorStop(1, 'rgba(40, 50, 15, 0)');
-    ctx.fillStyle = haze;
-    ctx.beginPath();
-    ctx.ellipse(fx, fy, 240, 36 + i * 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = 'rgba(10, 16, 6, 0.38)';
-  ctx.beginPath();
-  ctx.moveTo(0, PLAY_BOTTOM);
-  const hillScroll = (scroll * 0.45) % 90;
-  for (let hx = -hillScroll; hx <= W + 90; hx += 18) {
-    const hill = 28 + Math.sin(hx * 0.018 + 0.4) * 18 + Math.sin(hx * 0.05) * 8;
-    ctx.lineTo(hx, PLAY_BOTTOM - hill);
-  }
-  ctx.lineTo(W, PLAY_BOTTOM);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = 'rgba(18, 28, 10, 0.55)';
-  ctx.beginPath();
-  ctx.moveTo(0, PLAY_BOTTOM);
-  const bermStep = 48;
-  const bermScroll = scroll % bermStep;
-  for (let bx = -bermScroll; bx <= W + bermStep; bx += bermStep) {
-    const hump = 16 + (Math.sin(bx * 0.035 + frame * 0.01) * 0.5 + 0.5) * 14;
-    ctx.lineTo(bx, PLAY_BOTTOM - hump);
-  }
-  ctx.lineTo(W, PLAY_BOTTOM);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = 'rgba(22, 32, 12, 0.4)';
-  ctx.beginPath();
-  ctx.moveTo(0, PLAY_TOP);
-  for (let tx = -((scroll * 0.6) % 40); tx <= W + 40; tx += 40) {
-    const hang = 8 + Math.abs(Math.sin(tx * 0.08 + 1.2)) * 11;
-    ctx.lineTo(tx, PLAY_TOP + hang);
-  }
-  ctx.lineTo(W, PLAY_TOP);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  for (let p of bgParticles) {
-    ctx.save();
-    ctx.globalAlpha = p.alpha;
-    ctx.fillStyle = '#6d7c38';
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y, p.r * (p.stretch || 1), p.r, 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-  ctx.globalAlpha = 1;
-}
-
-// Zone 1's decorative sun is the same orb that later becomes The Signal.
-// At 900 m it glitches, shrinks, and leaves the sky so the last stretch
-// of Synthwave plays without it -- purely visual, no gameplay change.
-function getSynthwaveSunVanishT(theme) {
-  if (!theme || theme.name !== 'SYNTHWAVE' || theme.isBossZone) return 0;
-  const t = (distance - zoneStartDistance - SYNTHWAVE_SUN_VANISH_START) / SYNTHWAVE_SUN_VANISH_DURATION;
-  if (t <= 0) return 0;
-  if (t >= 1) return 1;
-  return t;
-}
-
-function drawSynthwaveBackdropSun(theme) {
-  const vanishT = getSynthwaveSunVanishT(theme);
-  if (vanishT >= 1) return;
-
-  const ease = vanishT * vanishT * (3 - 2 * vanishT);
-  const playH = PLAY_BOTTOM - PLAY_TOP;
-  const baseCX = W * 0.78;
-  const baseCY = PLAY_TOP + playH * 0.32;
-  const baseR = playH * 0.22;
-  const jitter = vanishT > 0 ? Math.sin(frame * 0.55 + vanishT * 14) * ease * 7 : 0;
-  const sunCX = baseCX + jitter;
-  const sunCY = baseCY - ease * baseR * 0.42;
-  const sunR = baseR * (1 - ease * 0.9);
-  const alpha = 1 - Math.pow(ease, 1.25);
-  if (sunR < 1 || alpha <= 0.01) return;
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  if (vanishT > 0 && vanishT < 0.62) {
-    const bloomPulse = 0.28 * (1 - vanishT / 0.62);
-    const bloom = ctx.createRadialGradient(sunCX, sunCY, sunR * 0.18, sunCX, sunCY, sunR * (1.75 + vanishT * 0.8));
-    bloom.addColorStop(0, 'rgba(255, 210, 63, ' + bloomPulse + ')');
-    bloom.addColorStop(0.45, 'rgba(255, 32, 121, ' + (bloomPulse * 0.45) + ')');
-    bloom.addColorStop(1, 'rgba(15, 240, 252, 0)');
-    ctx.fillStyle = bloom;
-    ctx.beginPath();
-    ctx.arc(sunCX, sunCY, sunR * 2.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  const drawSunBody = (cx, cy, bodyAlpha) => {
-    ctx.save();
-    ctx.globalAlpha = alpha * bodyAlpha;
-    ctx.beginPath();
-    ctx.arc(cx, cy, sunR, 0, Math.PI * 2);
-    ctx.clip();
-    const sunGrad = ctx.createLinearGradient(0, cy - sunR, 0, cy + sunR);
-    sunGrad.addColorStop(0, '#ffd23f');
-    sunGrad.addColorStop(0.5, theme.accentA);
-    sunGrad.addColorStop(1, theme.accentB);
-    ctx.fillStyle = sunGrad;
-    ctx.fillRect(cx - sunR, cy - sunR, sunR * 2, sunR * 2);
-    ctx.fillStyle = theme.skyTop;
-    const bandCount = 5 + Math.floor(ease * 8);
-    const bandGap = sunR * (0.15 + ease * 0.08);
-    for (let i = 0; i < bandCount; i++) {
-      const y = cy + bandGap * i - sunR * 0.08 - ease * sunR * 0.2;
-      ctx.fillRect(cx - sunR, y, sunR * 2, (3 + i) * (1 + ease * 2.4));
-    }
-    ctx.restore();
-  };
-
-  if (vanishT > 0.08 && vanishT < 0.88) {
-    const split = ease * 10;
-    drawSunBody(sunCX - split, sunCY, 0.28);
-    drawSunBody(sunCX + split, sunCY + split * 0.25, 0.22);
-  }
-  drawSunBody(sunCX, sunCY, 1);
-
-  if (vanishT > 0.2 && vanishT < 0.95) {
-    ctx.globalAlpha = alpha * 0.55 * (1 - Math.abs(vanishT - 0.55) * 1.6);
-    ctx.strokeStyle = theme.accentB;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(sunCX, sunCY, sunR * (1.12 + vanishT * 0.8), 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawBackground(theme) {
-  const colorProgress = theme.isBossZone ? getBossColorProgress() : 0;
-  const phase5Progress = theme.isBossZone ? getPhase5BackgroundProgress() : 0;
-  let effSkyTop = colorProgress > 0 ? lerpHexColor(theme.skyTop, theme.phase3SkyTop, colorProgress) : theme.skyTop;
-  let effSkyMid = colorProgress > 0 ? lerpHexColor(theme.skyMid, theme.phase3SkyMid, colorProgress) : theme.skyMid;
-  let effSkyBottom = colorProgress > 0 ? lerpHexColor(theme.skyBottom, theme.phase3SkyBottom, colorProgress) : theme.skyBottom;
-  if (bossAshGrayVariant && phase5Progress > 0) {
-    effSkyTop = lerpHexColor(effSkyTop, '#0e0e0e', phase5Progress);
-    effSkyMid = lerpHexColor(effSkyMid, '#0a0a0a', phase5Progress);
-    effSkyBottom = lerpHexColor(effSkyBottom, '#050505', phase5Progress);
-  }
-  const skyGrad = ctx.createLinearGradient(0, PLAY_TOP, 0, PLAY_BOTTOM);
-  skyGrad.addColorStop(0, effSkyTop);
-  skyGrad.addColorStop(0.55, effSkyMid);
-  skyGrad.addColorStop(1, effSkyBottom);
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, PLAY_TOP, W, PLAY_BOTTOM - PLAY_TOP);
-
-  if (theme.isBossZone) {
-    drawPerspectiveGrid(theme, colorProgress * (1 - phase5Progress));
-    drawVolcanicAshBackground(theme, phase5Progress);
-  }
-
-  if (theme.bgStyle === 'grid') {
-    if (!theme.isBossZone) {
-      drawSynthwaveBackdropSun(theme);
-    }
-
-    // the perspective grid fully replaces this one in boss zones once
-    // the transition begins -- skip rendering it entirely at that
-    // point rather than paying its full stroke cost while it fades to
-    // near-invisible, which was doubling grid-related draw calls
-    // during the whole transition window
-    if (!(theme.isBossZone && colorProgress > 0)) {
-    ctx.save();
-    ctx.strokeStyle = theme.accentA + '59';
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = bossGridFadeEnabled ? 1 - colorProgress : 1;
-    const gridSpacing = 40;
-    const offset = (mobileRenderFrame() * SCROLL_SPEED * (theme.scrollMult || 1)) % gridSpacing;
-    for (let x = -offset; x < W; x += gridSpacing) {
-      const px = MOBILE_PERFORMANCE_MODE ? x + 0.5 : Math.round(x) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(px, PLAY_TOP);
-      ctx.lineTo(px, PLAY_BOTTOM);
-      ctx.stroke();
-    }
-    for (let y = PLAY_TOP; y < PLAY_BOTTOM; y += gridSpacing) {
-      const py = Math.round(y) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(0, py);
-      ctx.lineTo(W, py);
-      ctx.stroke();
-    }
-    ctx.restore();
-    }
-  } else if (theme.bgStyle === 'matrix') {
-    drawGravityWellBackdrop(theme);
-    const tints = [theme.accentA, theme.accentB, theme.wellAccent || '#e85cff'];
-    for (let p of bgParticles) {
-      const col = tints[p.tint] || theme.accentA;
-      const grad = ctx.createLinearGradient(p.x, p.y - p.len, p.x, p.y);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, col);
-      ctx.strokeStyle = grad;
-      ctx.globalAlpha = p.alpha;
-      ctx.lineWidth = p.tint === 2 ? 1.5 : 2;
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y - p.len);
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  } else if (theme.bgStyle === 'stars') {
-    for (let p of bgParticles) {
-      ctx.globalAlpha = p.alpha;
-      ctx.fillStyle = theme.accentB;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  } else if (theme.bgStyle === 'embers') {
-    drawInfernoHeatBackdrop(theme);
-  } else if (theme.bgStyle === 'ruins') {
-    const playHeight = PLAY_BOTTOM - PLAY_TOP;
-
-    // stone block wall texture behind everything
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 1;
-    const blockW = 70, blockH = 38;
-    const rowOffset = (frame * 0.6) % blockW;
-    let row = 0;
-    for (let by = PLAY_TOP; by < PLAY_BOTTOM; by += blockH) {
-      const stagger = (row % 2 === 0) ? 0 : blockW / 2;
-      for (let bx = -rowOffset - blockW + stagger; bx < W + blockW; bx += blockW) {
-        ctx.strokeRect(bx, by, blockW, blockH);
-      }
-      row++;
-    }
-
-    // fluted stone pillars, solid and clearly load-bearing
-    const pillarSpacing = 220;
-    const pillarWidth = 50;
-    const pillarOffset = (frame * 0.6) % pillarSpacing;
-    for (let px = -pillarOffset; px < W + pillarSpacing; px += pillarSpacing) {
-      const pgrad = ctx.createLinearGradient(px, 0, px + pillarWidth, 0);
-      pgrad.addColorStop(0, 'rgba(8,14,20,0.9)');
-      pgrad.addColorStop(0.5, 'rgba(30,45,55,0.9)');
-      pgrad.addColorStop(1, 'rgba(8,14,20,0.9)');
-      ctx.fillStyle = pgrad;
-      ctx.fillRect(px, PLAY_TOP, pillarWidth, playHeight);
-
-      // vertical fluting grooves
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-      ctx.lineWidth = 1.5;
-      for (let fx = px + 8; fx < px + pillarWidth; fx += 9) {
-        ctx.beginPath();
-        ctx.moveTo(fx, PLAY_TOP + 16);
-        ctx.lineTo(fx, PLAY_BOTTOM - 16);
-        ctx.stroke();
-      }
-
-      // capital and base
-      ctx.fillStyle = 'rgba(15,25,32,0.95)';
-      ctx.fillRect(px - 8, PLAY_TOP, pillarWidth + 16, 16);
-      ctx.fillRect(px - 8, PLAY_BOTTOM - 16, pillarWidth + 16, 16);
-
-      // torch brazier glow mounted on the pillar
-      const torchY = PLAY_TOP + playHeight * 0.28;
-      const flicker = 0.7 + 0.3 * Math.sin(frame * 0.15 + px * 0.1);
-      const tgrad = ctx.createRadialGradient(px + pillarWidth / 2, torchY, 0, px + pillarWidth / 2, torchY, 34);
-      tgrad.addColorStop(0, `rgba(120,220,255,${0.55 * flicker})`);
-      tgrad.addColorStop(1, 'rgba(120,220,255,0)');
-      ctx.fillStyle = tgrad;
-      ctx.beginPath();
-      ctx.arc(px + pillarWidth / 2, torchY, 34, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = theme.accentA;
-      ctx.beginPath();
-      ctx.arc(px + pillarWidth / 2, torchY, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // soft drifting dust in the torchlight (kept subtle, not star-like)
-    for (let p of bgParticles) {
-      ctx.globalAlpha = p.alpha * 0.5;
-      ctx.fillStyle = theme.accentB;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  } else if (theme.bgStyle === 'toxic') {
-    drawToxicWastelandBackdrop(theme);
-  } else if (theme.bgStyle === 'station') {
-    const playHeight = PLAY_BOTTOM - PLAY_TOP;
-
-    // structural hull panel grid
-    ctx.strokeStyle = 'rgba(94,200,232,0.08)';
-    ctx.lineWidth = 1;
-    const panelW = 90, panelH = 70;
-    const offX = (frame * 0.4) % panelW;
-    for (let px = -offX; px < W + panelW; px += panelW) {
-      ctx.beginPath();
-      ctx.moveTo(px, PLAY_TOP);
-      ctx.lineTo(px, PLAY_BOTTOM);
-      ctx.stroke();
-    }
-    for (let py = PLAY_TOP; py < PLAY_BOTTOM; py += panelH) {
-      ctx.beginPath();
-      ctx.moveTo(0, py);
-      ctx.lineTo(W, py);
-      ctx.stroke();
-    }
-
-    // hull-breach windows showing distant starfield, spaced along the wall
-    const winSpacing = 260;
-    const winOffset = (frame * 0.6) % winSpacing;
-    for (let wx = -winOffset; wx < W + winSpacing; wx += winSpacing) {
-      const wy = PLAY_TOP + playHeight * 0.5;
-      ctx.fillStyle = 'rgba(2,4,8,0.6)';
-      ctx.beginPath();
-      ctx.ellipse(wx, wy, 26, 40, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(94,200,232,0.3)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      // tiny stars inside the window
-      for (let s = 0; s < 5; s++) {
-        const sx = wx + (Math.sin(s * 7.1) * 16);
-        const sy = wy + (Math.cos(s * 5.3) * 26);
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fillRect(sx, sy, 1.2, 1.2);
-      }
-    }
-
-    // flickering emergency light strips along the top/bottom edges
-    const lightSpacing = 140;
-    const lightOffset = (frame * 0.5) % lightSpacing;
-    for (let lx = -lightOffset; lx < W + lightSpacing; lx += lightSpacing) {
-      const flicker = 0.4 + 0.4 * Math.max(0, Math.sin(frame * 0.08 + lx * 0.3));
-      ctx.fillStyle = theme.accentB;
-      ctx.globalAlpha = flicker * 0.5;
-      ctx.fillRect(lx, PLAY_TOP + 2, 24, 3);
-      ctx.fillRect(lx + 40, PLAY_BOTTOM - 5, 24, 3);
-    }
-    ctx.globalAlpha = 1;
-
-    // drifting metal dust
-    for (let p of bgParticles) {
-      ctx.globalAlpha = p.alpha;
-      ctx.fillStyle = theme.accentA;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  } else if (theme.bgStyle === 'void') {
-    // deliberately sparse -- almost nothing but a few faint distant stars,
-    // letting the black holes dominate an otherwise empty, dark scene
-    for (let p of bgParticles) {
-      ctx.globalAlpha = p.alpha;
-      ctx.fillStyle = theme.accentA;
-      ctx.fillRect(p.x, p.y, p.r, p.r);
-    }
-    ctx.globalAlpha = 1;
-  } else if (theme.bgStyle === 'storm') {
-    // deterministic lightning: a brief flash on a fixed schedule, not random
-    const flashCycle = 210;
-    const flashT = frame % flashCycle;
-    if (flashT < 6) {
-      const flashAlpha = (1 - flashT / 6) * 0.35;
-      ctx.fillStyle = `rgba(230,230,255,${flashAlpha})`;
-      ctx.fillRect(0, PLAY_TOP, W, PLAY_BOTTOM - PLAY_TOP);
-    }
-    // cloud bands
-    ctx.fillStyle = 'rgba(20,22,40,0.4)';
-    for (let i = 0; i < 4; i++) {
-      const cy = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * (0.1 + i * 0.22);
-      const cx = (W * 0.3 * i - frame * 0.3) % (W + 300) - 150;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, 180, 30, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // rain streaks
-    for (let p of bgParticles) {
-      const grad = ctx.createLinearGradient(p.x, p.y - p.len, p.x, p.y);
-      grad.addColorStop(0, 'rgba(200,210,255,0)');
-      grad.addColorStop(1, theme.accentB);
-      ctx.strokeStyle = grad;
-      ctx.globalAlpha = p.alpha;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y - p.len);
-      ctx.lineTo(p.x - p.len * 0.35, p.y);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
-}
-
-function drawDiamondGate(g, theme) {
-  const { radius, centerX, centerY } = diamondGeometry(g);
-  if (radius <= 2) return;
-
-  ctx.save();
-  ctx.shadowColor = theme.accentB;
-  ctx.shadowBlur = 16;
-
-  const grad = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
-  grad.addColorStop(0, theme.accentA);
-  grad.addColorStop(1, theme.accentB);
-  ctx.fillStyle = grad;
-
-  // filled bounding square with a diamond-shaped hole (evenodd rule) = the solid frame
-  ctx.beginPath();
-  ctx.rect(centerX - radius, centerY - radius, radius * 2, radius * 2);
-  ctx.moveTo(centerX, centerY - radius);
-  ctx.lineTo(centerX + radius, centerY);
-  ctx.lineTo(centerX, centerY + radius);
-  ctx.lineTo(centerX - radius, centerY);
-  ctx.closePath();
-  ctx.fill('evenodd');
-
-  // bright diamond outline to sell the "frame" edge
-  ctx.shadowBlur = 20;
-  ctx.strokeStyle = theme.accentB;
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(centerX, centerY - radius);
-  ctx.lineTo(centerX + radius, centerY);
-  ctx.lineTo(centerX, centerY + radius);
-  ctx.lineTo(centerX - radius, centerY);
-  ctx.closePath();
-  ctx.stroke();
-
-  ctx.restore();
-}
-
-function drawOrbiter(g, theme) {
-  const pos = liveOrbiterPos(g);
-  ctx.save();
-
-  // planet sphere with simple shading for a rounded look
-  ctx.shadowColor = g.color;
-  ctx.shadowBlur = 10;
-  const grad = ctx.createRadialGradient(pos.x - g.r * 0.35, pos.y - g.r * 0.35, g.r * 0.1, pos.x, pos.y, g.r);
-  grad.addColorStop(0, '#ffffff');
-  grad.addColorStop(0.35, g.color);
-  grad.addColorStop(1, '#1a1220');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(pos.x, pos.y, g.r, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function drawSupernovaPlanet(g, theme) {
-  if (g.detonated) {
-    drawSupernovaFlash(g, theme);
-    return;
-  }
-  const warning = supernovaIsWarning(g);
-  const warningT = warning ? (supernovaPhaseElapsed(g) - supernovaEffectiveDormant(g)) / g.warningFrames : 0;
-
-  ctx.save();
-  ctx.translate(g.x, g.y);
-
-  // base sphere: smooth blended amber/rust gradient (vertical, since gas
-  // giant bands run horizontally across latitude)
-  const grad = ctx.createLinearGradient(0, -g.planetR, 0, g.planetR);
-  grad.addColorStop(0, '#e8c48c');
-  grad.addColorStop(0.2, '#c98a4a');
-  grad.addColorStop(0.38, '#8a4a28');
-  grad.addColorStop(0.5, '#e0b878');
-  grad.addColorStop(0.65, '#7a3a20');
-  grad.addColorStop(0.8, '#c07838');
-  grad.addColorStop(1, '#5a2c16');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(0, 0, g.planetR, 0, Math.PI * 2);
-  ctx.fill();
-
-  // subtle soft wave texture on top -- gentle marbled turbulence without
-  // hard band edges. phase drifts slowly over time to suggest the planet
-  // rotating, since the waves themselves must stay horizontal (a full
-  // rotate() would tilt them, which isn't how gas giant bands behave)
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(0, 0, g.planetR, 0, Math.PI * 2);
-  ctx.clip();
-  const phase = frame * 0.006 + g.rotSeed;
-  const xSpan = g.planetR * 1.15;
-  const waveCount = 5;
-  for (let i = 0; i < waveCount; i++) {
-    const yBase = -g.planetR + (i + 0.5) * ((g.planetR * 2) / waveCount);
-    ctx.beginPath();
-    const segments = 18;
-    for (let s = 0; s <= segments; s++) {
-      const t = s / segments;
-      const x = -xSpan + t * xSpan * 2;
-      const wobble = Math.sin(t * Math.PI * 2.5 + phase + i * 1.1) * g.planetR * 0.06;
-      const y = yBase + wobble;
-      if (s === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = i % 2 === 0 ? 'rgba(255,230,190,0.12)' : 'rgba(60,25,10,0.15)';
-    ctx.lineWidth = g.planetR * 0.18;
-    ctx.stroke();
-  }
-  // storm-spot features that visibly orbit around the vertical axis --
-  // this is what actually sells the "spinning" illusion, since a subtle
-  // texture drift alone barely reads as rotation. each spot's screen x
-  // position and squash factor are driven by its longitude angle, so it
-  // slides across, foreshortens near the limb, and disappears around the
-  // back exactly like a feature on a real rotating sphere would
-  const spotDefs = [
-    { latFrac: -0.35, speed: 1.3, size: 0.22, color: 'rgba(60,25,10,0.4)' },
-    { latFrac: 0.15, speed: 1.3, size: 0.16, color: 'rgba(255,225,180,0.35)' },
-    { latFrac: 0.55, speed: 1.3, size: 0.19, color: 'rgba(50,20,8,0.35)' }
-  ];
-  spotDefs.forEach((spot, i) => {
-    const spotAngle = phase * spot.speed + i * (Math.PI * 2 / 3) + g.rotSeed;
-    const cosA = Math.cos(spotAngle);
-    if (cosA > -0.15) {
-      const spotX = Math.sin(spotAngle) * g.planetR * 0.82;
-      const spotY = spot.latFrac * g.planetR;
-      const squash = Math.max(0.15, cosA);
-      const fadeAlpha = Math.min(1, (cosA + 0.15) / 0.3);
-      ctx.save();
-      ctx.translate(spotX, spotY);
-      ctx.scale(squash, 1);
-      ctx.globalAlpha = fadeAlpha;
-      ctx.fillStyle = spot.color;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, g.planetR * spot.size, g.planetR * spot.size * 0.6, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-  });
-  ctx.globalAlpha = 1;
-
-  // relight with the same falloff as the base sphere so the 3D illusion
-  // stays consistent
-  const relight = ctx.createRadialGradient(-g.planetR * 0.35, -g.planetR * 0.35, g.planetR * 0.1, 0, 0, g.planetR);
-  relight.addColorStop(0, 'rgba(255,240,220,0.18)');
-  relight.addColorStop(0.55, 'rgba(0,0,0,0)');
-  relight.addColorStop(1, 'rgba(0,0,0,0.55)');
-  ctx.fillStyle = relight;
-  ctx.beginPath();
-  ctx.arc(0, 0, g.planetR, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // fault-line cracks, glowing brighter and pulsing faster as detonation
-  // approaches -- the destabilization telegraph
-  const crackIntensity = warning ? (0.3 + 0.7 * warningT) : 0.15;
-  const crackPulseSpeed = warning ? 0.4 : 0.05;
-  const crackPulse = 0.5 + 0.5 * Math.sin(frame * crackPulseSpeed);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(0, 0, g.planetR, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.strokeStyle = theme.accentB;
-  ctx.globalAlpha = crackIntensity * crackPulse;
-  ctx.lineWidth = 2 + (warning ? warningT * 2 : 0);
-  ctx.shadowColor = theme.accentB;
-  ctx.shadowBlur = warning ? 10 * warningT : 3;
-  const crackPaths = [
-    [[-0.6, -0.5], [0, 0], [0.5, 0.3], [0.7, 0.8]],
-    [[0.6, -0.6], [0.1, -0.1], [-0.3, 0.4], [-0.7, 0.7]],
-    [[0, -0.9], [0, -0.2], [0.3, 0.2], [0.2, 0.8]]
-  ];
-  for (const path of crackPaths) {
-    ctx.beginPath();
-    path.forEach(([px, py], i) => {
-      const x = px * g.planetR, y = py * g.planetR;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-  }
-  ctx.restore();
-  ctx.globalAlpha = 1;
-
-  // atmospheric rim glow
-  ctx.strokeStyle = theme.accentA;
-  ctx.lineWidth = 3;
-  ctx.globalAlpha = 0.4;
-  ctx.shadowColor = theme.accentA;
-  ctx.shadowBlur = 8;
-  ctx.beginPath();
-  ctx.arc(0, 0, g.planetR, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-
-  ctx.restore();
-}
-

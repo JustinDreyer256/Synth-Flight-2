@@ -1,3 +1,1037 @@
+function drawShipSkinStorm() {
+  const accentA = '#fff59d';
+  const accentB = '#5c6bc0';
+  const lit = holding;
+  ctx.save();
+  ctx.shadowColor = accentB;
+  ctx.shadowBlur = 12;
+  const bodyGrad = ctx.createLinearGradient(-SHIP_W / 2, 0, SHIP_W / 2, 0);
+  bodyGrad.addColorStop(0, accentB);
+  bodyGrad.addColorStop(1, '#dce3ff');
+  ctx.fillStyle = bodyGrad;
+  traceShipDart();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = accentA;
+  ctx.lineWidth = 1.5;
+  traceShipDart();
+  ctx.stroke();
+  const boltOn = lit || ((frame % 22) < 4);
+  if (boltOn) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const flash = lit ? 1 : 0.75;
+    const drawBolt = (pts, width, color, blur, alpha) => {
+      ctx.globalAlpha = flash * alpha;
+      ctx.strokeStyle = color;
+      ctx.shadowColor = accentA;
+      ctx.shadowBlur = blur;
+      ctx.lineWidth = width;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+      ctx.stroke();
+    };
+    const main = [[-SHIP_W / 2 + 4, -2], [-6, 3], [2, -3], [SHIP_W / 2 - 5, 1]];
+    const branch = [[-6, 3], [-2, 7], [4, 5]];
+    drawBolt(main, 3.2, accentB, 8, 0.45);
+    drawBolt(main, 1.5, accentA, 12, 1);
+    drawBolt(branch, 2.2, accentB, 6, 0.35);
+    drawBolt(branch, 1.1, accentA, 8, 0.9);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawShipSkinToxic() {
+  ctx.save();
+  ctx.shadowColor = '#8aff4d';
+  ctx.shadowBlur = 12;
+  const bodyGrad = ctx.createRadialGradient(2, -2, 1, 0, 0, SHIP_W * 0.55);
+  bodyGrad.addColorStop(0, '#e8ffb0');
+  bodyGrad.addColorStop(0.45, '#8aff4d');
+  bodyGrad.addColorStop(1, '#d4c84a');
+  ctx.fillStyle = bodyGrad;
+  traceShipDart();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.save();
+  traceShipDart();
+  ctx.clip();
+  ctx.fillStyle = 'rgba(212,200,74,0.55)';
+  for (let i = 0; i < 3; i++) {
+    const a = frame * 0.04 + i * 2.1;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * 7, Math.sin(a) * 3.5, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#8aff4d';
+  ctx.globalAlpha = 0.75;
+  ctx.lineWidth = 1.4;
+  traceShipDart();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawShipSkinVoid() {
+  const r = SHIP_H * 0.8;
+  ctx.save();
+  const field = ctx.createRadialGradient(0, 0, r * 0.5, 0, 0, r * 2.1);
+  field.addColorStop(0, 'rgba(138,92,245,0.28)');
+  field.addColorStop(1, 'rgba(138,92,245,0)');
+  ctx.fillStyle = field;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 2.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.rotate(frame * 0.02);
+  for (let i = 0; i < 3; i++) {
+    const bandR = r * (1.15 + i * 0.28);
+    ctx.strokeStyle = '#c9a0ff';
+    ctx.globalAlpha = 0.48 - i * 0.1;
+    ctx.lineWidth = 2.2 - i * 0.4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, bandR, bandR * 0.38, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.shadowColor = '#8a5cf5';
+  ctx.shadowBlur = 14;
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  core.addColorStop(0, '#000000');
+  core.addColorStop(0.82, '#050208');
+  core.addColorStop(1, '#8a5cf5');
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#8a5cf5';
+  ctx.globalAlpha = 0.7;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawShipSkinSRankOutline(alpha) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.shadowColor = '#fff8e0';
+  ctx.shadowBlur = 16;
+  ctx.strokeStyle = '#ffe08a';
+  ctx.lineWidth = 1.8;
+  traceShipDart();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  const fill = ctx.createLinearGradient(-SHIP_W / 2, 0, SHIP_W / 2, 0);
+  fill.addColorStop(0, 'rgba(255,248,224,0.15)');
+  fill.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+  fill.addColorStop(1, 'rgba(255,224,138,0.35)');
+  ctx.fillStyle = fill;
+  traceShipDart();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawShipSkinSRank() {
+  const flare = holding ? 1 : 0.55 + 0.2 * Math.sin(nowMs() * 0.006);
+  ctx.save();
+  ctx.globalAlpha *= 0.35 + flare * 0.65;
+  drawShipSkinSRankOutline(1);
+  ctx.restore();
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = `rgba(255,255,255,${0.45 + flare * 0.4})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-SHIP_W / 2 + 6, 0);
+  ctx.lineTo(SHIP_W / 2 - 4, 0);
+  ctx.stroke();
+  for (let i = 0; i < 3; i++) {
+    const a = nowMs() * 0.003 + i * (Math.PI * 2 / 3);
+    const ox = Math.cos(a) * (SHIP_W * 0.42);
+    const oy = Math.sin(a) * (SHIP_H * 0.7);
+    ctx.fillStyle = '#fff8e0';
+    ctx.shadowColor = '#ffd23f';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(ox, oy - 3.2);
+    ctx.lineTo(ox + 2.1, oy);
+    ctx.lineTo(ox, oy + 3.2);
+    ctx.lineTo(ox - 2.1, oy);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawShipBody(theme, alpha) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  const skin = currentShipSkin().id;
+  if (skin === 'signal') drawShipSkinSignal();
+  else if (skin === 'eclipse') drawShipSkinEclipse();
+  else if (skin === 'gold') drawShipSkinGold();
+  else if (skin === 'prism') drawShipSkinRainbow();
+  else if (skin === 'molten') drawShipSkinMolten();
+  else if (skin === 'core') drawShipSkinCore();
+  else if (skin === 'neon') drawShipSkinNeon();
+  else if (skin === 'storm') drawShipSkinStorm();
+  else if (skin === 'toxic') drawShipSkinToxic();
+  else if (skin === 'void') drawShipSkinVoid();
+  else if (skin === 'srank') drawShipSkinSRank();
+  else drawShipSkinClassic(theme);
+  ctx.restore();
+}
+
+function drawClassicFlame(theme, extraLen, colorA, colorB) {
+  const flameLen = 14 + extraLen + (holding ? 10 : 4) + Math.sin(frame * 0.5) * 3;
+  const trailGrad = ctx.createLinearGradient(-SHIP_W / 2 - flameLen, 0, -SHIP_W / 2, 0);
+  trailGrad.addColorStop(0, 'rgba(255,255,255,0)');
+  trailGrad.addColorStop(1, holding ? colorB : colorA);
+  ctx.fillStyle = trailGrad;
+  ctx.beginPath();
+  ctx.moveTo(-SHIP_W / 2, -6);
+  ctx.lineTo(-SHIP_W / 2 - flameLen, 0);
+  ctx.lineTo(-SHIP_W / 2, 6);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawShipTrailWorld(theme) {
+  const id = currentShipTrail().id;
+  if (id === 'ribbon' && shipYHistory.length > 4) {
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = theme.accentB;
+    ctx.shadowBlur = 10;
+    const n = Math.min(48, shipYHistory.length);
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const px = ship.x - i * 3.4;
+      const py = shipYHistory[shipYHistory.length - 1 - i];
+      const wobble = Math.sin(frame * 0.18 + i * 0.35) * (holding ? 2.2 : 1.1);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py + wobble);
+    }
+    ctx.strokeStyle = theme.accentB;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = holding ? 5 : 3.2;
+    ctx.stroke();
+    ctx.strokeStyle = theme.accentA;
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth = holding ? 2.2 : 1.4;
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (id === 'echo' && currentShipSkin().id !== 'molten' && shipYHistory.length > 6) {
+    const steps = [6, 12, 18, 24];
+    ctx.save();
+    for (let s = steps.length - 1; s >= 0; s--) {
+      const i = steps[s];
+      if (i >= shipYHistory.length) continue;
+      const px = ship.x - i * 2.6;
+      const py = shipYHistory[shipYHistory.length - 1 - i];
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(ship.rotation * Math.PI / 180);
+      ctx.globalAlpha = 0.12 + (1 - s / steps.length) * 0.16;
+      drawShipBody(theme, 1);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  if (currentShipSkin().id === 'molten' && shipYHistory.length > 6) {
+    const r = SHIP_H * 0.78;
+    const intensity = holding ? 1 : 0.72;
+    const steps = [5, 10, 16, 22];
+    for (let s = steps.length - 1; s >= 0; s--) {
+      const i = steps[s];
+      if (i >= shipYHistory.length) continue;
+      const t = (s + 1) / steps.length;
+      const px = ship.x - i * (2.8 + intensity * 1.4);
+      const py = shipYHistory[shipYHistory.length - 1 - i] + Math.sin(frame * 0.4 + s) * 1.4 * intensity;
+      drawMoltenCoreBody(px, py, r * (1 + 0.05 * (4 - s)), {
+        stretchX: 1.2 + t * 0.45 * intensity,
+        stretchY: 0.8 - t * 0.06 * intensity,
+        alpha: (0.5 - t * 0.16) * intensity,
+        sparks: false
+      });
+    }
+  }
+  if (shipToxicDrips.length) {
+    for (const d of shipToxicDrips) {
+      const y = d.startY + d.fallSpeed * Math.max(0, frame - d.spawnFrame);
+      drawAcidDripVisual(d.x, y, d.r, '#8aff4d', '#d4c84a');
+    }
+  }
+  if (id === 'sparks') {
+    ctx.save();
+    for (const p of shipTrailParticles) {
+      const t = 1 - p.life / p.maxLife;
+      ctx.globalAlpha = 0.25 + t * 0.7;
+      ctx.fillStyle = t > 0.5 ? '#ffffff' : theme.accentB;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.4, p.r * t), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  if (id === 'overdrive') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 5; i++) {
+      const age = (frame * 2.15 + i * 12) % 38;
+      const px = ship.x - 16 - age * 2.5;
+      const py = ship.y + Math.sin(frame * 0.12 + i) * 1.4;
+      const s = 6 + age * 0.38;
+      ctx.globalAlpha = Math.max(0, 0.62 - age / 38);
+      ctx.strokeStyle = i % 2 === 0 ? '#ffe28a' : '#ff3a18';
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.moveTo(px + s, py);
+      ctx.lineTo(px, py - s * 0.42);
+      ctx.lineTo(px - s * 0.75, py);
+      ctx.lineTo(px, py + s * 0.42);
+      ctx.closePath();
+      ctx.stroke();
+    }
+    for (const p of shipTrailParticles) {
+      const t = 1 - p.life / p.maxLife;
+      ctx.globalAlpha = 0.22 + t * 0.8;
+      if (p.kind === 'flash') {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(0.5, p.r * t), 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = t > 0.62 ? '#fff6c8' : (t > 0.32 ? '#ffb020' : '#ff2848');
+        ctx.lineWidth = Math.max(0.7, p.r * t);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.len * t, p.y - p.vy * 3);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  if (id === 'glitch') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const n = Math.min(18, shipYHistory.length);
+    for (let i = 2; i < n; i += 2) {
+      const drop = ((frame * 13 + i * 17) % 7) === 0;
+      if (drop) continue;
+      const px = ship.x - i * 4.2 + (((frame + i * 9) % 11) - 5);
+      const py = shipYHistory[shipYHistory.length - 1 - i] + (((frame * 3 + i * 5) % 9) - 4);
+      const w = 6 + ((frame + i) % 8);
+      const h = 2 + ((i + frame) % 3);
+      ctx.globalAlpha = 0.22 + (1 - i / n) * 0.45;
+      ctx.fillStyle = (i + frame) % 2 === 0 ? theme.accentB : theme.accentA;
+      ctx.fillRect(px - w, py - h / 2, w, h);
+    }
+    ctx.restore();
+  }
+  if (id === 'helix' && shipYHistory.length > 4) {
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.globalCompositeOperation = 'lighter';
+    const n = Math.min(42, shipYHistory.length);
+    const amp = holding ? 11 : 7.5;
+    for (let strand = 0; strand < 2; strand++) {
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const px = ship.x - i * 3.1;
+        const py = shipYHistory[shipYHistory.length - 1 - i]
+          + Math.sin(frame * 0.22 + i * 0.42 + strand * Math.PI) * amp;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = strand === 0 ? theme.accentB : theme.accentA;
+      ctx.globalAlpha = 0.7;
+      ctx.lineWidth = holding ? 2.6 : 1.8;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if (id === 'rings') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = theme.accentB;
+    for (let i = 0; i < 4; i++) {
+      const age = (frame * 1.8 + i * 14) % 42;
+      const px = ship.x - 10 - age * 1.8;
+      const py = ship.y;
+      ctx.globalAlpha = Math.max(0, 0.7 - age / 42);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(px, py, 8 + age * 0.55, 5 + age * 0.32, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawShipTrailLocal(theme) {
+  const skin = currentShipSkin().id;
+  if (skin === 'molten' || skin === 'void' || skin === 'toxic' || skin === 'signal') return;
+  const pal = classicShipPalette(theme);
+  const id = currentShipTrail().id;
+  if (id === 'classic' || id === 'echo' || id === 'ribbon') {
+    drawClassicFlame(theme, 0, pal.accentA, pal.accentB);
+    return;
+  }
+  if (id === 'pulse') {
+    for (let i = 0; i < 3; i++) {
+      const pulse = 0.55 + 0.45 * Math.abs(Math.sin(frame * 0.28 + i * 0.9));
+      const len = (10 + i * 7 + (holding ? 8 : 0)) * pulse;
+      ctx.globalAlpha = 0.35 + pulse * 0.4;
+      ctx.strokeStyle = i % 2 === 0 ? pal.accentB : pal.accentA;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-SHIP_W / 2 - 2, -5 + i);
+      ctx.lineTo(-SHIP_W / 2 - len, 0);
+      ctx.lineTo(-SHIP_W / 2 - 2, 5 - i);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+  if (id === 'sparks') {
+    drawClassicFlame(theme, -4, pal.accentB, '#ffffff');
+    return;
+  }
+  if (id === 'glitch') {
+    const baseLen = 16 + (holding ? 14 : 5);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 5; i++) {
+      const stutter = ((frame * 3 + i * 11) % 5) === 0;
+      if (stutter) continue;
+      const y = -8 + i * 4;
+      const len = baseLen + ((frame * 2 + i * 7) % 16) - (i * 2);
+      const xOff = ((frame + i * 13) % 9) - 4;
+      ctx.globalAlpha = 0.55 + (i % 2) * 0.25;
+      ctx.fillStyle = i % 2 === 0 ? pal.accentB : pal.accentA;
+      ctx.fillRect(-SHIP_W / 2 - len + xOff, y, len, 2.2);
+    }
+    if ((frame % 6) < 2) {
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-SHIP_W / 2 - baseLen - 10, -2, 18, 3);
+    }
+    ctx.restore();
+    return;
+  }
+  if (id === 'overdrive') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const boost = holding ? 1 : 0.64;
+    const flicker = 0.86 + 0.14 * Math.sin(frame * 0.85);
+    const plume = (28 + (holding ? 24 : 9) + Math.sin(frame * 0.42) * 6) * boost;
+
+    const outer = ctx.createLinearGradient(-SHIP_W / 2 - plume, 0, -SHIP_W / 2, 0);
+    outer.addColorStop(0, 'rgba(255, 16, 40, 0)');
+    outer.addColorStop(0.4, 'rgba(255, 48, 18, 0.5)');
+    outer.addColorStop(1, 'rgba(255, 220, 110, 0.95)');
+    ctx.fillStyle = outer;
+    ctx.beginPath();
+    ctx.moveTo(-SHIP_W / 2 + 2, -10);
+    ctx.quadraticCurveTo(-SHIP_W / 2 - plume * 0.42, -18 * boost * flicker, -SHIP_W / 2 - plume, 0);
+    ctx.quadraticCurveTo(-SHIP_W / 2 - plume * 0.42, 18 * boost * flicker, -SHIP_W / 2 + 2, 10);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.globalAlpha = 0.9 * flicker;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(-SHIP_W / 2, -3.2);
+    ctx.lineTo(-SHIP_W / 2 - plume * 0.72, 0);
+    ctx.lineTo(-SHIP_W / 2, 3.2);
+    ctx.closePath();
+    ctx.fill();
+
+    const curl = 11 + Math.sin(frame * 0.2) * 7;
+    ctx.globalAlpha = 0.5 + 0.35 * Math.abs(Math.sin(frame * 0.31));
+    ctx.strokeStyle = '#ffd23f';
+    ctx.lineWidth = 1.7;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-SHIP_W / 2 - 3, -6);
+    ctx.quadraticCurveTo(-SHIP_W / 2 - plume * 0.38, -curl - 10, -SHIP_W / 2 - plume * 0.78, -5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-SHIP_W / 2 - 3, 6);
+    ctx.quadraticCurveTo(-SHIP_W / 2 - plume * 0.38, curl + 10, -SHIP_W / 2 - plume * 0.78, 5);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  if (id === 'twin') {
+    ctx.save();
+    ctx.translate(0, -8);
+    drawClassicFlame(theme, -2, pal.accentB, '#ffffff');
+    ctx.restore();
+    ctx.save();
+    ctx.translate(0, 8);
+    drawClassicFlame(theme, -2, pal.accentA, '#ffffff');
+    ctx.restore();
+    return;
+  }
+  if (id === 'helix') {
+    drawClassicFlame(theme, -8, pal.accentB, pal.accentA);
+    return;
+  }
+  if (id === 'rings') {
+    drawClassicFlame(theme, -10, pal.accentB, '#ffffff');
+    ctx.save();
+    ctx.strokeStyle = pal.accentA;
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 3; i++) {
+      const age = (frame * 2.4 + i * 11) % 28;
+      ctx.globalAlpha = Math.max(0, 0.8 - age / 28);
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(-SHIP_W / 2 - age * 0.4, 0, 5 + age * 0.7, 4 + age * 0.35, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function mobileRenderAlpha() {
+  if (!MOBILE_PERFORMANCE_MODE || state !== 'playing' || !Number.isFinite(simAccumulatorMs)) return 1;
+  return Math.max(0, Math.min(1, simAccumulatorMs / SIM_STEP_MS));
+}
+
+function mobileRenderFrame() {
+  if (!MOBILE_PERFORMANCE_MODE || state !== 'playing') return frame;
+  return frame - (1 - mobileRenderAlpha());
+}
+
+function mobileWorldRenderOffsetX(theme) {
+  if (!MOBILE_PERFORMANCE_MODE || state !== 'playing') return 0;
+  const effScroll = SCROLL_SPEED * ((theme && theme.scrollMult) || 1);
+  return effScroll * (1 - mobileRenderAlpha());
+}
+
+function drawShip(theme) {
+  const vanish = getShipVanishProgress();
+  if (vanish >= 0.995) return; // fully consumed by the portal
+
+  // classic NES-style blinking sprite while invincible -- hard on/off
+  // toggle rather than a smooth fade, matching the authentic retro look
+  // real hardware produced (no alpha blending, just skipping the draw
+  // entirely every other interval). Tied to the game clock so pause
+  // freezes the blink instead of burning through the protection window.
+  const isInvincible = ghostMode || gameNowMs() < invincibilityEndTime;
+  if (isInvincible && Math.floor(gameNowMs() / INVINCIBILITY_BLINK_INTERVAL_MS) % 2 === 0) return;
+
+  drawShipTrailWorld(theme);
+
+  let renderShipY = ship.y;
+  let renderShipRotation = ship.rotation;
+  if (MOBILE_PERFORMANCE_MODE && state === 'playing'
+      && Number.isFinite(simPrevShipY) && Number.isFinite(simPrevShipRotation)
+      && Math.abs(ship.y - simPrevShipY) < 40) {
+    const alpha = mobileRenderAlpha();
+    renderShipY = simPrevShipY + (ship.y - simPrevShipY) * alpha;
+    renderShipRotation = simPrevShipRotation + (ship.rotation - simPrevShipRotation) * alpha;
+  }
+
+  ctx.save();
+  ctx.translate(ship.x, renderShipY);
+  ctx.rotate(renderShipRotation * Math.PI / 180 + vanish * 8);
+  const shrink = 1 - vanish * 0.85;
+  ctx.scale(shrink, shrink);
+  ctx.globalAlpha = 1 - vanish;
+
+  // dim warning glow during the "death window" -- the protection window
+  // has worn off but the next free pass isn't available yet, so a hazard
+  // here costs a real life. A slow, calm pulse signals "not safe anymore"
+  // without the urgency of the blink, since there's no immediate threat,
+  // just a used-up grace period.
+  const nowForGlow = gameNowMs();
+  if (!isInvincible && nowForGlow < freeHitCooldownEndTime) {
+    const pulse = 0.4 + 0.3 * Math.sin(nowForGlow * 0.004);
+    const glowR = SHIP_W * 1.1;
+    const warnGrad = ctx.createRadialGradient(0, 0, SHIP_W * 0.2, 0, 0, glowR);
+    warnGrad.addColorStop(0, `rgba(255,170,0,${pulse})`);
+    warnGrad.addColorStop(1, 'rgba(255,170,0,0)');
+    ctx.fillStyle = warnGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, glowR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawShipTrailLocal(theme);
+
+  if (currentShipTrail().id === 'glitch') {
+    const jx = 5 + Math.sin(frame * 1.1) * 3.5;
+    const jy = Math.cos(frame * 0.9) * 2.2;
+    const drawGhost = (dx, dy, color, alpha) => {
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha *= alpha;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(SHIP_W / 2, 0);
+      ctx.lineTo(-SHIP_W / 2, -SHIP_H / 2);
+      ctx.lineTo(-SHIP_W / 2 + 8, 0);
+      ctx.lineTo(-SHIP_W / 2, SHIP_H / 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+    drawGhost(jx, jy * 0.4, theme.accentB, 0.85);
+    drawGhost(-jx, -jy * 0.4, theme.accentA, 0.8);
+    // horizontal scan tears -- bands of the hull jump left/right
+    const bandH = SHIP_H / 4;
+    for (let b = 0; b < 4; b++) {
+      const tear = (((frame * 2 + b * 19) % 8) - 4) * 2.4;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-SHIP_W, -SHIP_H / 2 + b * bandH, SHIP_W * 2, bandH);
+      ctx.clip();
+      ctx.translate(tear, 0);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha *= 0.55;
+      ctx.fillStyle = b % 2 === 0 ? theme.accentB : theme.accentA;
+      ctx.beginPath();
+      ctx.moveTo(SHIP_W / 2, 0);
+      ctx.lineTo(-SHIP_W / 2, -SHIP_H / 2);
+      ctx.lineTo(-SHIP_W / 2 + 8, 0);
+      ctx.lineTo(-SHIP_W / 2, SHIP_H / 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  drawShipBody(theme, 1);
+
+  ctx.restore();
+}
+
+function drawToxicBarOoze(theme) {
+  ctx.save();
+
+  // top bar: flat toxic pool layer along the inner edge
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = theme.accentA;
+  ctx.fillRect(0, BAR_HEIGHT - 18, W, 18);
+
+  // bottom bar: mirrored flat pool layer
+  ctx.fillRect(0, H - BAR_HEIGHT, W, 18);
+
+  // rising bubbles, staggered and looping, deterministic per index
+  ctx.fillStyle = theme.accentB;
+  const bubbleCount = 6;
+  const riseSpan = 22;
+  for (let i = 0; i < bubbleCount; i++) {
+    const cycle = 90 + (i % 3) * 15;
+    const t = (frame + i * 37) % cycle;
+    const progress = t / cycle;
+    const bx = ((i + 0.5) / bubbleCount) * W;
+    const bubbleR = 2 + (i % 3);
+    ctx.globalAlpha = 0.6 * (1 - progress);
+
+    // top bar bubbles drift downward, dripping out of the ceiling layer
+    // into the play area (mirrors the bottom bar's upward flow)
+    const topBy = (BAR_HEIGHT - 4) + progress * riseSpan;
+    ctx.beginPath();
+    ctx.arc(bx, topBy, bubbleR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // bottom bar bubbles drift upward too (rising out of the floor layer)
+    const botBy = (H - BAR_HEIGHT + 4) - progress * riseSpan;
+    ctx.beginPath();
+    ctx.arc(bx, botBy, bubbleR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawBars(theme) {
+  const barGrad = ctx.createLinearGradient(0, 0, 0, BAR_HEIGHT);
+  barGrad.addColorStop(0, theme.barTop);
+  barGrad.addColorStop(1, theme.barBottom);
+
+  ctx.fillStyle = barGrad;
+  ctx.fillRect(0, 0, W, BAR_HEIGHT);
+  ctx.fillRect(0, H - BAR_HEIGHT, W, BAR_HEIGHT);
+
+  if (theme.bgStyle === 'toxic') {
+    drawToxicBarOoze(theme);
+  }
+
+  ctx.strokeStyle = theme.accentB;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, BAR_HEIGHT);
+  ctx.lineTo(W, BAR_HEIGHT);
+  ctx.moveTo(0, H - BAR_HEIGHT);
+  ctx.lineTo(W, H - BAR_HEIGHT);
+  ctx.stroke();
+
+  ctx.fillStyle = theme.accentB;
+  ctx.font = 'bold 20px Courier New';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = theme.accentB;
+  ctx.shadowBlur = 8;
+  ctx.fillText('SYNTH FLIGHT 2', 14, BAR_HEIGHT / 2 + 2);
+  ctx.shadowBlur = 0;
+  ctx.font = '9px Courier New';
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  if (DEV_TOOLS_ENABLED) ctx.fillText('build 2026-08-28-vortex-overlap-check', 14, BAR_HEIGHT + 10);
+  ctx.textAlign = 'right';
+  ctx.font = 'bold 13px Courier New';
+  ctx.fillStyle = theme.accentA;
+  ctx.fillText(FORK_GALLERY_ACTIVE && theme.name === 'INFERNO' ? 'INFERNO  STYLE GALLERY' : theme.name, W - 14, BAR_HEIGHT / 2 + 2);
+
+  // lives indicator -- small triangles left of the theme name
+  const liveSize = 7;
+  let lx = W - 14 - ctx.measureText(theme.name).width - 16;
+  for (let i = 0; i < MAX_LIVES; i++) {
+    ctx.save();
+    ctx.translate(lx, BAR_HEIGHT / 2);
+    ctx.fillStyle = i < lives ? theme.accentB : 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.moveTo(liveSize, 0);
+    ctx.lineTo(-liveSize * 0.7, -liveSize * 0.7);
+    ctx.lineTo(-liveSize * 0.7, liveSize * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    lx -= liveSize * 2.2;
+  }
+
+  ctx.font = 'bold 15px Courier New';
+  ctx.fillStyle = theme.accentA;
+  ctx.textAlign = 'left';
+  const zoneDist = Math.floor(distance - zoneStartDistance);
+  const distLabel = (theme.isBossZone || theme.isMiniBossZone)
+    ? ('DISTANCE: ' + zoneDist)
+    : ('DISTANCE: ' + zoneDist + ' / ' + THEME_DISTANCE);
+  ctx.fillText(distLabel, 14, H - BAR_HEIGHT / 2 + 1);
+  if (!theme.isBossZone && !theme.isMiniBossZone) {
+    ctx.textAlign = 'right';
+    ctx.fillText('BEST: ' + best, W - 14, H - BAR_HEIGHT / 2 + 1);
+  }
+}
+
+function drawWarpEffect() {
+  const progress = 1 - (warpTimer / WARP_DURATION); // 0 -> 1
+  const oldTheme = currentTheme();
+  const newTheme = THEMES[nextThemeIndex];
+
+  const cx = W / 2;
+  const cy = (PLAY_TOP + PLAY_BOTTOM) / 2;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const streakCount = 46;
+  const maxLen = Math.max(W, H);
+  for (let i = 0; i < streakCount; i++) {
+    const angle = (i / streakCount) * Math.PI * 2 + progress * 2;
+    const len = maxLen * Math.min(1, progress * 1.6) * (0.5 + 0.5 * Math.sin(i * 12.9898));
+    const x2 = cx + Math.cos(angle) * len;
+    const y2 = cy + Math.sin(angle) * len * 0.6;
+    ctx.strokeStyle = lerpColor(oldTheme.accentB, newTheme.accentA, progress);
+    ctx.globalAlpha = 0.5 * (1 - Math.abs(progress - 0.5) * 1.4);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // flash at midpoint
+  const flashStrength = Math.max(0, 1 - Math.abs(progress - 0.5) * 4);
+  if (flashStrength > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${flashStrength * 0.5})`;
+    ctx.fillRect(0, PLAY_TOP, W, PLAY_BOTTOM - PLAY_TOP);
+  }
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 28px Courier New';
+  ctx.fillStyle = newTheme.accentB;
+  ctx.shadowColor = newTheme.accentB;
+  ctx.shadowBlur = 16;
+  ctx.globalAlpha = Math.min(1, progress * 2, (1 - progress) * 3 + 0.3);
+  ctx.fillText((themeIndex === nextThemeIndex ? 'LAUNCHING ' : 'ENTERING ') + newTheme.name, cx, cy);
+  ctx.restore();
+}
+
+function drawTerrain(theme) {
+  if (terrainSegments.length < 2) return;
+
+  ctx.save();
+  // shadowBlur on these giant cave fills is what tanks Inferno in Chrome
+  ctx.shadowBlur = 0;
+
+  // top land mass
+  const topGrad = ctx.createLinearGradient(0, PLAY_TOP, 0, PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.55);
+  topGrad.addColorStop(0, theme.accentA);
+  topGrad.addColorStop(1, theme.accentB);
+  ctx.fillStyle = topGrad;
+  ctx.beginPath();
+  ctx.moveTo(terrainSegments[0].x, PLAY_TOP - 4);
+  for (const s of terrainSegments) {
+    ctx.lineTo(s.x, s.topY);
+  }
+  ctx.lineTo(terrainSegments[terrainSegments.length - 1].x, PLAY_TOP - 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = theme.accentB;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  terrainSegments.forEach((s, i) => {
+    if (i === 0) ctx.moveTo(s.x, s.topY); else ctx.lineTo(s.x, s.topY);
+  });
+  ctx.stroke();
+
+  // bottom land mass
+  const botGrad = ctx.createLinearGradient(0, PLAY_BOTTOM - (PLAY_BOTTOM - PLAY_TOP) * 0.55, 0, PLAY_BOTTOM);
+  botGrad.addColorStop(0, theme.accentB);
+  botGrad.addColorStop(1, theme.accentA);
+  ctx.fillStyle = botGrad;
+  ctx.beginPath();
+  ctx.moveTo(terrainSegments[0].x, PLAY_BOTTOM + 4);
+  for (const s of terrainSegments) {
+    ctx.lineTo(s.x, s.bottomY);
+  }
+  ctx.lineTo(terrainSegments[terrainSegments.length - 1].x, PLAY_BOTTOM + 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  terrainSegments.forEach((s, i) => {
+    if (i === 0) ctx.moveTo(s.x, s.bottomY); else ctx.lineTo(s.x, s.bottomY);
+  });
+  ctx.stroke();
+
+  if (theme.iceChunks) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    terrainSegments.forEach((s, i) => {
+      if (i === 0) ctx.moveTo(s.x, s.topY + 3); else ctx.lineTo(s.x, s.topY + 3);
+    });
+    ctx.stroke();
+    ctx.beginPath();
+    terrainSegments.forEach((s, i) => {
+      if (i === 0) ctx.moveTo(s.x, s.bottomY - 3); else ctx.lineTo(s.x, s.bottomY - 3);
+    });
+    ctx.stroke();
+  }
+
+  // fork island: a solid mass splitting the passage -- draw only the contiguous
+  // runs of segments that actually have thickness, so the outline never traces
+  // through the zero-height collapsed points before/after a fork
+  const ISLAND_EPS = 1.5;
+  let run = [];
+  const flushRun = () => {
+    if (run.length < 2) { run = []; return; }
+    const islGrad = ctx.createLinearGradient(0, PLAY_TOP, 0, PLAY_BOTTOM);
+    islGrad.addColorStop(0, theme.accentB);
+    islGrad.addColorStop(0.5, theme.accentA);
+    islGrad.addColorStop(1, theme.accentB);
+    ctx.fillStyle = islGrad;
+    ctx.beginPath();
+    const leftH = run[0].islandBottom - run[0].islandTop;
+    let bodyH = 0;
+    for (let i = 0; i < run.length; i++) {
+      const h = run[i].islandBottom - run[i].islandTop;
+      if (h > bodyH) bodyH = h;
+    }
+    const shape = run[0].islandShape || '';
+    const allowTip = !shape || shape === 'arrow' || shape === 'teardrop' || shape === 'hull';
+    const tapered = allowTip && leftH < bodyH * 0.5 && run.length > 1;
+    if (tapered) {
+      const a = run[0];
+      const b = run[1];
+      const cy0 = (a.islandTop + a.islandBottom) / 2;
+      const cy1 = (b.islandTop + b.islandBottom) / 2;
+      const vx = a.x - b.x;
+      const vy = cy0 - cy1;
+      const inv = 1 / (Math.hypot(vx, vy) || 1);
+      const tipLen = Math.max(16, leftH * 1.1);
+      ctx.moveTo(a.x + vx * inv * tipLen, cy0 + vy * inv * tipLen);
+    } else {
+      ctx.moveTo(run[0].x, run[0].islandTop);
+    }
+    for (let i = tapered ? 0 : 1; i < run.length; i++) {
+      ctx.lineTo(run[i].x, run[i].islandTop);
+    }
+    for (let i = run.length - 1; i >= 0; i--) ctx.lineTo(run[i].x, run[i].islandBottom);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = theme.accentA;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    const label = run[0].islandLabel;
+    if (label) {
+      let minTop = run[0].islandTop;
+      let midX = 0;
+      for (let i = 0; i < run.length; i++) {
+        if (run[i].islandTop < minTop) minTop = run[i].islandTop;
+        midX += run[i].x;
+      }
+      midX /= run.length;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.font = 'bold 16px Courier New';
+      ctx.fillStyle = '#fff8e8';
+      ctx.strokeStyle = '#1a0000';
+      ctx.lineWidth = 4;
+      ctx.strokeText(label, midX, minTop - 10);
+      ctx.fillText(label, midX, minTop - 10);
+      ctx.restore();
+    }
+    run = [];
+  };
+  for (const s of terrainSegments) {
+    if (s.islandBottom - s.islandTop > ISLAND_EPS) {
+      run.push(s);
+    } else {
+      flushRun();
+    }
+  }
+  flushRun();
+
+  ctx.restore();
+}
+
+function drawPortalRing() {
+  if (!portalObject) return;
+  const theme = currentTheme();
+  const nextTheme = THEMES[(themeIndex + 1) % THEMES.length];
+  const cx = portalObject.x;
+  const halfWidth = 34 + Math.sin(frame * 0.05) * 4;
+
+  ctx.save();
+
+  // swirling interior fill, spanning the full play height, blended toward
+  // the next zone's colors
+  const grad = ctx.createLinearGradient(cx - halfWidth, 0, cx + halfWidth, 0);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(0.3, nextTheme.accentB);
+  grad.addColorStop(0.5, theme.accentA);
+  grad.addColorStop(0.7, nextTheme.accentB);
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = grad;
+  ctx.fillRect(cx - halfWidth, PLAY_TOP, halfWidth * 2, PLAY_BOTTOM - PLAY_TOP);
+
+  // horizontal swirl bands drifting up/down for a portal-energy feel
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = nextTheme.accentA;
+  ctx.lineWidth = 2;
+  const bandSpacing = 26;
+  const bandOffset = (frame * 1.6) % bandSpacing;
+  for (let y = PLAY_TOP - bandSpacing + bandOffset; y < PLAY_BOTTOM + bandSpacing; y += bandSpacing) {
+    const wobble = Math.sin(frame * 0.08 + y * 0.05) * halfWidth * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - halfWidth * 0.8 + wobble, y);
+    ctx.quadraticCurveTo(cx, y - 6, cx + halfWidth * 0.8 + wobble, y);
+    ctx.stroke();
+  }
+
+  // glowing left/right edges spanning the full window, top to bottom --
+  // deliberately NOT theme.accentB here, since that's the same color the
+  // standard gate obstacle uses for its own glow/gradient, which made the
+  // portal's own edge look identical to a real obstacle overlapping it
+  ctx.globalAlpha = 0.95;
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 22;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(cx - halfWidth, PLAY_TOP);
+  ctx.lineTo(cx - halfWidth, PLAY_BOTTOM);
+  ctx.moveTo(cx + halfWidth, PLAY_TOP);
+  ctx.lineTo(cx + halfWidth, PLAY_BOTTOM);
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(cx - halfWidth, PLAY_TOP);
+  ctx.lineTo(cx - halfWidth, PLAY_BOTTOM);
+  ctx.moveTo(cx + halfWidth, PLAY_TOP);
+  ctx.lineTo(cx + halfWidth, PLAY_BOTTOM);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function getBossShakeOffset() {
+  if (!boss || !currentTheme().isBossZone) return { x: 0, y: 0 };
+  if (bossFullyDefeated) return { x: 0, y: 0 };
+
+  const entranceElapsed = frame - bossSpawnFrame;
+  const entranceProgress = Math.min(1, entranceElapsed / BOSS_ENTRANCE_DURATION);
+  if (entranceProgress >= BOSS_ENTRANCE_ASSEMBLE_END && entranceProgress < 1) {
+    const stageProgress = (entranceProgress - BOSS_ENTRANCE_ASSEMBLE_END) / (1 - BOSS_ENTRANCE_ASSEMBLE_END);
+    const shakeDecay = Math.max(0, 1 - stageProgress * 3);
+    const shakeMag = 8 * shakeDecay;
+    return { x: Math.sin(frame * 1.9) * shakeMag, y: Math.cos(frame * 2.3) * shakeMag };
+  }
+
+  const sinceTransitionEnd = frame - bossTransitionEndFrame;
+  if (sinceTransitionEnd >= 0 && sinceTransitionEnd < BOSS_TRANSITION_COMPLETE_FX_DURATION) {
+    const stageProgress = sinceTransitionEnd / BOSS_TRANSITION_COMPLETE_FX_DURATION;
+    const shakeDecay = Math.max(0, 1 - stageProgress * 2.5);
+    const shakeMag = 10 * shakeDecay;
+    return { x: Math.sin(frame * 1.9) * shakeMag, y: Math.cos(frame * 2.3) * shakeMag };
+  }
+
+  if (bossTransitioning && bossTransitionTargetPhase === 5) {
+    const stageProgress = (frame - bossTransitionStartFrame) / BOSS_PHASE5_TRANSITION_DURATION;
+    if (stageProgress >= 0.2 && stageProgress < 0.68) {
+      // shake builds through the burst, peaking hardest right at the flash
+      const localProgress = (stageProgress - 0.2) / 0.48;
+      const shakeMag = 14 * Math.sin(localProgress * Math.PI);
+      return { x: Math.sin(frame * 2.1) * shakeMag, y: Math.cos(frame * 2.6) * shakeMag };
+    }
+  }
+
+  if (bossFinalChargeActive) {
+    const stageProgress = (frame - bossFinalChargeStartFrame) / BOSS_FINAL_CHARGE_DURATION;
+    const shakeMag = 4 + stageProgress * 12; // builds steadily toward detonation
+    return { x: Math.sin(frame * 1.7) * shakeMag, y: Math.cos(frame * 2.2) * shakeMag };
+  }
+
+  if (bossExplosionActive) {
+    const stageProgress = (frame - bossExplosionStartFrame) / BOSS_EXPLOSION_DURATION;
+    if (stageProgress < 0.45) {
+      const shakeMag = 20; // maximum violence during the burst and white-out
+      return { x: Math.sin(frame * 3.3) * shakeMag, y: Math.cos(frame * 3.9) * shakeMag };
+    } else if (stageProgress < 0.7) {
+      const localProgress = (stageProgress - 0.45) / 0.25;
+      const shakeMag = 20 * Math.max(0, 1 - localProgress);
+      return { x: Math.sin(frame * 3.3) * shakeMag, y: Math.cos(frame * 3.9) * shakeMag };
+    }
+  }
+
+  return { x: 0, y: 0 };
+}
+
 function updateBgmForState() {
   if (!audioUnlocked) return;
   if (!audioSettings.bgmEnabled) {
@@ -61,6 +1095,7 @@ function draw() {
     if (worldRenderOffsetX) ctx.translate(worldRenderOffsetX, 0);
     if (theme.obstacleShape === 'terrain') {
       drawTerrain(theme);
+      if (theme.iceChunks) drawGates(theme);
     } else {
       drawGates(theme);
     }
@@ -107,7 +1142,7 @@ function updateOverlay() {
   if (state === 'home') {
     overlay.innerHTML = `
       <div class="game-logo-plate home-title-plate">
-        <div class="game-logo home-title">SYNTH FLIGHT</div>
+        <div class="game-logo home-title">SYNTH FLIGHT 2</div>
       </div>
       <div id="menu-start-prompt" class="clickable" data-action="go-to-options">CLICK TO START</div>
     `;
@@ -118,7 +1153,7 @@ function updateOverlay() {
     const displayLabel = isLockedExtra ? '???' : difficultyLabels[selectedDifficulty];
     const displayClass = isLockedExtra ? '' : difficultyClasses[selectedDifficulty];
     overlay.innerHTML = `
-      <div class="game-logo home-title options-title">SYNTH FLIGHT</div>
+      <div class="game-logo home-title options-title">SYNTH FLIGHT 2</div>
       <div class="options-panel-v2">
         <div class="panel-header">OPTIONS</div>
         <div class="options-fly-hint">${MOBILE_PERFORMANCE_MODE ? 'HOLD TO FLY  ·  TAP AND HOLD, RELEASE TO FALL' : 'HOLD TO FLY  ·  LEFT CLICK OR SPACE, RELEASE TO FALL'}</div>
@@ -2212,1778 +3247,5 @@ THEMES.forEach((t, i) => {
 const DEFAULT_PULSING_ORB_EVENTS = {};
 THEMES.forEach((t, i) => {
   if (t.pulsingOrbEvents) DEFAULT_PULSING_ORB_EVENTS[i] = JSON.parse(JSON.stringify(t.pulsingOrbEvents));
-});
-
-function getPreviewLayout() {
-  const h = previewCanvas.height;
-  const pTop = 30, pBot = h - 30;
-  return { pTop, pBot, pHeight: pBot - pTop, scale: previewScale };
-}
-// scrolls the preview so a given world-x position is centered in view --
-// used after "Add" buttons, since a new hazard's trigger distance can be
-// far from wherever the editor is currently scrolled, making it look like
-// the click did nothing when it actually added something out of sight
-function scrollPreviewTo(worldX) {
-  const wrap = document.getElementById('preview-canvas-wrap');
-  wrap.scrollLeft = Math.max(0, worldX * previewScale - wrap.clientWidth / 2);
-}
-// sets the preview status message while preserving scroll position --
-// changing this text can reflow the toolbar (longer messages especially),
-// which as a side effect can shift the scrollable preview wrapper's own
-// scroll position, silently moving the user's view without any object
-// actually moving. Used everywhere previewStatus.textContent would
-// otherwise be set directly.
-function setPreviewStatus(text) {
-  const wrap = document.getElementById('preview-canvas-wrap');
-  const savedScroll = wrap ? wrap.scrollLeft : null;
-  previewStatus.textContent = text;
-  if (wrap && savedScroll !== null) {
-    wrap.scrollLeft = savedScroll;
-    // the reflow this text change triggers can shift scroll asynchronously,
-    // after this function already returns -- catch it again post-paint
-    requestAnimationFrame(() => { wrap.scrollLeft = savedScroll; });
-  }
-}
-// picks a trigger distance for a newly-added event that's genuinely free,
-// rather than max(existing)+increment -- which, once the increment pushed
-// past the zone-length cap, would clamp every subsequent add to the exact
-// same distance as whatever was already there. Repeated clicks then
-// silently stacked new events on top of old ones at an identical position:
-// data was added correctly each time, but nothing looked different and
-// the view never moved, since the position genuinely hadn't changed.
-// Finds the widest gap between existing trigger distances (including the
-// zone's start and end as boundaries) and places the new one in the
-// middle of it, guaranteeing a distinct position as long as any gap wider
-// than the minimum spacing remains.
-function findFreeTriggerDistance(existingDistances, zoneMin, zoneMax, minSpacing) {
-  const sorted = [zoneMin, ...existingDistances.slice().sort((a, b) => a - b), zoneMax];
-  let bestGapStart = zoneMin, bestGapEnd = zoneMax, bestGapSize = -1;
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const gapSize = sorted[i + 1] - sorted[i];
-    if (gapSize > bestGapSize) { bestGapSize = gapSize; bestGapStart = sorted[i]; bestGapEnd = sorted[i + 1]; }
-  }
-  const candidate = Math.round((bestGapStart + bestGapEnd) / 2);
-  // last-resort fallback if the zone is genuinely saturated -- still
-  // distinct from anything currently there, even if uncomfortably close
-  if (bestGapSize < minSpacing && existingDistances.length) {
-    return Math.min(zoneMax, Math.max(...existingDistances) + minSpacing);
-  }
-  return candidate;
-}
-function yToScreenPreview(y, layout) {
-  return layout.pTop + ((y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-}
-function boltScreenBox(g, layout) {
-  const sx = g.x * layout.scale;
-  const top = g.y - g.height / 2;
-  const bottom = g.y + g.height / 2;
-  const left = sx - Math.max(2, g.swingWidth * layout.scale / 2);
-  const width = Math.max(4, g.swingWidth * layout.scale);
-  const sTop = yToScreenPreview(top, layout);
-  const sBottom = yToScreenPreview(bottom, layout);
-  return { left, top: sTop, width, height: sBottom - sTop, right: left + width, bottom: sBottom };
-}
-
-function updateBoltPanel() {
-  const shapeBtn = document.getElementById('preview-bolt-shape');
-  const delBtn = document.getElementById('preview-bolt-delete');
-  const addBtn = document.getElementById('preview-bolt-add');
-  const th = THEMES[currentPreviewZone];
-  addBtn.style.display = (th.obstacleShape === 'lbolt' && previewEditMode) ? '' : 'none';
-  if (previewSelectedBolt && previewEditMode) {
-    const srcBolt = th.pattern[previewSelectedBolt._entryIdx].bolts[previewSelectedBolt._boltIdx];
-    shapeBtn.style.display = '';
-    delBtn.style.display = '';
-    shapeBtn.textContent = 'Shape: ' + srcBolt.shape;
-  } else {
-    shapeBtn.style.display = 'none';
-    delBtn.style.display = 'none';
-  }
-}
-
-function updateBlackHolePanel() {
-  const delBtn = document.getElementById('preview-bh-delete');
-  const addBtn = document.getElementById('preview-bh-add');
-  const sizeControls = document.getElementById('preview-bh-size-controls');
-  const coreInput = document.getElementById('preview-bh-core-input');
-  const reachInput = document.getElementById('preview-bh-reach-input');
-  const th = THEMES[currentPreviewZone];
-  const isBlackHoleZone = !!th.blackHoleEvents;
-  addBtn.style.display = (isBlackHoleZone && previewEditMode) ? '' : 'none';
-  const hasSelection = isBlackHoleZone && previewEditMode && previewSelectedBlackHole;
-  delBtn.style.display = hasSelection ? '' : 'none';
-  sizeControls.style.display = hasSelection ? 'flex' : 'none';
-  if (hasSelection) {
-    const srcEvent = th.blackHoleEvents[previewSelectedBlackHole._eventIdx];
-    // only overwrite if not currently focused, so typing isn't interrupted
-    if (document.activeElement !== coreInput) coreInput.value = srcEvent.coreR;
-    if (document.activeElement !== reachInput) reachInput.value = srcEvent.reachR;
-  }
-}
-
-function updateWindVortexPanel() {
-  const delBtn = document.getElementById('preview-vortex-delete');
-  const addBtn = document.getElementById('preview-vortex-add');
-  const sizeControls = document.getElementById('preview-vortex-size-controls');
-  const reachInput = document.getElementById('preview-vortex-reach-input');
-  const th = THEMES[currentPreviewZone];
-  const isVortexZone = !!th.windVortexEvents;
-  addBtn.style.display = (isVortexZone && previewEditMode) ? '' : 'none';
-  const hasSelection = isVortexZone && previewEditMode && previewSelectedWindVortex;
-  delBtn.style.display = hasSelection ? '' : 'none';
-  sizeControls.style.display = hasSelection ? 'flex' : 'none';
-  if (hasSelection) {
-    const srcEvent = th.windVortexEvents[previewSelectedWindVortex._vortexIdx];
-    if (document.activeElement !== reachInput) reachInput.value = srcEvent.reachR;
-  }
-}
-
-function updateCloudArcPanel() {
-  const delBtn = document.getElementById('preview-arc-delete');
-  const addBtn = document.getElementById('preview-arc-add');
-  const th = THEMES[currentPreviewZone];
-  const isArcZone = !!th.cloudArcEvents;
-  addBtn.style.display = (isArcZone && previewEditMode) ? '' : 'none';
-  const hasSelection = isArcZone && previewEditMode && previewSelectedCloudArc;
-  delBtn.style.display = hasSelection ? '' : 'none';
-}
-
-function updateLensingZonePanel() {
-  const delBtn = document.getElementById('preview-lens-delete');
-  const addBtn = document.getElementById('preview-lens-add');
-  const sizeControls = document.getElementById('preview-lens-size-controls');
-  const coreInput = document.getElementById('preview-lens-core-input');
-  const zoneInput = document.getElementById('preview-lens-zone-input');
-  const th = THEMES[currentPreviewZone];
-  const isLensingZone = !!th.lensingZoneEvents;
-  addBtn.style.display = (isLensingZone && previewEditMode) ? '' : 'none';
-  const hasSelection = isLensingZone && previewEditMode && previewSelectedLensingZone;
-  delBtn.style.display = hasSelection ? '' : 'none';
-  sizeControls.style.display = hasSelection ? 'flex' : 'none';
-  if (hasSelection) {
-    const srcEvent = th.lensingZoneEvents[previewSelectedLensingZone._lensIdx];
-    if (document.activeElement !== coreInput) coreInput.value = srcEvent.coreR;
-    if (document.activeElement !== zoneInput) zoneInput.value = srcEvent.zoneRadius;
-  }
-}
-
-function updateSupernovaPanel() {
-  const delBtn = document.getElementById('preview-nova-delete');
-  const addBtn = document.getElementById('preview-nova-add');
-  const sizeControls = document.getElementById('preview-nova-size-controls');
-  const planetInput = document.getElementById('preview-nova-planet-input');
-  const dormantInput = document.getElementById('preview-nova-dormant-input');
-  const dormantWrap = document.getElementById('preview-nova-dormant-wrap');
-  const warningInput = document.getElementById('preview-nova-warning-input');
-  const variantBtn = document.getElementById('preview-nova-variant');
-  const th = THEMES[currentPreviewZone];
-  const isSupernovaZone = !!th.supernovaEvents;
-  addBtn.style.display = (isSupernovaZone && previewEditMode) ? '' : 'none';
-  const hasSelection = isSupernovaZone && previewEditMode && previewSelectedSupernova;
-  delBtn.style.display = hasSelection ? '' : 'none';
-  sizeControls.style.display = hasSelection ? 'flex' : 'none';
-  if (hasSelection) {
-    const srcEvent = th.supernovaEvents[previewSelectedSupernova._novaIdx];
-    const variant = srcEvent.variant || 'timer';
-    if (document.activeElement !== planetInput) planetInput.value = srcEvent.planetR;
-    if (document.activeElement !== dormantInput) dormantInput.value = srcEvent.dormantFrames;
-    if (document.activeElement !== warningInput) warningInput.value = srcEvent.warningFrames;
-    variantBtn.textContent = 'Variant: ' + (variant === 'onscreen' ? 'On-Screen' : 'Timer');
-    // dormant time has no effect on the onscreen variant -- hide it so
-    // it doesn't look like a control that should do something
-    dormantWrap.style.display = variant === 'onscreen' ? 'none' : 'inline-flex';
-  }
-}
-
-function updateTurretPanel() {
-  const delBtn = document.getElementById('preview-turret-delete');
-  const addBtn = document.getElementById('preview-turret-add');
-  const controls = document.getElementById('preview-turret-controls');
-  const anchorBtn = document.getElementById('preview-turret-anchor');
-  const angleInput = document.getElementById('preview-turret-angle-input');
-  const shotsInput = document.getElementById('preview-turret-shots-input');
-  const intervalInput = document.getElementById('preview-turret-interval-input');
-  const th = THEMES[currentPreviewZone];
-  const isTurretZone = !!th.turretEvents;
-  addBtn.style.display = (isTurretZone && previewEditMode) ? '' : 'none';
-  const hasSelection = isTurretZone && previewEditMode && previewSelectedTurret;
-  delBtn.style.display = hasSelection ? '' : 'none';
-  controls.style.display = hasSelection ? 'flex' : 'none';
-  if (hasSelection) {
-    const srcEvent = th.turretEvents[previewSelectedTurret._turretIdx];
-    anchorBtn.textContent = 'Anchor: ' + (srcEvent.anchor === 'top' ? 'Top' : 'Bottom');
-    if (document.activeElement !== angleInput) angleInput.value = srcEvent.fireAngleDeg || 0;
-    if (document.activeElement !== shotsInput) shotsInput.value = srcEvent.numShots;
-    if (document.activeElement !== intervalInput) intervalInput.value = srcEvent.fireInterval;
-  }
-}
-
-function updateEmpPanel() {
-  const delBtn = document.getElementById('preview-emp-delete');
-  const addBtn = document.getElementById('preview-emp-add');
-  const controls = document.getElementById('preview-emp-controls');
-  const anchorBtn = document.getElementById('preview-emp-anchor');
-  const reachInput = document.getElementById('preview-emp-reach-input');
-  const chargeInput = document.getElementById('preview-emp-charge-input');
-  const dischargeInput = document.getElementById('preview-emp-discharge-input');
-  const th = THEMES[currentPreviewZone];
-  const isEmpZone = !!th.empEvents;
-  addBtn.style.display = (isEmpZone && previewEditMode) ? '' : 'none';
-  const hasSelection = isEmpZone && previewEditMode && previewSelectedEmp;
-  delBtn.style.display = hasSelection ? '' : 'none';
-  controls.style.display = hasSelection ? 'flex' : 'none';
-  if (hasSelection) {
-    const srcEvent = th.empEvents[previewSelectedEmp._empIdx];
-    anchorBtn.textContent = 'Anchor: ' + (srcEvent.anchor === 'top' ? 'Top' : 'Bottom');
-    if (document.activeElement !== reachInput) reachInput.value = srcEvent.reachDepth;
-    if (document.activeElement !== chargeInput) chargeInput.value = srcEvent.chargeFrames;
-    if (document.activeElement !== dischargeInput) dischargeInput.value = srcEvent.dischargeFrames;
-  }
-}
-
-function updateOrbPanel() {
-  const delBtn = document.getElementById('preview-orb-delete');
-  const addBtn = document.getElementById('preview-orb-add');
-  const controls = document.getElementById('preview-orb-controls');
-  const minrInput = document.getElementById('preview-orb-minr-input');
-  const maxrInput = document.getElementById('preview-orb-maxr-input');
-  const periodInput = document.getElementById('preview-orb-period-input');
-  const th = THEMES[currentPreviewZone];
-  const isOrbZone = !!th.pulsingOrbEvents;
-  addBtn.style.display = (isOrbZone && previewEditMode) ? '' : 'none';
-  const hasSelection = isOrbZone && previewEditMode && previewSelectedOrb;
-  delBtn.style.display = hasSelection ? '' : 'none';
-  controls.style.display = hasSelection ? 'flex' : 'none';
-  if (hasSelection) {
-    const srcEvent = th.pulsingOrbEvents[previewSelectedOrb._orbIdx];
-    if (document.activeElement !== minrInput) minrInput.value = srcEvent.minR;
-    if (document.activeElement !== maxrInput) maxrInput.value = srcEvent.maxR;
-    if (document.activeElement !== periodInput) periodInput.value = srcEvent.period;
-  }
-}
-
-document.getElementById('preview-toggle').addEventListener('click', () => {
-  previewOverlay.classList.add('active');
-  runPreview(currentPreviewZone);
-});
-document.getElementById('preview-close').addEventListener('click', () => {
-  previewOverlay.classList.remove('active');
-});
-document.querySelectorAll('.preview-zone-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.preview-zone-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentPreviewZone = parseInt(btn.dataset.zone, 10);
-    previewSelectedBolt = null;
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = null;
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-    updateLensingZonePanel();
-    updateSupernovaPanel();
-    updateTurretPanel();
-    updateEmpPanel();
-    updateOrbPanel();
-    runPreview(currentPreviewZone);
-  });
-});
-
-document.getElementById('preview-edit-toggle').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (th.obstacleShape !== 'lbolt' && !th.blackHoleEvents && !th.lensingZoneEvents && !th.supernovaEvents && !th.turretEvents && !th.empEvents && !th.pulsingOrbEvents) {
-    setPreviewStatus('Editing only supports floating-bolt, black hole, lensing zone, supernova, turret, EMP, and orb hazards right now.');
-    return;
-  }
-  previewEditMode = !previewEditMode;
-  document.getElementById('preview-edit-toggle').textContent = 'Edit Mode: ' + (previewEditMode ? 'On' : 'Off');
-  document.getElementById('preview-edit-toggle').style.background = previewEditMode ? 'rgba(157,123,255,0.4)' : '';
-  if (!previewEditMode) {
-    previewSelectedBolt = null;
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = null;
-  }
-  updateBoltPanel();
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  if (previewLastData) drawZonePreview(previewLastData);
-});
-
-document.getElementById('preview-bolt-shape').addEventListener('click', () => {
-  if (!previewSelectedBolt) return;
-  const th = THEMES[currentPreviewZone];
-  const srcBolt = th.pattern[previewSelectedBolt._entryIdx].bolts[previewSelectedBolt._boltIdx];
-  const keys = Object.keys(BOLT_SHAPES);
-  const idx = keys.indexOf(srcBolt.shape);
-  srcBolt.shape = keys[(idx + 1) % keys.length];
-  const savedSel = { entryIdx: previewSelectedBolt._entryIdx, boltIdx: previewSelectedBolt._boltIdx };
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  previewSelectedBolt = previewLastData.obstacles.find(g => g._entryIdx === savedSel.entryIdx && g._boltIdx === savedSel.boltIdx) || null;
-  updateBoltPanel();
-  drawZonePreview(previewLastData);
-});
-
-document.getElementById('preview-bolt-delete').addEventListener('click', () => {
-  if (!previewSelectedBolt) return;
-  const th = THEMES[currentPreviewZone];
-  const idx = previewSelectedBolt._entryIdx;
-  const entry = th.pattern[idx];
-  entry.bolts.splice(previewSelectedBolt._boltIdx, 1);
-  if (entry.bolts.length === 0) {
-    // this entry's spacing is the gap leading to the NEXT entry -- removing
-    // it outright would erase that gap from the cumulative total, shifting
-    // every subsequent bolt left to fill the space. fold it into the
-    // preceding entry's spacing instead so nothing else moves.
-    if (idx === 0) {
-      // the very first entry is spawned at a fixed starting position, not
-      // reached via any spacing value -- folding its spacing into the last
-      // entry only fixes the loop-around point, not this first spawn. leave
-      // it in place as an empty placeholder instead: it spawns nothing, but
-      // its spacing still correctly carries through to the next entry.
-    } else if (th.pattern.length > 1) {
-      th.pattern[idx - 1].spacing += entry.spacing;
-      th.pattern.splice(idx, 1);
-    } else {
-      th.pattern.splice(idx, 1);
-    }
-  }
-  previewSelectedBolt = null;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateBoltPanel();
-  drawZonePreview(previewLastData);
-});
-
-document.getElementById('preview-bolt-add').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (th.obstacleShape !== 'lbolt') return;
-
-  let targetEntryIdx, targetBoltIdx;
-  const newBoltDefaults = { heightFrac: 0.3, swingWidthPx: 36, shape: 'E1', onFrames: 70, offFrames: 90, phaseFrac: 0.3 };
-
-  if (previewSelectedBolt) {
-    // a bolt is selected -- add a sibling to its same pattern entry, so it
-    // repeats alongside the existing one at every cycle of that entry
-    const entryIdx = previewSelectedBolt._entryIdx;
-    const entry = th.pattern[entryIdx];
-    const srcBolt = entry.bolts[previewSelectedBolt._boltIdx];
-    entry.bolts.push({ ...newBoltDefaults, xJitter: srcBolt.xJitter, yFrac: (srcBolt.yFrac + 0.3) % 1 });
-    targetEntryIdx = entryIdx;
-    targetBoltIdx = entry.bolts.length - 1;
-  } else {
-    // nothing selected -- insert a whole new pattern entry (a new "beat" in
-    // the cycle) by splitting whichever existing entry has the largest
-    // spacing, similar in spirit to how other Add buttons find free room
-    let bestIdx = 0, bestSpacing = -1;
-    th.pattern.forEach((entry, i) => {
-      if (entry.spacing > bestSpacing) { bestSpacing = entry.spacing; bestIdx = i; }
-    });
-    const splitEntry = th.pattern[bestIdx];
-    const half = Math.round(splitEntry.spacing / 2);
-    splitEntry.spacing = half;
-    th.pattern.splice(bestIdx + 1, 0, { spacing: bestSpacing - half, bolts: [{ ...newBoltDefaults, xJitter: 0, yFrac: 0.5 }] });
-    targetEntryIdx = bestIdx + 1;
-    targetBoltIdx = 0;
-  }
-
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  // the pattern repeats several times across the zone -- find() naturally
-  // lands on the first, earliest occurrence of the new bolt
-  previewSelectedBolt = previewLastData.obstacles.find(g => g.type === 'lbolt' && g._entryIdx === targetEntryIdx && g._boltIdx === targetBoltIdx) || null;
-  if (previewSelectedBolt) scrollPreviewTo(previewSelectedBolt.x);
-  updateBoltPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Bolt added.');
-});
-
-document.getElementById('preview-bh-delete').addEventListener('click', () => {
-  if (!previewSelectedBlackHole) return;
-  const th = THEMES[currentPreviewZone];
-  th.blackHoleEvents.splice(previewSelectedBlackHole._eventIdx, 1);
-  previewSelectedBlackHole = null;
-  previewSelectedWindVortex = null;
-  previewSelectedCloudArc = null;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Black hole deleted.');
-});
-
-document.getElementById('preview-bh-add').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (!th.blackHoleEvents) return;
-  const usedDistances = th.blackHoleEvents.map(e => e.triggerDistance);
-  const newDistance = findFreeTriggerDistance(usedDistances, 20, 950, 100);
-  th.blackHoleEvents.push({ triggerDistance: newDistance, yFrac: 0.5, coreR: 80, reachR: 220 });
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  const newIdx = th.blackHoleEvents.length - 1;
-  previewSelectedBlackHole = previewLastData.obstacles.find(g => g._eventIdx === newIdx) || null;
-  if (previewSelectedBlackHole) scrollPreviewTo(previewSelectedBlackHole.x);
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Black hole added.');
-});
-
-document.getElementById('preview-vortex-delete').addEventListener('click', () => {
-  if (!previewSelectedWindVortex) return;
-  const th = THEMES[currentPreviewZone];
-  th.windVortexEvents.splice(previewSelectedWindVortex._vortexIdx, 1);
-  previewSelectedWindVortex = null;
-  previewSelectedCloudArc = null;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Wind vortex deleted.');
-});
-
-document.getElementById('preview-vortex-add').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (!th.windVortexEvents) return;
-  const usedDistances = th.windVortexEvents.map(e => e.triggerDistance);
-  const newDistance = findFreeTriggerDistance(usedDistances, 20, 950, 100);
-  th.windVortexEvents.push({ triggerDistance: newDistance, yFrac: 0.5, reachR: 220 });
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  const newIdx = th.windVortexEvents.length - 1;
-  previewSelectedWindVortex = previewLastData.obstacles.find(g => g.type === 'windvortex' && g._vortexIdx === newIdx) || null;
-  if (previewSelectedWindVortex) scrollPreviewTo(previewSelectedWindVortex.x);
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Wind vortex added.');
-});
-
-document.getElementById('preview-arc-delete').addEventListener('click', () => {
-  if (!previewSelectedCloudArc) return;
-  const th = THEMES[currentPreviewZone];
-  th.cloudArcEvents.splice(previewSelectedCloudArc._arcIdx, 1);
-  previewSelectedCloudArc = null;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Cloud arc deleted.');
-});
-
-document.getElementById('preview-arc-add').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (!th.cloudArcEvents) return;
-  const usedDistances = th.cloudArcEvents.map(e => e.triggerDistance);
-  const newDistance = findFreeTriggerDistance(usedDistances, 20, 900, 100);
-  th.cloudArcEvents.push({ triggerDistance: newDistance, y1Frac: 0.3, y2Frac: 0.7, spanPx: 550, onFrames: 70, offFrames: 90, phaseFrac: 0.2 });
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  const newIdx = th.cloudArcEvents.length - 1;
-  previewSelectedCloudArc = previewLastData.obstacles.find(g => g.type === 'cloudarc' && g._arcIdx === newIdx) || null;
-  if (previewSelectedCloudArc) scrollPreviewTo(previewSelectedCloudArc.x);
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Cloud arc added.');
-});
-
-document.getElementById('preview-lens-delete').addEventListener('click', () => {
-  if (!previewSelectedLensingZone) return;
-  const th = THEMES[currentPreviewZone];
-  th.lensingZoneEvents.splice(previewSelectedLensingZone._lensIdx, 1);
-  previewSelectedLensingZone = null;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Lensing zone deleted.');
-});
-
-document.getElementById('preview-lens-add').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (!th.lensingZoneEvents) return;
-  const usedDistances = th.lensingZoneEvents.map(e => e.triggerDistance);
-  const newDistance = findFreeTriggerDistance(usedDistances, 20, 950, 100);
-  th.lensingZoneEvents.push({ triggerDistance: newDistance, yFrac: 0.5, coreR: 12, zoneRadius: 120 });
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  const newIdx = th.lensingZoneEvents.length - 1;
-  previewSelectedLensingZone = previewLastData.obstacles.find(g => g._lensIdx === newIdx) || null;
-  if (previewSelectedLensingZone) scrollPreviewTo(previewSelectedLensingZone.x);
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Lensing zone added.');
-});
-
-document.getElementById('preview-nova-delete').addEventListener('click', () => {
-  if (!previewSelectedSupernova) return;
-  const th = THEMES[currentPreviewZone];
-  th.supernovaEvents.splice(previewSelectedSupernova._novaIdx, 1);
-  previewSelectedSupernova = null;
-  previewSelectedTurret = null;
-  previewSelectedEmp = null;
-  previewSelectedOrb = null;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Supernova deleted.');
-});
-
-document.getElementById('preview-nova-add').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (!th.supernovaEvents) return;
-  const usedDistances = th.supernovaEvents.map(e => e.triggerDistance);
-  const newDistance = findFreeTriggerDistance(usedDistances, 20, 900, 150);
-  th.supernovaEvents.push({ triggerDistance: newDistance, yFrac: 0.5, planetR: 140, variant: 'timer', dormantFrames: 200, warningFrames: 100 });
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  const newIdx = th.supernovaEvents.length - 1;
-  previewSelectedSupernova = previewLastData.obstacles.find(g => g._novaIdx === newIdx) || null;
-  if (previewSelectedSupernova) scrollPreviewTo(previewSelectedSupernova.x);
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Supernova added.');
-});
-
-document.getElementById('preview-nova-variant').addEventListener('click', () => {
-  if (!previewSelectedSupernova) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.supernovaEvents[previewSelectedSupernova._novaIdx];
-  srcEvent.variant = (srcEvent.variant || 'timer') === 'timer' ? 'onscreen' : 'timer';
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  setPreviewStatus('Variant set to ' + (srcEvent.variant === 'onscreen' ? 'On-Screen' : 'Timer') + '.');
-});
-
-document.getElementById('preview-turret-delete').addEventListener('click', () => {
-  if (!previewSelectedTurret) return;
-  const th = THEMES[currentPreviewZone];
-  th.turretEvents.splice(previewSelectedTurret._turretIdx, 1);
-  previewSelectedTurret = null;
-  previewSelectedEmp = null;
-  previewSelectedOrb = null;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Turret deleted.');
-});
-
-document.getElementById('preview-turret-add').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (!th.turretEvents) return;
-  const usedDistances = th.turretEvents.map(e => e.triggerDistance);
-  const newDistance = findFreeTriggerDistance(usedDistances, 20, 900, 150);
-  th.turretEvents.push({ triggerDistance: newDistance, anchor: 'top', mountOffset: 70, numShots: 3, fireInterval: 80, fireAngleDeg: 0, projectileSpeed: 6.5, projectileR: 10 });
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  const newIdx = th.turretEvents.length - 1;
-  previewSelectedTurret = previewLastData.obstacles.find(g => g._turretIdx === newIdx) || null;
-  if (previewSelectedTurret) scrollPreviewTo(previewSelectedTurret.x);
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Turret added.');
-});
-
-document.getElementById('preview-turret-anchor').addEventListener('click', () => {
-  if (!previewSelectedTurret) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.turretEvents[previewSelectedTurret._turretIdx];
-  srcEvent.anchor = srcEvent.anchor === 'top' ? 'bottom' : 'top';
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  previewSelectedTurret = previewLastData.obstacles.find(g => g._turretIdx === previewSelectedTurret._turretIdx) || null;
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Anchor set to ' + (srcEvent.anchor === 'top' ? 'Top' : 'Bottom') + '.');
-});
-
-document.getElementById('preview-turret-angle-input').addEventListener('input', (e) => {
-  if (!previewSelectedTurret) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.turretEvents[previewSelectedTurret._turretIdx];
-  const val = parseFloat(e.target.value);
-  if (!isNaN(val)) {
-    srcEvent.fireAngleDeg = Math.max(-80, Math.min(80, val));
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedTurret = previewLastData.obstacles.find(g => g._turretIdx === previewSelectedTurret._turretIdx) || null;
-    drawZonePreview(previewLastData);
-  }
-});
-
-document.getElementById('preview-turret-shots-input').addEventListener('input', (e) => {
-  if (!previewSelectedTurret) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.turretEvents[previewSelectedTurret._turretIdx];
-  const val = parseInt(e.target.value, 10);
-  if (!isNaN(val)) srcEvent.numShots = Math.max(1, Math.min(10, val));
-});
-
-document.getElementById('preview-turret-interval-input').addEventListener('input', (e) => {
-  if (!previewSelectedTurret) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.turretEvents[previewSelectedTurret._turretIdx];
-  const val = parseInt(e.target.value, 10);
-  if (!isNaN(val)) srcEvent.fireInterval = Math.max(20, Math.min(300, val));
-});
-
-document.getElementById('preview-emp-delete').addEventListener('click', () => {
-  if (!previewSelectedEmp) return;
-  const th = THEMES[currentPreviewZone];
-  th.empEvents.splice(previewSelectedEmp._empIdx, 1);
-  previewSelectedTurret = null;
-  previewSelectedEmp = null;
-  previewSelectedOrb = null;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('EMP deleted.');
-});
-
-document.getElementById('preview-emp-add').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (!th.empEvents) return;
-  const usedDistances = th.empEvents.map(e => e.triggerDistance);
-  const newDistance = findFreeTriggerDistance(usedDistances, 20, 900, 150);
-  th.empEvents.push({ triggerDistance: newDistance, anchor: 'top', reachDepth: 300, chargeFrames: 250, dischargeFrames: 45 });
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  const newIdx = th.empEvents.length - 1;
-  previewSelectedEmp = previewLastData.obstacles.find(g => g._empIdx === newIdx) || null;
-  if (previewSelectedEmp) scrollPreviewTo(previewSelectedEmp.x);
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('EMP added.');
-});
-
-document.getElementById('preview-emp-anchor').addEventListener('click', () => {
-  if (!previewSelectedEmp) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.empEvents[previewSelectedEmp._empIdx];
-  srcEvent.anchor = srcEvent.anchor === 'top' ? 'bottom' : 'top';
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  previewSelectedEmp = previewLastData.obstacles.find(g => g._empIdx === previewSelectedEmp._empIdx) || null;
-  updateEmpPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Anchor set to ' + (srcEvent.anchor === 'top' ? 'Top' : 'Bottom') + '.');
-});
-
-document.getElementById('preview-emp-reach-input').addEventListener('input', (e) => {
-  if (!previewSelectedEmp) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.empEvents[previewSelectedEmp._empIdx];
-  const val = parseInt(e.target.value, 10);
-  if (!isNaN(val)) srcEvent.reachDepth = Math.max(100, Math.min(450, val));
-});
-
-document.getElementById('preview-emp-charge-input').addEventListener('input', (e) => {
-  if (!previewSelectedEmp) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.empEvents[previewSelectedEmp._empIdx];
-  const val = parseInt(e.target.value, 10);
-  if (!isNaN(val)) srcEvent.chargeFrames = Math.max(60, Math.min(400, val));
-});
-
-document.getElementById('preview-emp-discharge-input').addEventListener('input', (e) => {
-  if (!previewSelectedEmp) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.empEvents[previewSelectedEmp._empIdx];
-  const val = parseInt(e.target.value, 10);
-  if (!isNaN(val)) srcEvent.dischargeFrames = Math.max(15, Math.min(120, val));
-});
-
-document.getElementById('preview-orb-delete').addEventListener('click', () => {
-  if (!previewSelectedOrb) return;
-  const th = THEMES[currentPreviewZone];
-  th.pulsingOrbEvents.splice(previewSelectedOrb._orbIdx, 1);
-  previewSelectedTurret = null;
-  previewSelectedEmp = null;
-  previewSelectedOrb = null;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Orb deleted.');
-});
-
-document.getElementById('preview-orb-add').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  if (!th.pulsingOrbEvents) return;
-  const usedDistances = th.pulsingOrbEvents.map(e => e.triggerDistance);
-  const newDistance = findFreeTriggerDistance(usedDistances, 20, 900, 150);
-  th.pulsingOrbEvents.push({ triggerDistance: newDistance, minR: 40, maxR: 200, period: 350 });
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  const newIdx = th.pulsingOrbEvents.length - 1;
-  previewSelectedOrb = previewLastData.obstacles.find(g => g._orbIdx === newIdx) || null;
-  if (previewSelectedOrb) scrollPreviewTo(previewSelectedOrb.x);
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Orb added.');
-});
-
-document.getElementById('preview-orb-minr-input').addEventListener('input', (e) => {
-  if (!previewSelectedOrb) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.pulsingOrbEvents[previewSelectedOrb._orbIdx];
-  const val = parseInt(e.target.value, 10);
-  if (!isNaN(val)) {
-    srcEvent.minR = Math.max(15, Math.min(150, val));
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedOrb = previewLastData.obstacles.find(g => g._orbIdx === previewSelectedOrb._orbIdx) || null;
-    drawZonePreview(previewLastData);
-  }
-});
-
-document.getElementById('preview-orb-maxr-input').addEventListener('input', (e) => {
-  if (!previewSelectedOrb) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.pulsingOrbEvents[previewSelectedOrb._orbIdx];
-  const val = parseInt(e.target.value, 10);
-  if (!isNaN(val)) {
-    srcEvent.maxR = Math.max(60, Math.min(250, val));
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedOrb = previewLastData.obstacles.find(g => g._orbIdx === previewSelectedOrb._orbIdx) || null;
-    drawZonePreview(previewLastData);
-  }
-});
-
-document.getElementById('preview-orb-period-input').addEventListener('input', (e) => {
-  if (!previewSelectedOrb) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.pulsingOrbEvents[previewSelectedOrb._orbIdx];
-  const val = parseInt(e.target.value, 10);
-  if (!isNaN(val)) srcEvent.period = Math.max(100, Math.min(600, val));
-});
-
-document.getElementById('preview-bh-core-input').addEventListener('input', (e) => {
-  if (!previewSelectedBlackHole) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.blackHoleEvents[previewSelectedBlackHole._eventIdx];
-  const val = parseFloat(e.target.value);
-  if (!isFinite(val) || val < 20) return;
-  srcEvent.coreR = val;
-  // keep reach comfortably larger than core so the graduated pull field
-  // always means something
-  if (srcEvent.reachR < val * 1.15) {
-    srcEvent.reachR = Math.round(val * 1.2);
-    document.getElementById('preview-bh-reach-input').value = srcEvent.reachR;
-  }
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  previewSelectedBlackHole = previewLastData.obstacles.find(g => g._eventIdx === previewSelectedBlackHole._eventIdx) || null;
-  drawZonePreview(previewLastData);
-});
-
-document.getElementById('preview-bh-reach-input').addEventListener('input', (e) => {
-  if (!previewSelectedBlackHole) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.blackHoleEvents[previewSelectedBlackHole._eventIdx];
-  const val = parseFloat(e.target.value);
-  if (!isFinite(val) || val < srcEvent.coreR * 1.15) return;
-  srcEvent.reachR = val;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  previewSelectedBlackHole = previewLastData.obstacles.find(g => g._eventIdx === previewSelectedBlackHole._eventIdx) || null;
-  drawZonePreview(previewLastData);
-});
-
-document.getElementById('preview-vortex-reach-input').addEventListener('input', (e) => {
-  if (!previewSelectedWindVortex) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.windVortexEvents[previewSelectedWindVortex._vortexIdx];
-  const val = parseFloat(e.target.value);
-  if (!isFinite(val) || val < 60) return;
-  srcEvent.reachR = val;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  previewSelectedWindVortex = previewLastData.obstacles.find(g => g.type === 'windvortex' && g._vortexIdx === previewSelectedWindVortex._vortexIdx) || null;
-  drawZonePreview(previewLastData);
-});
-
-document.getElementById('preview-lens-core-input').addEventListener('input', (e) => {
-  if (!previewSelectedLensingZone) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.lensingZoneEvents[previewSelectedLensingZone._lensIdx];
-  const val = parseFloat(e.target.value);
-  if (!isFinite(val) || val < 4) return;
-  srcEvent.coreR = val;
-  // keep the zone comfortably larger than the core so there's a real
-  // distortion field surrounding it, not just a bare point
-  if (srcEvent.zoneRadius < val * 2) {
-    srcEvent.zoneRadius = Math.round(val * 3);
-    document.getElementById('preview-lens-zone-input').value = srcEvent.zoneRadius;
-  }
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  previewSelectedLensingZone = previewLastData.obstacles.find(g => g._lensIdx === previewSelectedLensingZone._lensIdx) || null;
-  drawZonePreview(previewLastData);
-});
-
-document.getElementById('preview-lens-zone-input').addEventListener('input', (e) => {
-  if (!previewSelectedLensingZone) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.lensingZoneEvents[previewSelectedLensingZone._lensIdx];
-  const val = parseFloat(e.target.value);
-  if (!isFinite(val) || val < srcEvent.coreR * 2) return;
-  srcEvent.zoneRadius = val;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  previewSelectedLensingZone = previewLastData.obstacles.find(g => g._lensIdx === previewSelectedLensingZone._lensIdx) || null;
-  drawZonePreview(previewLastData);
-});
-
-document.getElementById('preview-nova-planet-input').addEventListener('input', (e) => {
-  if (!previewSelectedSupernova) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.supernovaEvents[previewSelectedSupernova._novaIdx];
-  const val = parseFloat(e.target.value);
-  if (!isFinite(val) || val < 40) return;
-  srcEvent.planetR = val;
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  previewSelectedSupernova = previewLastData.obstacles.find(g => g._novaIdx === previewSelectedSupernova._novaIdx) || null;
-  drawZonePreview(previewLastData);
-});
-
-document.getElementById('preview-nova-dormant-input').addEventListener('input', (e) => {
-  if (!previewSelectedSupernova) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.supernovaEvents[previewSelectedSupernova._novaIdx];
-  const val = parseFloat(e.target.value);
-  if (!isFinite(val) || val < 30) return;
-  srcEvent.dormantFrames = val;
-});
-
-document.getElementById('preview-nova-warning-input').addEventListener('input', (e) => {
-  if (!previewSelectedSupernova) return;
-  const th = THEMES[currentPreviewZone];
-  const srcEvent = th.supernovaEvents[previewSelectedSupernova._novaIdx];
-  const val = parseFloat(e.target.value);
-  if (!isFinite(val) || val < 20) return;
-  srcEvent.warningFrames = val;
-});
-
-document.getElementById('preview-save').addEventListener('click', async () => {
-  setPreviewStatus('Saving...');
-  // warn about black holes or lensing zones that don't have enough
-  // runway left in the zone to fully scroll off-screen before the
-  // zone-end transition wipes everything -- otherwise they visibly
-  // vanish mid-exit
-  const runwayWarnings = [];
-  const autoFixedBolts = [];
-  // fix any bolt whose effective zone-progress position falls before 0 --
-  // it still spawns and is dangerous in real gameplay (it's part of the
-  // zone's initial spawn), but the editor canvas can't show or scroll to
-  // negative coordinates, so once in this state there's no way to click
-  // and drag it back into view manually -- pull it back to just inside
-  // the visible range automatically, the same correction the live drag
-  // handler applies, rather than leaving an unfixable warning
-  THEMES.forEach((t, zi) => {
-    if (t.obstacleShape === 'lbolt' && t.pattern) {
-      let changed = true;
-      let guard = 0;
-      while (changed && guard < 20) {
-        changed = false;
-        guard++;
-        const captured = captureFullZoneRun(zi, 1000);
-        const bad = captured.obstacles.find(o => o.type === 'lbolt' && o.x < 0);
-        if (bad) {
-          const srcBolt = t.pattern[bad._entryIdx].bolts[bad._boltIdx];
-          srcBolt.xJitter += Math.round(-bad.x + 10);
-          autoFixedBolts.push(`Zone ${zi + 1} bolt (entry ${bad._entryIdx + 1}, shape slot ${bad._boltIdx + 1})`);
-          changed = true;
-        }
-      }
-    }
-  });
-  THEMES.forEach((t, zi) => {
-    if (t.blackHoleEvents) {
-      t.blackHoleEvents.forEach((ev, ei) => {
-        const spawnX = 1000 + ev.reachR + 40; // approx W + reachR + 40, matching spawnBlackHoleEvent
-        const neededDistanceUnits = (spawnX - (-80 - ev.reachR)) / 10;
-        const availableDistanceUnits = 1000 - ev.triggerDistance;
-        if (availableDistanceUnits < neededDistanceUnits) {
-          runwayWarnings.push(`Zone ${zi + 1} hole #${ei + 1} (trigger ${ev.triggerDistance}, reach ${ev.reachR}) needs ~${Math.ceil(neededDistanceUnits)} distance to exit but only has ${availableDistanceUnits} left`);
-        }
-      });
-    }
-    if (t.windVortexEvents) {
-      t.windVortexEvents.forEach((ev, ei) => {
-        const spawnX = 1000 + ev.reachR + 40; // matching spawnWindVortexEvent
-        const neededDistanceUnits = (spawnX - (-80 - ev.reachR)) / 10;
-        const availableDistanceUnits = 1000 - ev.triggerDistance;
-        if (availableDistanceUnits < neededDistanceUnits) {
-          runwayWarnings.push(`Zone ${zi + 1} vortex #${ei + 1} (trigger ${ev.triggerDistance}, reach ${ev.reachR}) needs ~${Math.ceil(neededDistanceUnits)} distance to exit but only has ${availableDistanceUnits} left`);
-        }
-      });
-    }
-    if (t.lensingZoneEvents) {
-      t.lensingZoneEvents.forEach((ev, ei) => {
-        const spawnX = 1000 + ev.zoneRadius + 40;
-        const neededDistanceUnits = (spawnX - (-80 - ev.zoneRadius)) / 10;
-        const availableDistanceUnits = 1000 - ev.triggerDistance;
-        if (availableDistanceUnits < neededDistanceUnits) {
-          runwayWarnings.push(`Zone ${zi + 1} lens #${ei + 1} (trigger ${ev.triggerDistance}, zone ${ev.zoneRadius}) needs ~${Math.ceil(neededDistanceUnits)} distance to exit but only has ${availableDistanceUnits} left`);
-        }
-      });
-    }
-    if (t.supernovaEvents) {
-      t.supernovaEvents.forEach((ev, ei) => {
-        const spawnX = 1000 + ev.planetR + 40;
-        // also account for the dormant+warning buildup time before the
-        // planet even starts its exit journey, plus debris needing to
-        // travel roughly as far as the planet would have
-        const buildupPx = (ev.dormantFrames + ev.warningFrames) * 2.8;
-        const neededDistanceUnits = (spawnX - (-80 - ev.planetR) - buildupPx) / 10;
-        const availableDistanceUnits = 1000 - ev.triggerDistance;
-        if (availableDistanceUnits < neededDistanceUnits) {
-          runwayWarnings.push(`Zone ${zi + 1} nova #${ei + 1} (trigger ${ev.triggerDistance}, planet ${ev.planetR}) needs ~${Math.ceil(neededDistanceUnits)} distance to exit but only has ${availableDistanceUnits} left`);
-        }
-      });
-    }
-    if (t.turretEvents) {
-      t.turretEvents.forEach((ev, ei) => {
-        const spawnX = 1000 + 40 + 22;
-        // also account for all shots needing to be fired before the
-        // mount itself is done being relevant
-        const buildupPx = ev.numShots * ev.fireInterval * 2.8;
-        const neededDistanceUnits = (spawnX - (-80 - 22) - buildupPx) / 10;
-        const availableDistanceUnits = 1000 - ev.triggerDistance;
-        if (availableDistanceUnits < neededDistanceUnits) {
-          runwayWarnings.push(`Zone ${zi + 1} turret #${ei + 1} (trigger ${ev.triggerDistance}) needs ~${Math.ceil(neededDistanceUnits)} distance to exit but only has ${availableDistanceUnits} left`);
-        }
-      });
-    }
-    if (t.empEvents) {
-      t.empEvents.forEach((ev, ei) => {
-        const spawnX = 1000 + 40;
-        const buildupPx = (ev.chargeFrames + ev.dischargeFrames) * 2.8;
-        const neededDistanceUnits = (spawnX - (-80 - 30) - buildupPx) / 10;
-        const availableDistanceUnits = 1000 - ev.triggerDistance;
-        if (availableDistanceUnits < neededDistanceUnits) {
-          runwayWarnings.push(`Zone ${zi + 1} EMP #${ei + 1} (trigger ${ev.triggerDistance}) needs ~${Math.ceil(neededDistanceUnits)} distance to exit but only has ${availableDistanceUnits} left`);
-        }
-      });
-    }
-    if (t.pulsingOrbEvents) {
-      t.pulsingOrbEvents.forEach((ev, ei) => {
-        const spawnX = 1000 + ev.maxR + 40;
-        const neededDistanceUnits = (spawnX - (-80 - ev.maxR)) / 10;
-        const availableDistanceUnits = 1000 - ev.triggerDistance;
-        if (availableDistanceUnits < neededDistanceUnits) {
-          runwayWarnings.push(`Zone ${zi + 1} orb #${ei + 1} (trigger ${ev.triggerDistance}, maxR ${ev.maxR}) needs ~${Math.ceil(neededDistanceUnits)} distance to exit but only has ${availableDistanceUnits} left`);
-        }
-      });
-    }
-  });
-  try {
-    const boltSerializable = THEMES.map(t => t.obstacleShape === 'lbolt' ? t.pattern : null);
-    await window.storage.set('bolt-patterns-custom', JSON.stringify(boltSerializable));
-    const bhSerializable = THEMES.map(t => t.blackHoleEvents || null);
-    await window.storage.set('blackhole-events-custom', JSON.stringify(bhSerializable));
-    const vortexSerializable = THEMES.map(t => t.windVortexEvents || null);
-    await window.storage.set('windvortex-events-custom', JSON.stringify(vortexSerializable));
-    const cloudArcSerializable = THEMES.map(t => t.cloudArcEvents || null);
-    await window.storage.set('cloudarc-events-custom', JSON.stringify(cloudArcSerializable));
-    const lensSerializable = THEMES.map(t => t.lensingZoneEvents || null);
-    await window.storage.set('lensingzone-events-custom', JSON.stringify(lensSerializable));
-    const novaSerializable = THEMES.map(t => t.supernovaEvents || null);
-    await window.storage.set('supernova-events-custom', JSON.stringify(novaSerializable));
-    const turretSerializable = THEMES.map(t => t.turretEvents || null);
-    await window.storage.set('turret-events-custom', JSON.stringify(turretSerializable));
-    const empSerializable = THEMES.map(t => t.empEvents || null);
-    await window.storage.set('emp-events-custom', JSON.stringify(empSerializable));
-    const orbSerializable = THEMES.map(t => t.pulsingOrbEvents || null);
-    await window.storage.set('orb-events-custom', JSON.stringify(orbSerializable));
-    const msgs = [];
-    if (autoFixedBolts.length) {
-      msgs.push(autoFixedBolts.length + ' bolt(s) were sitting before the zone start (invisible/unreachable in the editor) and were automatically pulled back into view');
-      console.warn(autoFixedBolts.join('\n'));
-    }
-    if (runwayWarnings.length) {
-      msgs.push(runwayWarnings.length + ' hazard(s) may vanish before fully exiting -- move them earlier or shrink size');
-      console.warn(runwayWarnings.join('\n'));
-    }
-    setPreviewStatus(msgs.length ? 'Saved, but ' + msgs.join('; ') + '.' : 'Saved!');
-    if (autoFixedBolts.length && previewOverlay.classList.contains('active')) {
-      previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-      drawZonePreview(previewLastData);
-    }
-  } catch (e) {
-    setPreviewStatus('Save failed (kept in memory only).');
-  }
-});
-
-document.getElementById('preview-reset').addEventListener('click', () => {
-  const th = THEMES[currentPreviewZone];
-  let resetSomething = false;
-  if (th.obstacleShape === 'lbolt') {
-    th.pattern = JSON.parse(JSON.stringify(DEFAULT_LBOLT_PATTERNS[currentPreviewZone]));
-    previewSelectedBolt = null;
-    resetSomething = true;
-  }
-  if (th.blackHoleEvents) {
-    th.blackHoleEvents = JSON.parse(JSON.stringify(DEFAULT_BLACKHOLE_EVENTS[currentPreviewZone]));
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    resetSomething = true;
-  }
-  if (th.windVortexEvents) {
-    th.windVortexEvents = JSON.parse(JSON.stringify(DEFAULT_WINDVORTEX_EVENTS[currentPreviewZone]));
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    resetSomething = true;
-  }
-  if (th.lensingZoneEvents) {
-    th.lensingZoneEvents = JSON.parse(JSON.stringify(DEFAULT_LENSINGZONE_EVENTS[currentPreviewZone]));
-    previewSelectedLensingZone = null;
-    resetSomething = true;
-  }
-  if (th.supernovaEvents) {
-    th.supernovaEvents = JSON.parse(JSON.stringify(DEFAULT_SUPERNOVA_EVENTS[currentPreviewZone]));
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = null;
-    resetSomething = true;
-  }
-  if (th.turretEvents) {
-    th.turretEvents = JSON.parse(JSON.stringify(DEFAULT_TURRET_EVENTS[currentPreviewZone]));
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = null;
-    resetSomething = true;
-  }
-  if (th.empEvents) {
-    th.empEvents = JSON.parse(JSON.stringify(DEFAULT_EMP_EVENTS[currentPreviewZone]));
-    previewSelectedEmp = null;
-    resetSomething = true;
-  }
-  if (th.pulsingOrbEvents) {
-    th.pulsingOrbEvents = JSON.parse(JSON.stringify(DEFAULT_PULSING_ORB_EVENTS[currentPreviewZone]));
-    previewSelectedOrb = null;
-    resetSomething = true;
-  }
-  if (!resetSomething) {
-    setPreviewStatus('Nothing to reset for this zone.');
-    return;
-  }
-  previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-  updateBoltPanel();
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-  setPreviewStatus('Reset to default.');
-});
-
-previewCanvas.addEventListener('mousedown', (e) => {
-  if (!previewEditMode || !previewLastData) return;
-  const rect = previewCanvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  const layout = getPreviewLayout();
-
-  let hitBolt = null, hitBlackHole = null, hitWindVortex = null, hitCloudArc = null, hitCloudArcTarget = null, hitLensingZone = null, hitSupernova = null, hitTurret = null, hitEmp = null, hitOrb = null;
-  for (const g of previewLastData.obstacles) {
-    if (g.type === 'lbolt') {
-      const box = boltScreenBox(g, layout);
-      if (mx >= box.left && mx <= box.right && my >= box.top && my <= box.bottom) { hitBolt = g; break; }
-    } else if (g.type === 'blackhole') {
-      const sx = g.x * layout.scale;
-      const cy = layout.pTop + ((g.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-      const vScale = layout.pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const rReach = g.reachR * vScale;
-      const dx = mx - sx, dy = my - cy;
-      if (dx * dx + dy * dy <= rReach * rReach) { hitBlackHole = g; break; }
-    } else if (g.type === 'windvortex') {
-      const sx = g.x * layout.scale;
-      const cy = layout.pTop + ((g.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-      const vScale = layout.pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const rReach = g.reachR * vScale;
-      const dx = mx - sx, dy = my - cy;
-      if (dx * dx + dy * dy <= rReach * rReach) { hitWindVortex = g; break; }
-    } else if (g.type === 'cloudarc') {
-      const sx1 = g.x * layout.scale;
-      const cy1 = layout.pTop + ((g.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-      const sx2 = g.x2 * layout.scale;
-      const cy2 = layout.pTop + ((g.y2 - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-      const d1sq = (mx - sx1) ** 2 + (my - cy1) ** 2;
-      const d2sq = (mx - sx2) ** 2 + (my - cy2) ** 2;
-      if (d1sq <= 144) { hitCloudArc = g; hitCloudArcTarget = 'left'; break; }
-      if (d2sq <= 144) { hitCloudArc = g; hitCloudArcTarget = 'right'; break; }
-      // distance from click to the line segment, for grabbing the arc as a whole
-      const lineLenSq = (sx2 - sx1) ** 2 + (cy2 - cy1) ** 2 || 1;
-      const t = Math.max(0, Math.min(1, ((mx - sx1) * (sx2 - sx1) + (my - cy1) * (cy2 - cy1)) / lineLenSq));
-      const projX = sx1 + (sx2 - sx1) * t, projY = cy1 + (cy2 - cy1) * t;
-      const distSq = (mx - projX) ** 2 + (my - projY) ** 2;
-      if (distSq <= 64) { hitCloudArc = g; hitCloudArcTarget = 'line'; break; }
-    } else if (g.type === 'lensingzone') {
-      const sx = g.x * layout.scale;
-      const cy = layout.pTop + ((g.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-      const vScale = layout.pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const rZone = g.zoneRadius * vScale;
-      const dx = mx - sx, dy = my - cy;
-      if (dx * dx + dy * dy <= rZone * rZone) { hitLensingZone = g; break; }
-    } else if (g.type === 'supernova') {
-      const sx = g.x * layout.scale;
-      const cy = layout.pTop + ((g.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-      const vScale = layout.pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const rPlanet = g.planetR * vScale;
-      const dx = mx - sx, dy = my - cy;
-      if (dx * dx + dy * dy <= rPlanet * rPlanet) { hitSupernova = g; break; }
-    } else if (g.type === 'turret') {
-      const sx = g.x * layout.scale;
-      const cy = layout.pTop + ((g.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-      const dx = mx - sx, dy = my - cy;
-      if (dx * dx + dy * dy <= 14 * 14) { hitTurret = g; break; }
-    } else if (g.type === 'emp') {
-      const sx = g.x * layout.scale;
-      const anchorY = g.anchor === 'top' ? PLAY_TOP : PLAY_BOTTOM;
-      const cy = layout.pTop + ((anchorY - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-      const dx = mx - sx, dy = my - cy;
-      if (dx * dx + dy * dy <= 14 * 14) { hitEmp = g; break; }
-    } else if (g.type === 'pulsingorb') {
-      const sx = g.x * layout.scale;
-      const cy = layout.pTop + ((g.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-      const vScale = layout.pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const midR = (g.minR + g.maxR) / 2 * vScale;
-      const dx = mx - sx, dy = my - cy;
-      if (dx * dx + dy * dy <= midR * midR) { hitOrb = g; break; }
-    }
-  }
-
-  if (hitBolt) {
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = null;
-    previewSelectedBolt = hitBolt;
-    const box = boltScreenBox(hitBolt, layout);
-    const nearHandle = Math.abs(mx - box.right) < 10 && Math.abs(my - box.bottom) < 10;
-    previewDragMode = nearHandle ? 'resize' : 'move';
-
-    const th = THEMES[currentPreviewZone];
-    const srcBolt = th.pattern[hitBolt._entryIdx].bolts[hitBolt._boltIdx];
-    previewDragStart = {
-      mx, my, entryIdx: hitBolt._entryIdx, boltIdx: hitBolt._boltIdx,
-      origYFrac: srcBolt.yFrac, origXJitter: srcBolt.xJitter,
-      origHeightFrac: srcBolt.heightFrac, origSwingWidthPx: srcBolt.swingWidthPx
-    };
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-    drawZonePreview(previewLastData);
-    return;
-  }
-
-  if (hitBlackHole) {
-    previewSelectedBolt = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = null;
-    previewSelectedBlackHole = hitBlackHole;
-    const sx = hitBlackHole.x * layout.scale;
-    const cy = layout.pTop + ((hitBlackHole.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-    const vScale = layout.pHeight / (PLAY_BOTTOM - PLAY_TOP);
-    const rCore = hitBlackHole.coreR * vScale;
-    const rReach = hitBlackHole.reachR * vScale;
-    const nearCoreHandle = Math.abs(mx - (sx + rCore)) < 10 && Math.abs(my - cy) < 10;
-    const nearReachHandle = Math.abs(mx - (sx + rReach)) < 10 && Math.abs(my - cy) < 10;
-    previewDragMode = nearCoreHandle ? 'resizeCore' : (nearReachHandle ? 'resizeReach' : 'move');
-
-    const th = THEMES[currentPreviewZone];
-    const srcEvent = th.blackHoleEvents[hitBlackHole._eventIdx];
-    previewDragStart = {
-      mx, my, eventIdx: hitBlackHole._eventIdx,
-      origYFrac: srcEvent.yFrac, origTriggerDistance: srcEvent.triggerDistance,
-      origCoreR: srcEvent.coreR, origReachR: srcEvent.reachR
-    };
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-    drawZonePreview(previewLastData);
-    return;
-  }
-
-  if (hitWindVortex) {
-    previewSelectedBolt = null;
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = null;
-    previewSelectedWindVortex = hitWindVortex;
-    const sx = hitWindVortex.x * layout.scale;
-    const cy = layout.pTop + ((hitWindVortex.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-    const vScale = layout.pHeight / (PLAY_BOTTOM - PLAY_TOP);
-    const rReach = hitWindVortex.reachR * vScale;
-    const nearReachHandle = Math.abs(mx - (sx + rReach)) < 10 && Math.abs(my - cy) < 10;
-    previewDragMode = nearReachHandle ? 'resizeReach' : 'move';
-
-    const th = THEMES[currentPreviewZone];
-    const srcEvent = th.windVortexEvents[hitWindVortex._vortexIdx];
-    previewDragStart = {
-      mx, my, vortexIdx: hitWindVortex._vortexIdx,
-      origYFrac: srcEvent.yFrac, origTriggerDistance: srcEvent.triggerDistance,
-      origReachR: srcEvent.reachR
-    };
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-    drawZonePreview(previewLastData);
-    return;
-  }
-
-  if (hitCloudArc) {
-    previewSelectedBolt = null;
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = null;
-    previewSelectedCloudArc = hitCloudArc;
-    previewDragMode = hitCloudArcTarget === 'left' ? 'moveLeft' : hitCloudArcTarget === 'right' ? 'moveRight' : 'moveBoth';
-
-    const th = THEMES[currentPreviewZone];
-    const srcEvent = th.cloudArcEvents[hitCloudArc._arcIdx];
-    previewDragStart = {
-      mx, my, arcIdx: hitCloudArc._arcIdx,
-      origY1Frac: srcEvent.y1Frac, origY2Frac: srcEvent.y2Frac,
-      origTriggerDistance: srcEvent.triggerDistance, origSpanPx: srcEvent.spanPx
-    };
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-    updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-    drawZonePreview(previewLastData);
-    return;
-  }
-
-  if (hitLensingZone) {
-    previewSelectedBolt = null;
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = null;
-    previewSelectedLensingZone = hitLensingZone;
-    const sx = hitLensingZone.x * layout.scale;
-    const cy = layout.pTop + ((hitLensingZone.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-    const vScale = layout.pHeight / (PLAY_BOTTOM - PLAY_TOP);
-    const rCore = hitLensingZone.coreR * vScale;
-    const rZone = hitLensingZone.zoneRadius * vScale;
-    const nearCoreHandle = Math.abs(mx - (sx + rCore)) < 10 && Math.abs(my - cy) < 10;
-    const nearZoneHandle = Math.abs(mx - (sx + rZone)) < 10 && Math.abs(my - cy) < 10;
-    previewDragMode = nearCoreHandle ? 'resizeLensCore' : (nearZoneHandle ? 'resizeLensZone' : 'moveLens');
-
-    const th = THEMES[currentPreviewZone];
-    const srcEvent = th.lensingZoneEvents[hitLensingZone._lensIdx];
-    previewDragStart = {
-      mx, my, lensIdx: hitLensingZone._lensIdx,
-      origYFrac: srcEvent.yFrac, origTriggerDistance: srcEvent.triggerDistance,
-      origCoreR: srcEvent.coreR, origZoneRadius: srcEvent.zoneRadius
-    };
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-    updateLensingZonePanel();
-    updateSupernovaPanel();
-    updateTurretPanel();
-    updateEmpPanel();
-    updateOrbPanel();
-    drawZonePreview(previewLastData);
-    return;
-  }
-
-  if (hitSupernova) {
-    previewSelectedBolt = null;
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = hitSupernova;
-    const sx = hitSupernova.x * layout.scale;
-    const cy = layout.pTop + ((hitSupernova.y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * layout.pHeight;
-    const vScale = layout.pHeight / (PLAY_BOTTOM - PLAY_TOP);
-    const rPlanet = hitSupernova.planetR * vScale;
-    const nearPlanetHandle = Math.abs(mx - (sx + rPlanet)) < 10 && Math.abs(my - cy) < 10;
-    previewDragMode = nearPlanetHandle ? 'resizeNovaPlanet' : 'moveNova';
-
-    const th = THEMES[currentPreviewZone];
-    const srcEvent = th.supernovaEvents[hitSupernova._novaIdx];
-    previewDragStart = {
-      mx, my, novaIdx: hitSupernova._novaIdx,
-      origYFrac: srcEvent.yFrac, origTriggerDistance: srcEvent.triggerDistance,
-      origPlanetR: srcEvent.planetR
-    };
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-    updateLensingZonePanel();
-    updateSupernovaPanel();
-    updateTurretPanel();
-    updateEmpPanel();
-    updateOrbPanel();
-    drawZonePreview(previewLastData);
-    return;
-  }
-
-  if (hitTurret) {
-    previewSelectedBolt = null;
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = hitTurret;
-    previewDragMode = 'moveTurret';
-
-    const th = THEMES[currentPreviewZone];
-    const srcEvent = th.turretEvents[hitTurret._turretIdx];
-    previewDragStart = {
-      mx, my, turretIdx: hitTurret._turretIdx,
-      origTriggerDistance: srcEvent.triggerDistance
-    };
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-    updateLensingZonePanel();
-    updateSupernovaPanel();
-    updateTurretPanel();
-    updateEmpPanel();
-    updateOrbPanel();
-    drawZonePreview(previewLastData);
-    return;
-  }
-
-  if (hitEmp) {
-    previewSelectedBolt = null;
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = hitEmp;
-    previewSelectedOrb = null;
-    previewDragMode = 'moveEmp';
-
-    const th = THEMES[currentPreviewZone];
-    const srcEvent = th.empEvents[hitEmp._empIdx];
-    previewDragStart = {
-      mx, my, empIdx: hitEmp._empIdx,
-      origTriggerDistance: srcEvent.triggerDistance
-    };
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-    updateLensingZonePanel();
-    updateSupernovaPanel();
-    updateTurretPanel();
-    updateEmpPanel();
-    updateOrbPanel();
-    drawZonePreview(previewLastData);
-    return;
-  }
-
-  if (hitOrb) {
-    previewSelectedBolt = null;
-    previewSelectedBlackHole = null;
-    previewSelectedWindVortex = null;
-    previewSelectedCloudArc = null;
-    previewSelectedLensingZone = null;
-    previewSelectedSupernova = null;
-    previewSelectedTurret = null;
-    previewSelectedEmp = null;
-    previewSelectedOrb = hitOrb;
-    previewDragMode = 'moveOrb';
-
-    const th = THEMES[currentPreviewZone];
-    const srcEvent = th.pulsingOrbEvents[hitOrb._orbIdx];
-    previewDragStart = {
-      mx, my, orbIdx: hitOrb._orbIdx,
-      origTriggerDistance: srcEvent.triggerDistance
-    };
-    updateBoltPanel();
-    updateBlackHolePanel();
-    updateWindVortexPanel();
-    updateCloudArcPanel();
-    updateLensingZonePanel();
-    updateSupernovaPanel();
-    updateTurretPanel();
-    updateEmpPanel();
-    updateOrbPanel();
-    drawZonePreview(previewLastData);
-    return;
-  }
-
-  previewSelectedBolt = null;
-  previewSelectedBlackHole = null;
-  previewSelectedWindVortex = null;
-  previewSelectedCloudArc = null;
-  previewSelectedLensingZone = null;
-  previewSelectedSupernova = null;
-  previewSelectedTurret = null;
-  previewSelectedEmp = null;
-  previewSelectedOrb = null;
-  updateBoltPanel();
-  updateBlackHolePanel();
-  updateWindVortexPanel();
-  updateCloudArcPanel();
-  updateLensingZonePanel();
-  updateSupernovaPanel();
-  updateTurretPanel();
-  updateEmpPanel();
-  updateOrbPanel();
-  drawZonePreview(previewLastData);
-});
-
-window.addEventListener('mousemove', (e) => {
-  if (!previewEditMode || !previewDragStart) return;
-  const rect = previewCanvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  const layout = getPreviewLayout();
-  const playHeight = PLAY_BOTTOM - PLAY_TOP;
-  const th = THEMES[currentPreviewZone];
-  // captureFullZoneRun re-runs the real game engine end-to-end (needed for
-  // accuracy) which costs tens of milliseconds -- throttle how often that
-  // full refresh fires during continuous mousemove drag events so dragging
-  // stays responsive; the underlying data itself still updates every event,
-  // and mouseup always forces one final untouched refresh
-  const now = performance.now();
-  const throttled = (now - previewMoveThrottleTs) < PREVIEW_MOVE_THROTTLE_MS;
-  if (!throttled) previewMoveThrottleTs = now;
-
-  if (previewSelectedBolt) {
-    const srcBolt = th.pattern[previewDragStart.entryIdx].bolts[previewDragStart.boltIdx];
-    if (previewDragMode === 'move') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale;
-      const dyFrac = (my - previewDragStart.my) / layout.pHeight;
-      srcBolt.xJitter = Math.round(previewDragStart.origXJitter + dxWorld);
-      srcBolt.yFrac = Math.max(0.02, Math.min(0.98, previewDragStart.origYFrac + dyFrac));
-    } else if (previewDragMode === 'resize') {
-      const dxScreen = mx - previewDragStart.mx;
-      const dyScreen = my - previewDragStart.my;
-      const newSwing = Math.max(16, previewDragStart.origSwingWidthPx + (dxScreen / layout.scale) * 2);
-      const newHeightPx = Math.max(20, previewDragStart.origHeightFrac * playHeight + (dyScreen / layout.pHeight) * playHeight);
-      srcBolt.swingWidthPx = Math.round(newSwing);
-      srcBolt.heightFrac = Math.max(0.05, Math.min(0.85, newHeightPx / playHeight));
-    }
-    if (!throttled) {
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    let draggedBolt = previewLastData.obstacles.find(g => g._entryIdx === previewDragStart.entryIdx && g._boltIdx === previewDragStart.boltIdx) || null;
-    // a bolt dragged far enough left can end up with an effective
-    // zone-progress before 0 -- it would still exist and be dangerous in
-    // real gameplay (it's part of the zone's initial spawn), but the editor
-    // canvas can't render or scroll to negative coordinates at all, making
-    // it permanently invisible/unreachable in the editor from that point on.
-    // pull it back to zone-progress 0 instead of allowing that dead end.
-    if (draggedBolt && draggedBolt.x < 0 && previewDragMode === 'move') {
-      srcBolt.xJitter += Math.round(-draggedBolt.x + 10); // shift right so it lands at zone-progress ~1, just inside the visible/reachable range
-      previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-      draggedBolt = previewLastData.obstacles.find(g => g._entryIdx === previewDragStart.entryIdx && g._boltIdx === previewDragStart.boltIdx) || null;
-    }
-    previewSelectedBolt = draggedBolt;
-    drawZonePreview(previewLastData);
-    }
-  } else if (previewSelectedBlackHole) {
-    const srcEvent = th.blackHoleEvents[previewDragStart.eventIdx];
-    if (previewDragMode === 'move') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale; // preview px -> distance*10 units
-      const dyFrac = (my - previewDragStart.my) / layout.pHeight;
-      srcEvent.triggerDistance = Math.max(20, Math.min(980, previewDragStart.origTriggerDistance + dxWorld / 10));
-      srcEvent.yFrac = Math.max(0, Math.min(1, previewDragStart.origYFrac + dyFrac));
-    } else if (previewDragMode === 'resizeCore') {
-      const dxScreen = mx - previewDragStart.mx;
-      const pxPerScreenPx = (PLAY_BOTTOM - PLAY_TOP) / layout.pHeight;
-      const newCoreR = Math.max(20, previewDragStart.origCoreR + dxScreen * pxPerScreenPx);
-      // keep reach comfortably larger than core so the graduated pull
-      // field always means something
-      srcEvent.coreR = Math.round(newCoreR);
-      srcEvent.reachR = Math.max(srcEvent.reachR, Math.round(newCoreR * 1.2));
-    } else if (previewDragMode === 'resizeReach') {
-      const dxScreen = mx - previewDragStart.mx;
-      const pxPerScreenPx = (PLAY_BOTTOM - PLAY_TOP) / layout.pHeight;
-      const newReachR = Math.max(srcEvent.coreR * 1.15, previewDragStart.origReachR + dxScreen * pxPerScreenPx);
-      srcEvent.reachR = Math.round(newReachR);
-    }
-    if (!throttled) {
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedBlackHole = previewLastData.obstacles.find(g => g._eventIdx === previewDragStart.eventIdx) || null;
-    drawZonePreview(previewLastData);
-    }
-  } else if (previewSelectedWindVortex) {
-    const srcEvent = th.windVortexEvents[previewDragStart.vortexIdx];
-    if (previewDragMode === 'move') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale;
-      const dyFrac = (my - previewDragStart.my) / layout.pHeight;
-      srcEvent.triggerDistance = Math.max(20, Math.min(980, previewDragStart.origTriggerDistance + dxWorld / 10));
-      srcEvent.yFrac = Math.max(0, Math.min(1, previewDragStart.origYFrac + dyFrac));
-    } else if (previewDragMode === 'resizeReach') {
-      const dxScreen = mx - previewDragStart.mx;
-      const pxPerScreenPx = (PLAY_BOTTOM - PLAY_TOP) / layout.pHeight;
-      const newReachR = Math.max(60, previewDragStart.origReachR + dxScreen * pxPerScreenPx);
-      srcEvent.reachR = Math.round(newReachR);
-    }
-    if (!throttled) {
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedWindVortex = previewLastData.obstacles.find(g => g.type === 'windvortex' && g._vortexIdx === previewDragStart.vortexIdx) || null;
-    drawZonePreview(previewLastData);
-    }
-  } else if (previewSelectedCloudArc) {
-    const srcEvent = th.cloudArcEvents[previewDragStart.arcIdx];
-    if (previewDragMode === 'moveLeft') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale;
-      const dyFrac = (my - previewDragStart.my) / layout.pHeight;
-      const newTrigger = Math.max(20, Math.min(980, previewDragStart.origTriggerDistance + dxWorld / 10));
-      // keep the right cloud's absolute position fixed while dragging the
-      // left one -- span is defined relative to the left, so shifting
-      // triggerDistance alone would otherwise also drag the right cloud
-      srcEvent.spanPx = Math.max(60, previewDragStart.origSpanPx - (newTrigger - previewDragStart.origTriggerDistance) * 10);
-      srcEvent.triggerDistance = newTrigger;
-      srcEvent.y1Frac = Math.max(0, Math.min(1, previewDragStart.origY1Frac + dyFrac));
-    } else if (previewDragMode === 'moveRight') {
-      const dxScreen = mx - previewDragStart.mx;
-      const pxPerScreenPx = (PLAY_BOTTOM - PLAY_TOP) / layout.pHeight; // reuse vertical px-per-screenpx as a stand-in scale reference
-      const dxWorld = dxScreen / layout.scale;
-      const dyFrac = (my - previewDragStart.my) / layout.pHeight;
-      srcEvent.spanPx = Math.max(60, previewDragStart.origSpanPx + dxWorld);
-      srcEvent.y2Frac = Math.max(0, Math.min(1, previewDragStart.origY2Frac + dyFrac));
-    } else if (previewDragMode === 'moveBoth') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale;
-      srcEvent.triggerDistance = Math.max(20, Math.min(980, previewDragStart.origTriggerDistance + dxWorld / 10));
-    }
-    if (!throttled) {
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedCloudArc = previewLastData.obstacles.find(g => g.type === 'cloudarc' && g._arcIdx === previewDragStart.arcIdx) || null;
-    drawZonePreview(previewLastData);
-    }
-  } else if (previewSelectedLensingZone) {
-    const srcEvent = th.lensingZoneEvents[previewDragStart.lensIdx];
-    if (previewDragMode === 'moveLens') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale;
-      const dyFrac = (my - previewDragStart.my) / layout.pHeight;
-      srcEvent.triggerDistance = Math.max(20, Math.min(980, previewDragStart.origTriggerDistance + dxWorld / 10));
-      srcEvent.yFrac = Math.max(0, Math.min(1, previewDragStart.origYFrac + dyFrac));
-    } else if (previewDragMode === 'resizeLensCore') {
-      const dxScreen = mx - previewDragStart.mx;
-      const pxPerScreenPx = (PLAY_BOTTOM - PLAY_TOP) / layout.pHeight;
-      const newCoreR = Math.max(4, previewDragStart.origCoreR + dxScreen * pxPerScreenPx);
-      srcEvent.coreR = Math.round(newCoreR);
-      srcEvent.zoneRadius = Math.max(srcEvent.zoneRadius, Math.round(newCoreR * 3));
-    } else if (previewDragMode === 'resizeLensZone') {
-      const dxScreen = mx - previewDragStart.mx;
-      const pxPerScreenPx = (PLAY_BOTTOM - PLAY_TOP) / layout.pHeight;
-      const newZoneR = Math.max(srcEvent.coreR * 2, previewDragStart.origZoneRadius + dxScreen * pxPerScreenPx);
-      srcEvent.zoneRadius = Math.round(newZoneR);
-    }
-    if (!throttled) {
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedLensingZone = previewLastData.obstacles.find(g => g._lensIdx === previewDragStart.lensIdx) || null;
-    drawZonePreview(previewLastData);
-    }
-  } else if (previewSelectedSupernova) {
-    const srcEvent = th.supernovaEvents[previewDragStart.novaIdx];
-    if (previewDragMode === 'moveNova') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale;
-      const dyFrac = (my - previewDragStart.my) / layout.pHeight;
-      srcEvent.triggerDistance = Math.max(20, Math.min(980, previewDragStart.origTriggerDistance + dxWorld / 10));
-      srcEvent.yFrac = Math.max(0, Math.min(1, previewDragStart.origYFrac + dyFrac));
-    } else if (previewDragMode === 'resizeNovaPlanet') {
-      const dxScreen = mx - previewDragStart.mx;
-      const pxPerScreenPx = (PLAY_BOTTOM - PLAY_TOP) / layout.pHeight;
-      const newPlanetR = Math.max(40, previewDragStart.origPlanetR + dxScreen * pxPerScreenPx);
-      srcEvent.planetR = Math.round(newPlanetR);
-    }
-    if (!throttled) {
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedSupernova = previewLastData.obstacles.find(g => g._novaIdx === previewDragStart.novaIdx) || null;
-    drawZonePreview(previewLastData);
-    }
-  } else if (previewSelectedTurret) {
-    const srcEvent = th.turretEvents[previewDragStart.turretIdx];
-    if (previewDragMode === 'moveTurret') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale;
-      srcEvent.triggerDistance = Math.max(20, Math.min(980, previewDragStart.origTriggerDistance + dxWorld / 10));
-    }
-    if (!throttled) {
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedTurret = previewLastData.obstacles.find(g => g._turretIdx === previewDragStart.turretIdx) || null;
-    drawZonePreview(previewLastData);
-    }
-  } else if (previewSelectedEmp) {
-    const srcEvent = th.empEvents[previewDragStart.empIdx];
-    if (previewDragMode === 'moveEmp') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale;
-      srcEvent.triggerDistance = Math.max(20, Math.min(980, previewDragStart.origTriggerDistance + dxWorld / 10));
-    }
-    if (!throttled) {
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedEmp = previewLastData.obstacles.find(g => g._empIdx === previewDragStart.empIdx) || null;
-    drawZonePreview(previewLastData);
-    }
-  } else if (previewSelectedOrb) {
-    const srcEvent = th.pulsingOrbEvents[previewDragStart.orbIdx];
-    if (previewDragMode === 'moveOrb') {
-      const dxWorld = (mx - previewDragStart.mx) / layout.scale;
-      srcEvent.triggerDistance = Math.max(20, Math.min(980, previewDragStart.origTriggerDistance + dxWorld / 10));
-    }
-    if (!throttled) {
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    previewSelectedOrb = previewLastData.obstacles.find(g => g._orbIdx === previewDragStart.orbIdx) || null;
-    drawZonePreview(previewLastData);
-    }
-  }
-});
-
-window.addEventListener('mouseup', () => {
-  if (previewDragStart) {
-    // the throttle may have skipped refreshing on the very last mousemove
-    // before release -- force one final, accurate refresh now. the
-    // underlying data itself was never throttled (only this visual
-    // refresh was), and isSelected checks match by _idx fields rather
-    // than object identity, so existing selection state stays correctly
-    // linked to the freshly captured data
-    previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-    // same negative-position clamp as the mousemove handler -- this is the
-    // actual final, definitive state, so it needs its own check regardless
-    // of whether the in-progress drag ever hit the throttled clamp above
-    if (previewSelectedBolt && previewDragMode === 'move') {
-      const th = THEMES[currentPreviewZone];
-      const srcBolt = th.pattern[previewDragStart.entryIdx].bolts[previewDragStart.boltIdx];
-      let draggedBolt = previewLastData.obstacles.find(g => g._entryIdx === previewDragStart.entryIdx && g._boltIdx === previewDragStart.boltIdx) || null;
-      if (draggedBolt && draggedBolt.x < 0) {
-        srcBolt.xJitter += Math.round(-draggedBolt.x + 10);
-        previewLastData = captureFullZoneRun(currentPreviewZone, 1000);
-      }
-    }
-    drawZonePreview(previewLastData);
-  }
-  previewDragMode = null;
-  previewDragStart = null;
 });
 

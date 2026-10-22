@@ -37,7 +37,7 @@ if (!DEV_TOOLS_ENABLED) {
   if (document.body) document.body.classList.add('player-build');
 }
 
-const GAME_STORAGE_PREFIX = 'synthFlight:';
+const GAME_STORAGE_PREFIX = 'synthFlight2:';
 window.storage = {
   get(key) {
     let value = null;
@@ -256,27 +256,41 @@ function diamondForkWaypoints(pad, gap, forkExtra, wpExtra) {
 // ---- Themes ----
 const THEMES = [
   {
-    name: 'SYNTHWAVE',
-    skyTop: '#1a0b3a', skyMid: '#2a0f4a', skyBottom: '#120523',
-    accentA: '#ff2079', accentB: '#0ff0fc',
-    barTop: '#3a0f5c', barBottom: '#1a0630',
-    bgStyle: 'grid',
+    name: 'GLACIER',
+    skyTop: '#07131c', skyMid: '#1a4a62', skyBottom: '#c5dbe8',
+    accentA: '#f4fbff', accentB: '#79d6ff',
+    barTop: '#123246', barBottom: '#071018',
+    bgStyle: 'frozen',
     ampMult: 1.0, freqMult: 1.0,
     gravityMult: 1.0, liftMult: 1.0,
-    pulseGap: false,
-    // centerFrac: vertical position (0=top of play area, 1=bottom)
-    // ampFrac: oscillation size, as a fraction of the max safe swing at that position
-    // freq/phase: oscillation speed/starting point -- fixed, not randomized
-    // spacing: pixels until the NEXT gate in this list
+    pulseGap: false, obstacleShape: 'terrain', scrollMult: 1,
+    gapFractionStart: 0.48, gapConstant: true,
+    terrainSpacing: 42,
+    iceChunks: true,
+    // The live route is buildGlacierCourse(). These points are only a fallback.
     pattern: [
-      { centerFrac: 0.50, ampFrac: 0.25, freq: 0.018, phase: 0.00, spacing: 300 },
-      { centerFrac: 0.30, ampFrac: 0.40, freq: 0.014, phase: 1.57, spacing: 320 },
-      { centerFrac: 0.70, ampFrac: 0.35, freq: 0.022, phase: 3.14, spacing: 300 },
-      { centerFrac: 0.50, ampFrac: 0.55, freq: 0.016, phase: 0.78, spacing: 340 },
-      { centerFrac: 0.20, ampFrac: 0.30, freq: 0.020, phase: 2.36, spacing: 300 },
-      { centerFrac: 0.80, ampFrac: 0.40, freq: 0.018, phase: 4.71, spacing: 320 },
-      { centerFrac: 0.45, ampFrac: 0.50, freq: 0.024, phase: 1.05, spacing: 300 },
-      { centerFrac: 0.60, ampFrac: 0.28, freq: 0.015, phase: 5.50, spacing: 310 }
+      { centerFrac: 0.28 },
+      { centerFrac: 0.16 },
+      { centerFrac: 0.10 }, { centerFrac: 0.18 }, { centerFrac: 0.08 }, { centerFrac: 0.15 },
+      { centerFrac: 0.22 }, { centerFrac: 0.11 }, { centerFrac: 0.19 }, { centerFrac: 0.07 },
+      { centerFrac: 0.14 }, { centerFrac: 0.21 }, { centerFrac: 0.09 }, { centerFrac: 0.17 },
+      { centerFrac: 0.12 }, { centerFrac: 0.20 }, { centerFrac: 0.08 }, { centerFrac: 0.16 },
+      { centerFrac: 0.13 }, { centerFrac: 0.23 }, { centerFrac: 0.10 }, { centerFrac: 0.18 },
+      { centerFrac: 0.14 }, { centerFrac: 0.09 },
+      { centerFrac: 0.78 },
+      { centerFrac: 0.86 }, { centerFrac: 0.93 }, { centerFrac: 0.82 }, { centerFrac: 0.90 },
+      { centerFrac: 0.78 }, { centerFrac: 0.88 }, { centerFrac: 0.94 }, { centerFrac: 0.83 },
+      { centerFrac: 0.91 }, { centerFrac: 0.79 }, { centerFrac: 0.87 }, { centerFrac: 0.94 },
+      { centerFrac: 0.84 }, { centerFrac: 0.77 }, { centerFrac: 0.89 }, { centerFrac: 0.81 },
+      { centerFrac: 0.92 }, { centerFrac: 0.85 }, { centerFrac: 0.80 }, { centerFrac: 0.91 },
+      { centerFrac: 0.86 }, { centerFrac: 0.93 }
+    ],
+    // yFrac is 0-1 inside the open channel, not the full screen.
+    iceChunkPattern: [
+      { spacing: 460, chunks: [{ xJitter: 0, yFrac: 0.48, rFrac: 0.35 }] },
+      { spacing: 520, chunks: [{ xJitter: -36, yFrac: 0.28, rFrac: 0.5 }, { xJitter: 48, yFrac: 0.74, rFrac: 0.3 }] },
+      { spacing: 440, chunks: [{ xJitter: 18, yFrac: 0.62, rFrac: 0.45 }] },
+      { spacing: 560, chunks: [{ xJitter: 0, yFrac: 0.36, rFrac: 0.25 }] }
     ]
   },
   {
@@ -982,21 +996,19 @@ let zoneSelectPreviewIdx = 0;
 // Pause menu, so it doesn't strand the player on the wrong screen
 let settingsReturnState = 'options';
 
-// unified, persisted player profile: best distance, the 4th difficulty
-// unlock, and which zones have been reached (unlocking them for Zone
-// Select). Migrates from the older, separate localStorage keys this game
-// used before, so existing players don't lose their progress.
-const PROFILE_STORAGE_KEY = 'synthFlightProfile';
-const SAVE_ID_STORAGE_KEY = 'synthFlightSaveId';
-const SAVE_ID_COOKIE = 'sfid';
-const DURABLE_DB_NAME = 'synthFlightDurable';
+// Sequel profile store. Names stay off the original Synth Flight keys so a
+// shared browser origin cannot read or erase that game's saves.
+const PROFILE_STORAGE_KEY = 'synthFlight2Profile';
+const SAVE_ID_STORAGE_KEY = 'synthFlight2SaveId';
+const SAVE_ID_COOKIE = 'sf2id';
+const DURABLE_DB_NAME = 'synthFlight2Durable';
 const DURABLE_STORE = 'profile';
 const SAVE_ID_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 let playerSaveId = '';
 let durableWriteLock = false;
 let durableSaveTimer = 0;
 let durableHydrated = false;
-const ZONE_SHOTS_KEY = 'synthFlightZoneShotsV19';
+const ZONE_SHOTS_KEY = 'synthFlight2ZoneShotsV19';
 const PREVIEW_STILL_W = 640;
 const PREVIEW_STILL_ASPECT = 860 / 412;
 let zoneScreenshots = {};
@@ -1327,8 +1339,10 @@ function generateAndStoreZoneStill(themeIdx) {
     drawMiniBossBarrage(theme);
     drawMiniBossFlameWall(theme);
     drawReactorCoreAttacks(theme);
-    if (theme.obstacleShape === 'terrain') drawTerrain(theme);
-    else drawGates(theme);
+    if (theme.obstacleShape === 'terrain') {
+      drawTerrain(theme);
+      if (theme.iceChunks) drawGates(theme);
+    } else drawGates(theme);
     if (theme.isBossZone) {
       drawBossArenaBarrierWall(theme, boss);
       drawBossArenaVignette(theme, boss);
@@ -1417,8 +1431,8 @@ function loadPlayerProfile() {
     const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
     if (raw) return normalizePlayerProfile(JSON.parse(raw));
   } catch (e) { /* corrupted profile data -- fall through to legacy keys/defaults */ }
-  const legacyBest = parseInt(localStorage.getItem('synthFlightBest') || '0', 10) || 0;
-  const legacyExtra = localStorage.getItem('synthFlightExtraDifficultyUnlocked') === 'true';
+  const legacyBest = parseInt(localStorage.getItem('synthFlight2Best') || '0', 10) || 0;
+  const legacyExtra = localStorage.getItem('synthFlight2ExtraDifficultyUnlocked') === 'true';
   return normalizePlayerProfile({ best: legacyBest, extraDifficultyUnlocked: legacyExtra, unlockedZones: [0] });
 }
 function savePlayerProfile() {
@@ -1445,8 +1459,8 @@ function resetPlayerProfile() {
   savePlayerProfile();
   zoneScreenshots = {};
   try {
-    localStorage.removeItem('synthFlightBest');
-    localStorage.removeItem('synthFlightExtraDifficultyUnlocked');
+    localStorage.removeItem('synthFlight2Best');
+    localStorage.removeItem('synthFlight2ExtraDifficultyUnlocked');
     localStorage.removeItem(ZONE_SHOTS_KEY);
   } catch (e) { /* fine if this fails -- savePlayerProfile() above already wrote the new, authoritative key */ }
 }
@@ -2052,6 +2066,8 @@ let lastSpawnX = 0;
 let fireballSpawnCounter = 0;
 let extraFireballCounter = 0;
 let extraFireballPatternIndex = 0;
+let iceChunkPatternIndex = 0;
+let iceChunkSpawnX = 0;
 let extraToxicCounter = 0;
 let extraToxicPatternIndex = 0;
 let extraGeyserCounter = 0;
@@ -3913,6 +3929,31 @@ function spawnAsteroidCluster(x) {
   return entry.spacing;
 }
 
+function spawnIceChunkCluster(x) {
+  const th = currentTheme();
+  const entry = th.iceChunkPattern[iceChunkPatternIndex % th.iceChunkPattern.length];
+  iceChunkPatternIndex++;
+  const minR = 13, maxR = 22;
+  for (const a of entry.chunks) {
+    const cx = x + (a.xJitter || 0);
+    const bounds = terrainBoundsAt(cx) || terrainBoundsAt(x);
+    const top = bounds ? bounds.top : PLAY_TOP;
+    const bottom = bounds ? bounds.bottom : PLAY_BOTTOM;
+    const r = minR + a.rFrac * (maxR - minR);
+    const pad = r + 16;
+    const span = Math.max(1, (bottom - pad) - (top + pad));
+    gates.push({
+      type: 'asteroid',
+      x: cx,
+      y: top + pad + a.yFrac * span,
+      r: r,
+      rotSeed: a.xJitter || 0,
+      spin: 0.012,
+      passed: false
+    });
+  }
+}
+
 function spawnFireball() {
   const th = currentTheme();
   const playHeight = PLAY_BOTTOM - PLAY_TOP;
@@ -4464,10 +4505,58 @@ function initTerrain() {
   }
 }
 
+function buildGlacierCourse() {
+  // One pass. The tunnel still kinks in straight facets. The high run is
+  // pressed to the ceiling and the low run to the floor, and the two are
+  // different lengths and different cuts so the level does not mirror itself.
+  const facet = (center, n) => Array(n).fill(center);
+  const centers = [
+    ...facet(0.50, 3), ...facet(0.40, 2), ...facet(0.32, 2),
+    ...facet(0.28, 5), ...facet(0.36, 2), ...facet(0.29, 4), ...facet(0.40, 2),
+    ...facet(0.28, 6), ...facet(0.34, 3), ...facet(0.30, 4), ...facet(0.43, 2),
+    ...facet(0.28, 5), ...facet(0.37, 3), ...facet(0.31, 4), ...facet(0.28, 3),
+    ...facet(0.39, 2), ...facet(0.30, 5), ...facet(0.35, 2), ...facet(0.28, 4),
+    ...facet(0.40, 2), ...facet(0.52, 2), ...facet(0.64, 2), ...facet(0.72, 2),
+    ...facet(0.70, 6), ...facet(0.62, 2), ...facet(0.73, 4), ...facet(0.66, 3),
+    ...facet(0.72, 5), ...facet(0.64, 2), ...facet(0.73, 4), ...facet(0.68, 3),
+    ...facet(0.71, 2),
+    ...facet(0.64, 2), ...facet(0.54, 2), ...facet(0.46, 3),
+    ...facet(0.38, 2), ...facet(0.48, 3), ...facet(0.34, 2), ...facet(0.44, 4),
+    ...facet(0.36, 2), ...facet(0.50, 3), ...facet(0.40, 2),
+    ...facet(0.58, 2), ...facet(0.70, 2),
+    ...facet(0.68, 2), ...facet(0.73, 2), ...facet(0.64, 2), ...facet(0.71, 3),
+    ...facet(0.66, 2), ...facet(0.73, 2), ...facet(0.60, 2), ...facet(0.69, 3),
+    ...facet(0.73, 2), ...facet(0.65, 2), ...facet(0.72, 4), ...facet(0.67, 2),
+    ...facet(0.60, 2), ...facet(0.48, 2), ...facet(0.34, 2),
+    ...facet(0.28, 4), ...facet(0.36, 2), ...facet(0.28, 3), ...facet(0.42, 2),
+    ...facet(0.30, 3), ...facet(0.28, 5),
+    ...facet(0.40, 2), ...facet(0.55, 2), ...facet(0.68, 3), ...facet(0.73, 4),
+    ...facet(0.66, 2), ...facet(0.72, 3), ...facet(0.64, 2), ...facet(0.70, 4),
+    ...facet(0.60, 2), ...facet(0.48, 3),
+    ...facet(0.56, 3), ...facet(0.42, 2), ...facet(0.32, 3), ...facet(0.28, 4),
+    ...facet(0.38, 2), ...facet(0.50, 2), ...facet(0.66, 3), ...facet(0.73, 3),
+    ...facet(0.62, 2), ...facet(0.70, 4), ...facet(0.54, 2), ...facet(0.40, 3),
+    ...facet(0.30, 2), ...facet(0.46, 3), ...facet(0.62, 2), ...facet(0.72, 3),
+    ...facet(0.58, 2), ...facet(0.44, 3), ...facet(0.34, 2)
+  ];
+  return centers.map(centerFrac => ({ centerFrac, top: 0, bottom: 0 }));
+}
+
+let glacierCourseCache = null;
+function glacierCourse(segmentIndex) {
+  if (!glacierCourseCache) glacierCourseCache = buildGlacierCourse();
+  const i = Math.max(0, Math.min(glacierCourseCache.length - 1, segmentIndex));
+  return glacierCourseCache[i];
+}
+
 function addTerrainSegment() {
   const th = currentTheme();
   const spacing = th.terrainSpacing || 34;
   const last = terrainSegments[terrainSegments.length - 1];
+  // Glacier teeth are local. Steering from the notched wall makes the next
+  // segment treat a spike as the new cave and stacks the following tooth on it.
+  const steerTop = last.baseTop != null ? last.baseTop : last.topY;
+  const steerBottom = last.baseBottom != null ? last.baseBottom : last.bottomY;
   const margin = 20;
   const playHeight = PLAY_BOTTOM - PLAY_TOP;
   terrainSegmentsSinceEntry++;
@@ -4492,7 +4581,7 @@ function addTerrainSegment() {
       // funnel wide open for a clean run into the portal, instead of
       // continuing to generate normal (possibly tight) cave shape
       const wideGap = playHeight * 0.9;
-      const lastCenter = (last.topY + last.bottomY) / 2;
+      const lastCenter = (steerTop + steerBottom) / 2;
       const minCenter = PLAY_TOP + wideGap / 2;
       const maxCenter = PLAY_BOTTOM - wideGap / 2;
       const target = Math.max(minCenter, Math.min(maxCenter, lastCenter));
@@ -4534,6 +4623,10 @@ function addTerrainSegment() {
         patternIndex++;
         terrainMeanderIndex = 0;
       }
+      if (th.iceChunks) {
+        const course = glacierCourse(Math.max(0, Math.floor(terrainLevelX / spacing) - 1));
+        entry = { centerFrac: course.centerFrac };
+      }
 
       const gapMult = entry.gapMult !== undefined ? entry.gapMult : 1;
       const entryGap = baseGap * gapMult;
@@ -4552,7 +4645,7 @@ function addTerrainSegment() {
         terrainWaypointIslandTarget = 0;
       }
 
-      const holdLastCenter = (last.topY + last.bottomY) / 2;
+      const holdLastCenter = (steerTop + steerBottom) / 2;
       const fullDelta = Math.abs(terrainWaypointTarget - holdLastCenter);
       terrainWaypointSegLeft = Math.max(1, Math.ceil(fullDelta / Math.max(1, maxDeltaPerSegment)));
       if (entry.fork) terrainWaypointSegLeft = Math.max(terrainWaypointSegLeft, 10);
@@ -4566,8 +4659,8 @@ function addTerrainSegment() {
       terrainWaypointIslandBias = (entry.fork && entry.fork.islandBias) ? entry.fork.islandBias : 0;
     }
 
-    const lastCenter = (last.topY + last.bottomY) / 2;
-    const lastGap = last.bottomY - last.topY;
+    const lastCenter = (steerTop + steerBottom) / 2;
+    const lastGap = steerBottom - steerTop;
 
     const centerStep = (terrainWaypointTarget - lastCenter) / terrainWaypointSegLeft;
     const gapStep = (terrainWaypointGapTarget - lastGap) / terrainWaypointSegLeft;
@@ -4644,8 +4737,31 @@ function addTerrainSegment() {
     }
   }
 
-  const nextTop = last.topY + (targetTop - last.topY) * rampFactor;
-  const nextBottom = last.bottomY + (targetBottom - last.bottomY) * rampFactor;
+  let nextTop = steerTop + (targetTop - steerTop) * rampFactor;
+  let nextBottom = steerBottom + (targetBottom - steerBottom) * rampFactor;
+  const baseTopY = nextTop;
+  const baseBottomY = nextBottom;
+  if (th.iceChunks && !portalObject && rampFactor >= 1) {
+    const course = glacierCourse(Math.floor(terrainLevelX / spacing));
+    let topN = course.top;
+    let botN = course.bottom;
+    const room = (nextBottom - nextTop) - minGapPx;
+    const pinch = topN + botN;
+    if (pinch > room && pinch > 0) {
+      const scale = Math.max(0, room) / pinch;
+      topN *= scale;
+      botN *= scale;
+    }
+    nextTop += topN;
+    nextBottom -= botN;
+    nextTop = Math.max(PLAY_TOP + margin, nextTop);
+    nextBottom = Math.min(PLAY_BOTTOM - margin, nextBottom);
+    if (nextBottom - nextTop < minGapPx) {
+      const mid = (nextTop + nextBottom) / 2;
+      nextTop = mid - minGapPx / 2;
+      nextBottom = mid + minGapPx / 2;
+    }
+  }
   const lastIslandCenter = (last.islandTop + last.islandBottom) / 2;
   const nextIslandTop = lastIslandCenter + (targetIslandTop - lastIslandCenter) * rampFactor;
   const nextIslandBottom = lastIslandCenter + (targetIslandBottom - lastIslandCenter) * rampFactor;
@@ -4653,6 +4769,8 @@ function addTerrainSegment() {
     x: last.x + spacing,
     topY: nextTop,
     bottomY: nextBottom,
+    baseTop: baseTopY,
+    baseBottom: baseBottomY,
     islandTop: nextIslandTop,
     islandBottom: nextIslandBottom,
     islandShape: terrainWaypointIslandShape,
@@ -4736,6 +4854,17 @@ function initBackgroundParticles(theme) {
         r: 0.6 + Math.random() * 1.8,
         alpha: 0.3 + Math.random() * 0.7,
         speed: 0.3 + Math.random() * 1.4
+      });
+    }
+  } else if (theme.bgStyle === 'frozen') {
+    for (let i = 0; i < 56; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 1 + Math.random() * 2.4,
+        alpha: 0.35 + Math.random() * 0.55,
+        speed: 0.6 + Math.random() * 1.6,
+        drift: 0.4 + Math.random() * 1.1
       });
     }
     } else if (theme.bgStyle === 'embers') {
@@ -4864,6 +4993,8 @@ function reseedZoneObstacles(startX) {
   supernovaEventsSpawned = currentTheme().supernovaEvents ? currentTheme().supernovaEvents.map(() => false) : [];
   extraHubCounter = 0;
   extraHubPatternIndex = 0;
+  iceChunkPatternIndex = 0;
+  iceChunkSpawnX = W + 700;
   if (currentTheme().obstacleShape === 'terrain') {
     initTerrain();
   } else if (currentTheme().obstacleShape !== 'none') {
@@ -5553,6 +5684,15 @@ function updateBackgroundParticles(theme) {
       if (p.x < 0) {
         p.x = W;
         p.y = PLAY_TOP + Math.random() * playHeight;
+      }
+    }
+  } else if (theme.bgStyle === 'frozen') {
+    for (let p of bgParticles) {
+      p.y += p.speed;
+      p.x -= p.drift;
+      if (p.y > PLAY_BOTTOM || p.x < -4) {
+        p.y = PLAY_TOP - 4;
+        p.x = Math.random() * W;
       }
     }
   } else if (theme.bgStyle === 'embers') {
@@ -7089,6 +7229,32 @@ function update() {
           }
         }
       }
+      if (th.iceChunks) {
+        const shipR = SHIP_W * 0.4;
+        for (const g of gates) {
+          if (g.type !== 'asteroid') continue;
+          const dx = ship.x - g.x;
+          const dy = ship.y - g.y;
+          if (Math.sqrt(dx * dx + dy * dy) < shipR + g.r) tryEndGame('asteroid');
+        }
+      }
+      }
+      if (th.iceChunks) {
+        for (const g of gates) {
+          if (g.type === 'asteroid') g.x -= effScroll;
+        }
+        if (portalObject) {
+          const portalSafeX = portalObject.x - 40;
+          gates = gates.filter(g => g.type !== 'asteroid' || g.x + g.r < portalSafeX);
+        }
+        gates = gates.filter(g => g.type !== 'asteroid' || g.x + g.r > -80);
+        iceChunkSpawnX -= effScroll;
+        const horizon = terrainSegments[terrainSegments.length - 1].x - 8;
+        if (!portalObject && iceChunkSpawnX <= horizon) {
+          const entry = th.iceChunkPattern[iceChunkPatternIndex % th.iceChunkPattern.length];
+          if (!spawnWouldHitPortal(iceChunkSpawnX, 48)) spawnIceChunkCluster(iceChunkSpawnX);
+          iceChunkSpawnX += entry.spacing;
+        }
       }
     } else {
       for (let g of gates) {
@@ -8003,7 +8169,7 @@ let bgmGain = null;
 let delayInput = null;
 let audioUnlocked = false;
 
-const AUDIO_SETTINGS_STORAGE_KEY = 'synthFlightAudioSettings';
+const AUDIO_SETTINGS_STORAGE_KEY = 'synthFlight2AudioSettings';
 const DEFAULT_SFX_VOLUME = 0.64;
 const DEFAULT_BGM_VOLUME = 0.26;
 function clampAudioVolume(value, fallback) {
@@ -8347,7 +8513,7 @@ function exportPlayerSaveFile() {
   const text = JSON.stringify(blob, null, 2);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  a.download = 'synth-flight-save-' + blob.saveId + '.json';
+  a.download = 'synth-flight-2-save-' + blob.saveId + '.json';
   document.body.appendChild(a);
   a.click();
   setTimeout(() => {
@@ -14170,7 +14336,7 @@ function bgmSchedulerTick() {
 }
 
 const BGM_FILE_TRACKS = [
-  { id: 'bgm-01-synthwave', src: 'audio/bgm/bgm-01-synthwave.mp3', themeIndex: 0, start: 0, loopStart: 0, loopEnd: 192 },
+  { id: 'bgm-01-glacier', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 0, start: 0, loopStart: 0, loopEnd: 22 },
   { id: 'bgm-02-gravity-well', src: 'audio/bgm/bgm-02-gravity-well.mp3', themeIndex: 1, start: 0, loopStart: 0 },
   { id: 'bgm-03-deep-space', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 2, start: 0, loopStart: 0, loopEnd: 22 },
   { id: 'bgm-04-inferno', src: 'audio/bgm/bgm-04-inferno.mp3', themeIndex: 3, start: 0, loopStart: 0, loopEnd: 104 },
@@ -14761,7 +14927,7 @@ const SFX_CATALOG = [
   { id: 'bgmMenu', section: '6. Background Music', name: 'Menu / home loop (synth)', kind: 'bgm', profile: 'menu', play: () => {} },
   { id: 'bgmVictory', section: '6. Background Music', name: 'Victory — Neon Rise (synth)', kind: 'bgm', profile: 'victory', play: () => {} },
   { id: 'bgmGameOver', section: '6. Background Music', name: 'Game over stinger', kind: 'oneshot', play: () => sfxGameOver() },
-  { id: 'bgm01', section: '6. Background Music', name: '01 Synthwave', kind: 'bgm', trackId: 'bgm-01-synthwave', play: () => {} },
+  { id: 'bgm01', section: '6. Background Music', name: '01 Glacier', kind: 'bgm', trackId: 'bgm-01-glacier', play: () => {} },
   { id: 'bgm02', section: '6. Background Music', name: '02 Gravity Well', kind: 'bgm', trackId: 'bgm-02-gravity-well', play: () => {} },
   { id: 'bgm03', section: '6. Background Music', name: '03 Deep Space', kind: 'bgm', trackId: 'bgm-03-deep-space', play: () => {} },
   { id: 'bgm04', section: '6. Background Music', name: '04 Inferno', kind: 'bgm', trackId: 'bgm-04-inferno', play: () => {} },
@@ -17557,6 +17723,15 @@ function drawBackground(theme) {
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+  } else if (theme.bgStyle === 'frozen') {
+    for (let p of bgParticles) {
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = '#f7fbff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   } else if (theme.bgStyle === 'embers') {
     drawInfernoHeatBackdrop(theme);
   } else if (theme.bgStyle === 'ruins') {
@@ -19111,7 +19286,40 @@ function drawWreckage(g, theme) {
   ctx.restore();
 }
 
+function drawIceChunk(g, theme) {
+  ctx.save();
+  ctx.translate(g.x, g.y);
+  ctx.rotate(g.rotSeed + frame * g.spin);
+  const grad = ctx.createRadialGradient(-g.r * 0.25, -g.r * 0.3, g.r * 0.1, 0, 0, g.r);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.55, '#d7f3ff');
+  grad.addColorStop(1, '#5aa7c8');
+  ctx.fillStyle = grad;
+  ctx.shadowColor = theme.accentB;
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  const sides = 6;
+  for (let i = 0; i < sides; i++) {
+    const a = (i / sides) * Math.PI * 2 - Math.PI / 2;
+    const rr = g.r * (i % 2 === 0 ? 1 : 0.82);
+    const px = Math.cos(a) * rr;
+    const py = Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawAsteroid(g, theme) {
+  if (theme && theme.iceChunks) {
+    drawIceChunk(g, theme);
+    return;
+  }
   ctx.save();
   ctx.translate(g.x, g.y);
   ctx.rotate(g.rotSeed + frame * g.spin);
@@ -21423,7 +21631,7 @@ function drawBars(theme) {
   ctx.textBaseline = 'middle';
   ctx.shadowColor = theme.accentB;
   ctx.shadowBlur = 8;
-  ctx.fillText('SYNTH FLIGHT', 14, BAR_HEIGHT / 2 + 2);
+  ctx.fillText('SYNTH FLIGHT 2', 14, BAR_HEIGHT / 2 + 2);
   ctx.shadowBlur = 0;
   ctx.font = '9px Courier New';
   ctx.fillStyle = 'rgba(255,255,255,0.3)';
@@ -21556,6 +21764,21 @@ function drawTerrain(theme) {
     if (i === 0) ctx.moveTo(s.x, s.bottomY); else ctx.lineTo(s.x, s.bottomY);
   });
   ctx.stroke();
+
+  if (theme.iceChunks) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    terrainSegments.forEach((s, i) => {
+      if (i === 0) ctx.moveTo(s.x, s.topY + 3); else ctx.lineTo(s.x, s.topY + 3);
+    });
+    ctx.stroke();
+    ctx.beginPath();
+    terrainSegments.forEach((s, i) => {
+      if (i === 0) ctx.moveTo(s.x, s.bottomY - 3); else ctx.lineTo(s.x, s.bottomY - 3);
+    });
+    ctx.stroke();
+  }
 
   // fork island: a solid mass splitting the passage -- draw only the contiguous
   // runs of segments that actually have thickness, so the outline never traces
@@ -21815,6 +22038,7 @@ function draw() {
     if (worldRenderOffsetX) ctx.translate(worldRenderOffsetX, 0);
     if (theme.obstacleShape === 'terrain') {
       drawTerrain(theme);
+      if (theme.iceChunks) drawGates(theme);
     } else {
       drawGates(theme);
     }
@@ -21861,7 +22085,7 @@ function updateOverlay() {
   if (state === 'home') {
     overlay.innerHTML = `
       <div class="game-logo-plate home-title-plate">
-        <div class="game-logo home-title">SYNTH FLIGHT</div>
+        <div class="game-logo home-title">SYNTH FLIGHT 2</div>
       </div>
       <div id="menu-start-prompt" class="clickable" data-action="go-to-options">CLICK TO START</div>
     `;
@@ -21872,7 +22096,7 @@ function updateOverlay() {
     const displayLabel = isLockedExtra ? '???' : difficultyLabels[selectedDifficulty];
     const displayClass = isLockedExtra ? '' : difficultyClasses[selectedDifficulty];
     overlay.innerHTML = `
-      <div class="game-logo home-title options-title">SYNTH FLIGHT</div>
+      <div class="game-logo home-title options-title">SYNTH FLIGHT 2</div>
       <div class="options-panel-v2">
         <div class="panel-header">OPTIONS</div>
         <div class="options-fly-hint">${MOBILE_PERFORMANCE_MODE ? 'HOLD TO FLY  ·  TAP AND HOLD, RELEASE TO FALL' : 'HOLD TO FLY  ·  LEFT CLICK OR SPACE, RELEASE TO FALL'}</div>

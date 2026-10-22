@@ -1,3 +1,280 @@
+function playEmpDischarge() {
+  if (!audioUnlocked || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const hi = 698;
+  const lo = 349;
+  for (let i = 0; i < 16; i++) {
+    const drop = 1 - i * 0.022;
+    playSynth({
+      type: 'square',
+      freq: (i % 2 ? hi : lo) * drop,
+      duration: 0.02,
+      attack: 0.001,
+      decay: 0.004,
+      sustain: 0.75,
+      release: 0.008,
+      volume: 0.16 * (1 - i * 0.035),
+      filterType: 'lowpass',
+      filterFreq: 2600,
+      delaySend: 0.04,
+      when: t0 + i * 0.017,
+    });
+  }
+  playNoiseBurst({ duration: 0.22, filterFreq: 2400, filterType: 'bandpass', filterQ: 1.4, volume: 0.07, when: t0 });
+}
+
+function playDroneBuzz() {
+  playSecurityDroneHit();
+}
+
+function playSecurityDroneHit() {
+  if (!audioUnlocked || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  playNoiseBurst({ duration: 0.05, filterFreq: 3800, filterType: 'highpass', volume: 0.22, when: t0 });
+  playNoiseBurst({ duration: 0.11, filterFreq: 340, filterEnd: 110, filterType: 'lowpass', filterQ: 0.55, volume: 0.4, when: t0 });
+  playNoiseBurst({ duration: 0.045, filterFreq: 1700, filterType: 'bandpass', filterQ: 2.2, volume: 0.2, when: t0 + 0.016 });
+  playSynth({ type: 'sine', freq: 86, freqEnd: 36, duration: 0.14, attack: 0.001, decay: 0.04, sustain: 0.3, release: 0.06, volume: 0.28, filterFreq: 220, delaySend: 0, when: t0 });
+  playSynth({ type: 'triangle', freq: 280, freqEnd: 95, duration: 0.09, attack: 0.001, decay: 0.025, sustain: 0.22, release: 0.04, volume: 0.12, filterFreq: 700, delaySend: 0, when: t0 });
+  playSynth({ type: 'sine', freq: 980, freqEnd: 240, duration: 0.07, attack: 0.001, decay: 0.018, sustain: 0.18, release: 0.04, volume: 0.12, filterFreq: 2600, delaySend: 0.08, when: t0 });
+}
+
+function playAlienDroneSpawn() {
+  if (!audioUnlocked || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  playNoiseBurst({ duration: 0.22, filterFreq: 1600, filterEnd: 4200, filterType: 'bandpass', filterQ: 1.8, volume: 0.16, delaySend: 0.1, when: t0 });
+  playSynth({
+    type: 'sawtooth', freq: 620, freqEnd: 380, duration: 0.2,
+    attack: 0.012, decay: 0.05, sustain: 0.45, release: 0.08,
+    volume: 0.1, filterType: 'bandpass', filterFreq: 1400, filterQ: 2.2, delaySend: 0.12, when: t0,
+  });
+  playSynth({
+    type: 'sawtooth', freq: 655, freqEnd: 400, duration: 0.2,
+    attack: 0.014, decay: 0.05, sustain: 0.4, release: 0.08,
+    volume: 0.07, filterType: 'bandpass', filterFreq: 1600, filterQ: 2.4, delaySend: 0.12, when: t0,
+  });
+  playSynth({
+    type: 'sine', freq: 2400, freqEnd: 1100, duration: 0.12,
+    attack: 0.004, decay: 0.03, sustain: 0.3, release: 0.05,
+    volume: 0.1, filterFreq: 4500, delaySend: 0.16, when: t0,
+  });
+}
+
+function playGravityWoom() {
+  playSynth({ type: 'sine', freq: 70, freqEnd: 28, duration: 0.28, attack: 0.02, decay: 0.08, sustain: 0.55, release: 0.1, volume: 0.32, filterFreq: 160, delaySend: 0.1 });
+  playNoiseBurst({ duration: 0.18, filterFreq: 160, filterType: 'lowpass', volume: 0.2 });
+}
+
+function playBossSlam() {
+  playNoiseBurst({ duration: 0.22, filterFreq: 240, filterEnd: 90, filterType: 'lowpass', filterQ: 0.5, volume: 0.5 });
+  playSynth({ type: 'sine', freq: 52, freqEnd: 28, duration: 0.22, attack: 0.004, decay: 0.06, sustain: 0.4, release: 0.1, volume: 0.34, filterFreq: 140, delaySend: 0 });
+}
+
+function playMeteorRingImpact() {
+  if (!audioUnlocked || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  playNoiseBurst({ duration: 0.1, filterFreq: 5200, filterType: 'highpass', volume: 0.48, when: t0 });
+  playNoiseBurst({ duration: 0.28, filterFreq: 900, filterEnd: 140, filterType: 'lowpass', filterQ: 0.4, volume: 0.62, when: t0 });
+  playNoiseBurst({ duration: 0.18, filterFreq: 1600, filterEnd: 280, filterType: 'bandpass', filterQ: 0.7, volume: 0.38, when: t0 });
+  playSynth({ type: 'sine', freq: 58, freqEnd: 18, duration: 0.85, attack: 0.002, decay: 0.12, sustain: 0.5, release: 0.28, volume: 0.52, filterFreq: 140, delaySend: 0, when: t0 });
+  playSynth({ type: 'sine', freq: 36, freqEnd: 16, duration: 1.05, attack: 0.004, decay: 0.16, sustain: 0.45, release: 0.32, volume: 0.36, filterFreq: 90, delaySend: 0, when: t0 });
+  playSynth({ type: 'sawtooth', freq: 78, freqEnd: 26, duration: 0.42, attack: 0.002, decay: 0.08, sustain: 0.3, release: 0.14, volume: 0.14, filterType: 'lowpass', filterFreq: 420, filterEnd: 90, delaySend: 0, when: t0 });
+  playEntranceRumble({ when: t0, duration: 1.85, volStart: 0.55, volEnd: 0.08, filtStart: 380, filtEnd: 70 });
+  playNoiseBurst({ duration: 0.55, filterFreq: 280, filterEnd: 1600, filterType: 'lowpass', volume: 0.32, delaySend: 0.12, when: t0 + 0.05 });
+  playNoiseBurst({ duration: 0.7, filterFreq: 1400, filterEnd: 220, filterType: 'highpass', volume: 0.18, delaySend: 0.1, when: t0 + 0.16 });
+  playSynth({ type: 'sine', freq: 42, freqEnd: 20, duration: 0.7, attack: 0.02, decay: 0.18, sustain: 0.4, release: 0.22, volume: 0.22, filterFreq: 110, delaySend: 0, when: t0 + 0.22 });
+}
+
+function playHotEmberRoar() {
+  if (!audioUnlocked || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  playNoiseBurst({ duration: 0.4, filterFreq: 480, filterEnd: 1600, filterType: 'bandpass', filterQ: 0.65, volume: 0.46, delaySend: 0.1, when: t0 });
+  playNoiseBurst({ duration: 0.36, filterFreq: 4200, filterEnd: 1600, filterType: 'highpass', filterQ: 0.7, volume: 0.3, delaySend: 0.12, when: t0 });
+  playNoiseBurst({ duration: 0.22, filterFreq: 2200, filterEnd: 650, filterType: 'bandpass', filterQ: 1.5, volume: 0.26, when: t0 + 0.03 });
+  playNoiseBurst({ duration: 0.05, filterFreq: 3400, filterType: 'bandpass', filterQ: 3.4, volume: 0.3, when: t0 + 0.02 });
+  playNoiseBurst({ duration: 0.04, filterFreq: 2700, filterType: 'bandpass', filterQ: 3.0, volume: 0.24, when: t0 + 0.08 });
+  playNoiseBurst({ duration: 0.05, filterFreq: 3900, filterType: 'bandpass', filterQ: 3.6, volume: 0.22, when: t0 + 0.14 });
+  playNoiseBurst({ duration: 0.04, filterFreq: 2100, filterType: 'bandpass', filterQ: 2.6, volume: 0.2, when: t0 + 0.21 });
+  playSynth({
+    type: 'sawtooth', freq: 86, freqEnd: 44, duration: 0.3,
+    attack: 0.014, decay: 0.08, sustain: 0.4, release: 0.1,
+    volume: 0.13, filterType: 'lowpass', filterFreq: 560, filterEnd: 160, delaySend: 0, when: t0,
+  });
+}
+
+function playHotEmberImpact() {
+  if (!audioUnlocked || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  playNoiseBurst({ duration: 0.16, filterFreq: 2600, filterEnd: 700, filterType: 'bandpass', filterQ: 1.3, volume: 0.38, when: t0 });
+  playNoiseBurst({ duration: 0.12, filterFreq: 4800, filterType: 'highpass', volume: 0.24, when: t0 });
+  playNoiseBurst({ duration: 0.14, filterFreq: 900, filterEnd: 220, filterType: 'lowpass', volume: 0.2, when: t0 });
+}
+
+function playKeyPickup() {
+  if (!audioUnlocked || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const notes = [784, 1047, 1319, 1568, 2093];
+  notes.forEach((freq, i) => {
+    const when = t0 + i * 0.052;
+    playSynth({
+      type: 'sine', freq, duration: 0.16,
+      attack: 0.004, decay: 0.04, sustain: 0.5, release: 0.09,
+      volume: 0.24 - i * 0.02, filterFreq: 4400, delaySend: 0.32, when,
+    });
+    playSynth({
+      type: 'triangle', freq: freq * 2, duration: 0.1,
+      attack: 0.002, decay: 0.03, sustain: 0.28, release: 0.05,
+      volume: 0.07, filterFreq: 5200, delaySend: 0.24, when,
+    });
+  });
+  playSynth({
+    type: 'sine', freq: 2637, freqEnd: 3136, duration: 0.32,
+    attack: 0.012, decay: 0.08, sustain: 0.4, release: 0.14,
+    volume: 0.11, filterFreq: 5600, delaySend: 0.45, when: t0 + 0.24,
+  });
+  playNoiseBurst({
+    duration: 0.1, filterFreq: 4800, filterType: 'highpass', volume: 0.07,
+    delaySend: 0.2, when: t0 + 0.015,
+  });
+}
+
+function sfxHazardFire(type) {
+  if (type === 'fireball') {
+    playBowserFireball();
+    return;
+  }
+  if (type === 'boomerang') {
+    playBoomerangPass();
+    return;
+  }
+  if (type === 'flameWallTelegraph') {
+    sfxFireBossFlameWallTelegraph();
+    return;
+  }
+  if (type === 'flameWallActive') {
+    startMoltenFlameWallSound();
+    return;
+  }
+  if (type === 'barrageTelegraph') {
+    sfxFireBossBarrageTelegraph();
+    return;
+  }
+  if (type === 'coreFlame') {
+    sfxFireBossEmberLaunch();
+    return;
+  }
+  if (type === 'coreCrossfireTelegraph') {
+    sfxCoreCrossfireTelegraph();
+    return;
+  }
+  if (type === 'coreCrossfireActive') {
+    sfxCoreCrossfireVolley();
+    return;
+  }
+  if (type === 'coreCrossfireGap') {
+    return;
+  }
+  if (type === 'coreBulkheadTelegraph') {
+    sfxCoreBulkheadTelegraph();
+    return;
+  }
+  if (type === 'coreBulkheadActive') {
+    startCoreBulkheadHoldSound();
+    return;
+  }
+  if (type === 'coreEmpTelegraph') {
+    sfxCoreEmpTelegraph();
+    return;
+  }
+  if (type === 'coreEmpPulse') {
+    sfxCoreEmpPulse();
+    return;
+  }
+  if (type === 'coreTesla') {
+    sfxCoreTeslaBurst();
+    return;
+  }
+  if (type === 'stormchargebolttelegraph') {
+    playStormChargeTelegraph();
+    return;
+  }
+  if (type === 'stormchargebolt') {
+    playStormThunderStrike();
+    return;
+  }
+  if (!sfxHazardRateOk('fire:' + type, 70)) return;
+  if (type === 'bossvolleytelegraph') {
+    playTrackingLockOn();
+    return;
+  }
+  if (type === 'bossvolley') {
+    playBulletVolley();
+    return;
+  }
+  if (type === 'bossdrone') {
+    return;
+  }
+  if (type === 'accesskey') {
+    playKeyPickup();
+    return;
+  }
+  if (type === 'bosschargebeamtelegraph') {
+    playChargeTelegraph(lastBossChargeBeamSfx);
+    return;
+  }
+  if (type === 'bosschargebeam') {
+    playChargeBeamFire(lastBossChargeBeamSfx);
+    return;
+  }
+  if (type === 'bossdiagonalring' || type === 'bossragepulse') {
+    playMeteorRingImpact();
+    return;
+  }
+  const family = hazardFamily(type);
+  if (family === 'laser') {
+    if (isHazardTelegraph(type) && isChargeBeamType(type)) playChargeWhine();
+    else if (isHazardTelegraph(type)) playLockOn();
+    else if (isChargeBeamType(type)) playBeamFire();
+    else playEnergyShot();
+  } else if (family === 'fire') {
+    if (isHazardTelegraph(type)) {
+      playNoiseBurst({ duration: 0.16, filterFreq: 280, filterEnd: 900, filterType: 'lowpass', volume: 0.2 });
+      playSynth({ type: 'sine', freq: 90, freqEnd: 140, duration: 0.16, attack: 0.02, decay: 0.05, sustain: 0.4, release: 0.05, volume: 0.12, filterFreq: 400, delaySend: 0 });
+    } else {
+      playNoiseBurst({ duration: 0.22, filterFreq: 380, filterEnd: 1100, filterType: 'bandpass', filterQ: 0.55, volume: 0.34 });
+      playNoiseBurst({ duration: 0.08, filterFreq: 2200, filterType: 'bandpass', filterQ: 1.4, volume: 0.16, when: audioCtx.currentTime + 0.05 });
+      playSynth({ type: 'sine', freq: 68, freqEnd: 46, duration: 0.2, attack: 0.02, decay: 0.08, sustain: 0.4, release: 0.08, volume: 0.16, filterFreq: 180, delaySend: 0 });
+    }
+  } else if (family === 'electric') {
+    playElectricCrackles({ count: 6, spacing: 0.012, volume: 0.26 });
+    playSynth({ type: 'sawtooth', freq: 2100, freqEnd: 220, duration: 0.07, attack: 0.001, decay: 0.02, sustain: 0.25, release: 0.04, volume: 0.14, filterType: 'highpass', filterFreq: 900, filterQ: 0.7, delaySend: 0.08 });
+  } else if (family === 'plasma') {
+    playPlasmaShot();
+  } else if (family === 'whoosh') {
+    playNoiseBurst({ duration: 0.18, filterFreq: 420, filterEnd: 2400, filterType: 'lowpass', filterQ: 0.6, volume: 0.28 });
+  } else if (family === 'nova') {
+    playSynth({ type: 'sine', freq: 90, freqEnd: 280, duration: 0.16, attack: 0.02, decay: 0.05, sustain: 0.5, release: 0.04, volume: 0.2, filterFreq: 800, delaySend: 0.12 });
+    playNoiseBurst({ duration: 0.28, filterFreq: 700, filterEnd: 180, filterType: 'lowpass', volume: 0.42, when: audioCtx.currentTime + 0.12 });
+    playSynth({ type: 'sine', freq: 140, freqEnd: 40, duration: 0.22, attack: 0.004, decay: 0.06, sustain: 0.35, release: 0.08, volume: 0.24, filterFreq: 300, delaySend: 0, when: audioCtx.currentTime + 0.12 });
+  } else if (family === 'drone') {
+    playSecurityDroneHit();
+  } else if (family === 'metal') {
+    playMetalClank();
+  } else if (family === 'bossHeavy') {
+    playBossSlam();
+  } else if (family === 'gravity') {
+    playGravityWoom();
+  } else if (family === 'echo') {
+    playSynth({ type: 'sine', freq: 640, freqEnd: 480, duration: 0.08, attack: 0.002, decay: 0.02, sustain: 0.3, release: 0.1, volume: 0.22, filterFreq: 2200, delaySend: 0.55 });
+  } else if (family === 'rock') {
+    playRockThud();
+  } else if (family === 'drip') {
+    playSynth({ type: 'sine', freq: 1480, freqEnd: 420, duration: 0.07, attack: 0.001, decay: 0.02, sustain: 0.2, release: 0.05, volume: 0.28, filterFreq: 2800, delaySend: 0.12 });
+    playNoiseBurst({ duration: 0.05, filterFreq: 2600, filterType: 'bandpass', filterQ: 4.5, volume: 0.14, delaySend: 0.1 });
+  } else if (family === 'key') {
+    playKeyPickup();
+  }
+}
+
 function sfxHazardImpact(type) {
   if (type === 'charging' || type === 'chargingClose') {
     sfxFireBossBodyHit();
@@ -2558,7 +2835,7 @@ function bgmSchedulerTick() {
 }
 
 const BGM_FILE_TRACKS = [
-  { id: 'bgm-01-synthwave', src: 'audio/bgm/bgm-01-synthwave.mp3', themeIndex: 0, start: 0, loopStart: 0, loopEnd: 192 },
+  { id: 'bgm-01-glacier', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 0, start: 0, loopStart: 0, loopEnd: 22 },
   { id: 'bgm-02-gravity-well', src: 'audio/bgm/bgm-02-gravity-well.mp3', themeIndex: 1, start: 0, loopStart: 0 },
   { id: 'bgm-03-deep-space', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 2, start: 0, loopStart: 0, loopEnd: 22 },
   { id: 'bgm-04-inferno', src: 'audio/bgm/bgm-04-inferno.mp3', themeIndex: 3, start: 0, loopStart: 0, loopEnd: 104 },
@@ -2654,517 +2931,4 @@ function stopFileBgm(fadeSec) {
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + fade);
   } catch (e) { /* already stopped */ }
 }
-
-function stopBgm() {
-  stopSynthBgm();
-  stopFileBgm(0.08);
-}
-
-function playBgm(profileName) {
-  if (!audioUnlocked || !BGM_PROFILES[profileName]) return;
-  initAudio();
-  if (bgmFileTrackId) stopFileBgm(0.12);
-  if (bgmCurrentProfileName === profileName && bgmSchedulerId !== null) return;
-  stopSynthBgm();
-  bgmCurrentProfileName = profileName;
-  bgmCurrentStep = 0;
-  bgmNextStepTime = audioCtx.currentTime + 0.05;
-  bgmSchedulerId = setInterval(bgmSchedulerTick, BGM_LOOKAHEAD_MS);
-}
-
-function startHtmlBgm(track) {
-  if (audioSettings.muted) return;
-  stopSynthBgm();
-  const prevEl = bgmHtmlAudio;
-  const el = getBgmElement(track.src);
-  // Keep file-backed music on the HTMLAudio output instead of routing it
-  // through MediaElementAudioSource. itch.io may serve game assets from a
-  // separate CDN origin; browsers deliberately silence cross-origin media
-  // when it is connected to Web Audio, even though direct playback is valid.
-  el.volume = (!audioSettings.muted && audioSettings.bgmEnabled)
-    ? Math.max(0, Math.min(1, audioSettings.bgmVolume * 0.8))
-    : 0;
-  el.loop = track.loopEnd == null;
-  const offset = track.start != null ? track.start : 0;
-  try { el.currentTime = offset; } catch (e) { /* not seekable yet */ }
-  const playAttempt = el.play();
-  if (playAttempt && playAttempt.catch) {
-    playAttempt.catch(() => {
-      if (bgmFileTrackId !== track.id) return;
-      bgmFileTrackId = null;
-      playBgm('standard');
-      // Keep the failed file marked for this zone so the draw loop does not
-      // cancel the synth fallback and retry a rejected play() every frame.
-      bgmFileTrackId = track.id;
-    });
-  }
-  bgmHtmlAudio = el;
-  bgmFileGainNode = null;
-  bgmFileTrackId = track.id;
-  bgmActiveFileTrack = track;
-  if (prevEl && prevEl !== el) {
-    try { prevEl.pause(); } catch (e) { /* already paused */ }
-  }
-}
-
-function playFileBgm(trackId, opts) {
-  if (!audioUnlocked || audioSettings.muted) return;
-  initAudio();
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  const track = bgmFileTrackById(trackId);
-  if (!track) return;
-  if (bgmFileTrackId === track.id && !(opts && opts.restart)) return;
-  bgmFileLoadToken++;
-  bgmFileTrackId = track.id;
-  startHtmlBgm(track);
-}
-
-function restartBossFileBgm() {
-  const th = currentTheme();
-  if (!th || !(th.isBossZone || th.isMiniBossZone)) return;
-  const track = currentFileBgmTrack();
-  if (!track) return;
-  playFileBgm(track.id, { restart: true });
-}
-
-function tickFileBgmLoop() {
-  const el = bgmHtmlAudio;
-  const track = bgmActiveFileTrack;
-  if (!el || !track || track.loopEnd == null || el.paused) return;
-  const loopStart = track.loopStart != null ? track.loopStart : (track.start || 0);
-  if (el.currentTime >= track.loopEnd - 0.03) {
-    try { el.currentTime = loopStart; } catch (e) { /* ignore */ }
-  }
-}
-
-function prefetchBgmTrack(trackId) {
-  const track = bgmFileTrackById(trackId);
-  if (!track) return;
-  getBgmElement(track.src);
-}
-
-function prefetchThemeBgm(themeIdx) {
-  for (const track of BGM_FILE_TRACKS) {
-    if (track.themeIndex === themeIdx) prefetchBgmTrack(track.id);
-  }
-}
-
-// ---- Sound tester (checklist catalog) ----
-let previewLoopNodes = [];
-let previewLoopId = null;
-
-function sfxArp(freqs, duty = 0.25, volume = 0.38, step = 0.05) {
-  const steps = freqs.map((freq, i) => ({ freq, time: step + (i === freqs.length - 1 ? 0.05 : 0) }));
-  playPulseTone({
-    dutyCycle: duty,
-    freqSteps: steps,
-    duration: step * freqs.length + 0.04,
-    attack: 0.002, decay: 0.015, sustain: 0.65, release: 0.04, volume,
-  });
-}
-
-function sfxTelegraph(freq) {
-  sfxArp([freq, freq, freq * 1.25], 0.125, 0.34, 0.065);
-}
-
-function sfxSlam(freq) {
-  playNoiseBurst({ duration: 0.12, filterFreq: Math.max(180, freq * 4), filterEnd: 90, filterType: 'lowpass', volume: 0.36 });
-  playSynth({ type: 'sine', freq: freq, freqEnd: freq * 0.45, duration: 0.14, attack: 0.002, decay: 0.04, sustain: 0.3, release: 0.06, volume: 0.28, filterFreq: 400, delaySend: 0 });
-}
-
-function isGlowDangerTesterLoop() {
-  return typeof previewLoopId === 'string' && previewLoopId.startsWith('shipGlow');
-}
-
-function stopSfxPreviewLoops() {
-  previewLoopId = null;
-  glowDangerPreviewUrgency = -1;
-  stopLiftSound();
-  stopGlowDangerSound();
-  stopFireballBreathSound();
-  stopToxicHazardSounds();
-  stopDustStormSound();
-  stopMeteorStreakSound();
-  stopStormSkiesHazardSounds();
-  stopMovingDoorSound();
-  stopBlackHoleSound();
-  stopMoltenCoreIdleSound();
-  stopMoltenFlameWallSound();
-  stopMoltenSqueezeSound();
-  stopMoltenDeathAshSound();
-  stopCoreBulkheadHoldSound();
-  stopCoreOverload(0.04);
-  if (!audioCtx) {
-    previewLoopNodes = [];
-    return;
-  }
-  const now = audioCtx.currentTime;
-  previewLoopNodes.forEach((node) => {
-    try { node.stop(now + 0.05); } catch (e) { /* already stopped */ }
-  });
-  previewLoopNodes = [];
-}
-
-function startPreviewPulseLoop(freq, duty = 0.125, volume = 0.08) {
-  stopSfxPreviewLoops();
-  if (!audioUnlocked || !audioCtx) return;
-  const now = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator();
-  osc.type = 'triangle';
-  osc.frequency.value = freq;
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.value = duty <= 0.15 ? 500 : 900;
-  const gain = audioCtx.createGain();
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.linearRampToValueAtTime(volume, now + 0.08);
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(sfxGain);
-  osc.start(now);
-  previewLoopNodes.push(osc);
-}
-
-function startPreviewNoiseLoop(filterFreq, volume = 0.06) {
-  stopSfxPreviewLoops();
-  if (!audioUnlocked || !audioCtx) return;
-  const now = audioCtx.currentTime;
-  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-  const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-  source.loop = true;
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.value = filterFreq;
-  const gain = audioCtx.createGain();
-  gain.gain.value = volume;
-  source.connect(filter);
-  filter.connect(gain);
-  gain.connect(sfxGain);
-  source.start(now);
-  previewLoopNodes.push(source);
-}
-
-function startPreviewPulsingOrbLoop() {
-  if (!audioUnlocked || !audioCtx) return;
-  const now = audioCtx.currentTime;
-  const out = audioCtx.createGain();
-  out.gain.value = 0.17;
-  out.connect(sfxGain);
-
-  const lfo = audioCtx.createOscillator();
-  lfo.type = 'sine';
-  lfo.frequency.value = 1 / 5.8;
-
-  const drone = audioCtx.createOscillator();
-  drone.type = 'sine';
-  drone.frequency.value = 112;
-  const dGain = audioCtx.createGain();
-  dGain.gain.value = 0.12;
-  const lfoPitch = audioCtx.createGain();
-  lfoPitch.gain.value = 54;
-  lfo.connect(lfoPitch);
-  lfoPitch.connect(drone.frequency);
-  drone.connect(dGain);
-  dGain.connect(out);
-
-  const bloom = audioCtx.createOscillator();
-  bloom.type = 'triangle';
-  bloom.frequency.value = 196;
-  const bFilt = audioCtx.createBiquadFilter();
-  bFilt.type = 'lowpass';
-  bFilt.frequency.value = 1100;
-  const bGain = audioCtx.createGain();
-  bGain.gain.value = 0.05;
-  const lfoBloom = audioCtx.createGain();
-  lfoBloom.gain.value = 88;
-  lfo.connect(lfoBloom);
-  lfoBloom.connect(bloom.frequency);
-  const lfoFilt = audioCtx.createGain();
-  lfoFilt.gain.value = 780;
-  lfo.connect(lfoFilt);
-  lfoFilt.connect(bFilt.frequency);
-  bloom.connect(bFilt);
-  bFilt.connect(bGain);
-  bGain.connect(out);
-
-  const noise = createGlowDangerNoise();
-  const nFilt = audioCtx.createBiquadFilter();
-  nFilt.type = 'bandpass';
-  nFilt.frequency.value = 740;
-  nFilt.Q.value = 1.1;
-  const nGain = audioCtx.createGain();
-  nGain.gain.value = 0.07;
-  const lfoNoise = audioCtx.createGain();
-  lfoNoise.gain.value = 500;
-  lfo.connect(lfoNoise);
-  lfoNoise.connect(nFilt.frequency);
-  noise.connect(nFilt);
-  nFilt.connect(nGain);
-  nGain.connect(out);
-
-  const lfoVol = audioCtx.createGain();
-  lfoVol.gain.value = 0.055;
-  lfo.connect(lfoVol);
-  lfoVol.connect(out.gain);
-
-  drone.start(now);
-  bloom.start(now);
-  noise.start(now);
-  lfo.start(now);
-  previewLoopNodes.push(drone, bloom, noise, lfo);
-  playPulsingOrbBloom(1);
-}
-
-function playSfxCatalogEntry(entry) {
-  unlockAudio();
-  initAudio();
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  if (entry.kind === 'loop') {
-    if (previewLoopId === entry.id) {
-      stopSfxPreviewLoops();
-      stopBgm();
-      return false;
-    }
-    stopSfxPreviewLoops();
-    stopBgm();
-    previewLoopId = entry.id;
-    entry.play();
-    return true;
-  }
-  if (entry.kind === 'bgm') {
-    if (entry.trackId) {
-      if (bgmFileTrackId === entry.trackId && bgmHtmlAudio && !bgmHtmlAudio.paused) {
-        stopBgm();
-        return false;
-      }
-      stopSfxPreviewLoops();
-      playFileBgm(entry.trackId);
-      previewLoopId = entry.id;
-      return true;
-    }
-    const profileName = typeof entry.profile === 'function' ? entry.profile() : entry.profile;
-    if (bgmCurrentProfileName === profileName && bgmSchedulerId !== null) {
-      stopBgm();
-      return false;
-    }
-    stopSfxPreviewLoops();
-    playBgm(profileName);
-    previewLoopId = entry.id;
-    return true;
-  }
-  stopSfxPreviewLoops();
-  entry.play();
-  return false;
-}
-
-function stopAllSoundTesterAudio() {
-  stopSfxPreviewLoops();
-  stopBgm();
-}
-
-function playGlowDangerTesterStyle(id) {
-  audioSettings.glowDanger = id;
-  saveAudioSettings();
-  refreshSfxGlowDangerUi();
-  glowDangerPreviewUrgency = 0.85;
-  stopGlowDangerSound();
-  startGlowDangerSound();
-  updateGlowDangerUrgency();
-}
-
-function refreshSfxGlowDangerUi() {
-  const kind = document.getElementById('sfx-glow-danger-kind');
-  if (kind) kind.textContent = `LOOP — ${currentGlowDangerLabel()} — arrows change style`;
-}
-
-function refreshSfxLifeLostUi() {
-  const kind = document.getElementById('sfx-life-lost-kind');
-  if (kind) kind.textContent = `ONE-SHOT — ${currentLifeLostLabel()} — arrows change style`;
-}
-
-function refreshSfxRespawnUi() {
-  const kind = document.getElementById('sfx-respawn-kind');
-  if (kind) kind.textContent = `ONE-SHOT — ${currentRespawnLabel()} — arrows change style`;
-}
-
-const SFX_CATALOG = [
-  { id: 'uiClick', section: '1. UI / Menu', name: 'Generic button click', kind: 'oneshot', play: () => sfxUiClick() },
-  { id: 'uiDiffCycle', section: '1. UI / Menu', name: 'Difficulty cycle prev/next', kind: 'oneshot', play: () => sfxArp([880, 988, 880], 0.25, 0.36, 0.04) },
-  { id: 'uiOpenSettings', section: '1. UI / Menu', name: 'Menu open — Settings', kind: 'oneshot', play: () => sfxArp([523, 659, 784], 0.25, 0.36) },
-  { id: 'uiOpenAchievements', section: '1. UI / Menu', name: 'Menu open — Achievements', kind: 'oneshot', play: () => sfxArp([659, 784, 988], 0.25, 0.36) },
-  { id: 'uiOpenStatistics', section: '1. UI / Menu', name: 'Menu open — Statistics', kind: 'oneshot', play: () => sfxArp([392, 523, 659], 0.25, 0.34) },
-  { id: 'uiOpenZoneSelect', section: '1. UI / Menu', name: 'Menu open — Zone Select', kind: 'oneshot', play: () => sfxArp([440, 554, 740], 0.125, 0.36) },
-  { id: 'uiOpenPause', section: '1. UI / Menu', name: 'Menu open — Pause', kind: 'oneshot', play: () => sfxPause() },
-  { id: 'uiBack', section: '1. UI / Menu', name: 'Back / cancel', kind: 'oneshot', play: () => sfxArp([784, 523], 0.25, 0.34, 0.055) },
-  { id: 'uiConfirmDanger', section: '1. UI / Menu', name: 'Confirm dangerous action', kind: 'oneshot', play: () => { playNoiseBurst({ duration: 0.08, filterFreq: 1200, volume: 0.3 }); sfxArp([311, 233], 0.5, 0.4, 0.07); } },
-  { id: 'uiStartGame', section: '1. UI / Menu', name: 'Start game', kind: 'oneshot', play: () => sfxStart() },
-  { id: 'uiResume', section: '1. UI / Menu', name: 'Resume game', kind: 'oneshot', play: () => sfxArp([440, 659, 880], 0.25, 0.36) },
-  { id: 'uiUseContinue', section: '1. UI / Menu', name: 'Use continue', kind: 'oneshot', play: () => sfxContinueUsed() },
-  { id: 'uiQuitHome', section: '1. UI / Menu', name: 'Quit to home', kind: 'oneshot', play: () => sfxArp([659, 494, 330], 0.25, 0.36, 0.06) },
-  { id: 'uiZonePreview', section: '1. UI / Menu', name: 'Zone preview', kind: 'oneshot', play: () => sfxArp([740, 880], 0.125, 0.28, 0.04) },
-  { id: 'uiWarpToZone', section: '1. UI / Menu', name: 'Warp to zone (confirm)', kind: 'oneshot', play: () => sfxWarp() },
-  { id: 'uiAchievement', section: '1. UI / Menu', name: 'Achievement unlocked', kind: 'oneshot', play: () => sfxArp([784, 988, 1175, 1568], 0.25, 0.4, 0.06) },
-  { id: 'uiRankEarned', section: '1. UI / Menu', name: 'Rank earned', kind: 'oneshot', play: () => sfxArp([523, 659, 784, 1047, 1319], 0.25, 0.42, 0.07) },
-  { id: 'uiDistanceMilestone', section: '1. UI / Menu', name: 'Distance milestone reached', kind: 'oneshot', play: () => sfxArp([659, 831, 988], 0.125, 0.38, 0.07) },
-  { id: 'uiOverdriveUnlock', section: '1. UI / Menu', name: 'Overdrive difficulty unlocked', kind: 'oneshot', play: () => sfxOverdriveUnlock() },
-
-  { id: 'shipThrust', section: '2. Ship & Core Loop', name: 'Lift / thrust (tester only — off in gameplay)', kind: 'loop', play: () => startLiftSound() },
-  { id: 'shipCollision', section: '2. Ship & Core Loop', name: 'Collision / death', kind: 'oneshot', play: () => sfxCollision() },
-  { id: 'shipGhostHit', section: '2. Ship & Core Loop', name: 'Easy ghost hit (free pass)', kind: 'oneshot', play: () => sfxGhostHit() },
-  { id: 'shipGlowDanger', section: '2. Ship & Core Loop', name: 'Easy glow / death window (danger)', kind: 'loop', play: () => { glowDangerPreviewUrgency = 0.85; startGlowDangerSound(); updateGlowDangerUrgency(); } },
-  { id: 'shipGlowSiren', section: '2. Ship & Core Loop', name: 'Glow danger — Siren Pulse', kind: 'loop', play: () => playGlowDangerTesterStyle('siren') },
-  { id: 'shipGlowOverheat', section: '2. Ship & Core Loop', name: 'Glow danger — Overheat', kind: 'loop', play: () => playGlowDangerTesterStyle('overheat') },
-  { id: 'shipGlowKlaxon', section: '2. Ship & Core Loop', name: 'Glow danger — Red Alert', kind: 'loop', play: () => playGlowDangerTesterStyle('klaxon') },
-  { id: 'shipGlowMeltdown', section: '2. Ship & Core Loop', name: 'Glow danger — Meltdown', kind: 'loop', play: () => playGlowDangerTesterStyle('meltdown') },
-  { id: 'shipRespawn', section: '2. Ship & Core Loop', name: 'Respawn', kind: 'oneshot', play: () => sfxRespawn() },
-  { id: 'shipLifeLost', section: '2. Ship & Core Loop', name: 'Life lost transition', kind: 'oneshot', play: () => sfxLifeLost() },
-  { id: 'shipContinueUsed', section: '2. Ship & Core Loop', name: 'Continue used (extra life)', kind: 'oneshot', play: () => sfxContinueUsed() },
-  { id: 'shipGameOver', section: '2. Ship & Core Loop', name: 'Game over', kind: 'oneshot', play: () => sfxGameOver() },
-  { id: 'shipWarp', section: '2. Ship & Core Loop', name: 'Zone transition / warp', kind: 'oneshot', play: () => sfxWarp() },
-  { id: 'shipNewBest', section: '2. Ship & Core Loop', name: 'New best distance', kind: 'oneshot', play: () => sfxNewBest() },
-  { id: 'shipVictory', section: '2. Ship & Core Loop', name: 'Victory fanfare', kind: 'bgm', profile: 'victory', play: () => {} },
-
-  { id: 'hzGate', section: '3. Zone Hazards', name: 'Gate pillar impact', kind: 'oneshot', play: () => sfxHazardImpact('gate') },
-  { id: 'hzAsteroid', section: '3. Zone Hazards', name: 'Asteroid cluster', kind: 'oneshot', play: () => sfxHazardImpact('asteroid') },
-  { id: 'hzHbar', section: '3. Zone Hazards', name: 'H-bar cluster', kind: 'oneshot', play: () => sfxHazardImpact('hbar') },
-  { id: 'hzPendulum', section: '3. Zone Hazards', name: 'Pendulum impact', kind: 'oneshot', play: () => sfxHazardImpact('pendulum') },
-  { id: 'hzPendulumSwoosh', section: '3. Zone Hazards', name: 'Pendulum swoosh', kind: 'oneshot', play: () => playPendulumSwoosh() },
-  { id: 'hzLbolt', section: '3. Zone Hazards', name: 'Floating bolt impact', kind: 'oneshot', play: () => sfxHazardImpact('lbolt') },
-  { id: 'hzAcid', section: '3. Zone Hazards', name: 'Acid drip (proximity)', kind: 'loop', play: () => { startToxicAcidSound(); updateToxicAcidMix(0.85); } },
-  { id: 'hzVortex', section: '3. Zone Hazards', name: 'Wind vortex (proximity)', kind: 'loop', play: () => { startWindVortexSound(); updateWindVortexMix(0.85); } },
-  { id: 'hzTurretFire', section: '3. Zone Hazards', name: 'Turret fire', kind: 'oneshot', play: () => sfxHazardFire('turretshot') },
-  { id: 'hzTurretShot', section: '3. Zone Hazards', name: 'Turret shot travel/impact', kind: 'oneshot', play: () => sfxHazardImpact('turretshot') },
-  { id: 'hzSearchlight', section: '3. Zone Hazards', name: 'Searchlight sweep / detect', kind: 'oneshot', play: () => sfxHazardImpact('searchlight') },
-  { id: 'hzCorruption', section: '3. Zone Hazards', name: 'Signal corruption (loop)', kind: 'loop', play: () => startPreviewPulseLoop(73, 0.125, 0.07) },
-  { id: 'hzEmp', section: '3. Zone Hazards', name: 'EMP burst', kind: 'oneshot', play: () => playEmpDischarge() },
-  { id: 'hzPulseOrb', section: '3. Zone Hazards', name: 'Pulsing orb (expand / contract)', kind: 'loop', play: () => startPreviewPulsingOrbLoop() },
-  { id: 'hzBoomerang', section: '3. Zone Hazards', name: 'Boomerang throw/return (selected)', kind: 'oneshot', play: () => playBoomerangPass() },
-  { id: 'hzBoomerangBlade', section: '3. Zone Hazards', name: 'Boomerang — Blade whoosh', kind: 'oneshot', play: () => { boomerangPassStyle = 'blade'; playBoomerangPassBlade(); } },
-  { id: 'hzBoomerangWood', section: '3. Zone Hazards', name: 'Boomerang — Wooden spin', kind: 'oneshot', play: () => { boomerangPassStyle = 'wood'; playBoomerangPassWood(); } },
-  { id: 'hzBoomerangNeon', section: '3. Zone Hazards', name: 'Boomerang — Neon disc', kind: 'oneshot', play: () => { boomerangPassStyle = 'neon'; playBoomerangPassNeon(); } },
-  { id: 'hzBoomerangChop', section: '3. Zone Hazards', name: 'Boomerang — Spin chops (in fight)', kind: 'oneshot', play: () => { boomerangPassStyle = 'chop'; playBoomerangPassChop(); } },
-  { id: 'hzBoomerangDoppler', section: '3. Zone Hazards', name: 'Boomerang — Deep doppler', kind: 'oneshot', play: () => { boomerangPassStyle = 'doppler'; playBoomerangPassDoppler(); } },
-  { id: 'hzBoomerangRing', section: '3. Zone Hazards', name: 'Boomerang — Ringing blade', kind: 'oneshot', play: () => { boomerangPassStyle = 'ring'; playBoomerangPassRing(); } },
-  { id: 'hzLensing', section: '3. Zone Hazards', name: 'Lensing zone (loop)', kind: 'loop', play: () => startPreviewPulseLoop(55, 0.5, 0.06) },
-  { id: 'hzSupernova', section: '3. Zone Hazards', name: 'Supernova buildup + explosion', kind: 'oneshot', play: () => sfxHazardFire('supernova') },
-  { id: 'hzNovaDebris', section: '3. Zone Hazards', name: 'Supernova debris', kind: 'oneshot', play: () => sfxHazardImpact('supernovadebris') },
-  { id: 'hzLaserGrid', section: '3. Zone Hazards', name: 'Laser grid', kind: 'oneshot', play: () => sfxHazardImpact('lasergrid') },
-  { id: 'hzDroneBuzz', section: '3. Zone Hazards', name: 'Security drone hit (Neon City)', kind: 'oneshot', play: () => sfxHazardImpact('securitydrone') },
-  { id: 'hzFireball', section: '3. Zone Hazards', name: 'Fireball breath (proximity)', kind: 'oneshot', play: () => playBowserFireball() },
-  { id: 'hzGeyser', section: '3. Zone Hazards', name: 'Toxic geyser (proximity)', kind: 'loop', play: () => { startToxicGeyserSound(); updateToxicGeyserMix(0.85); } },
-  { id: 'hzGeyserErupt', section: '3. Zone Hazards', name: 'Toxic geyser eruption', kind: 'oneshot', play: () => playGeyserEruption(1) },
-  { id: 'hzBlackHole', section: '3. Zone Hazards', name: 'Black hole (proximity)', kind: 'loop', play: () => { startBlackHoleSound(); updateBlackHoleMix(0.85, 0.7); } },
-  { id: 'hzLightning', section: '3. Zone Hazards', name: 'Lightning bolt', kind: 'oneshot', play: () => sfxHazardImpact('lightning') },
-  { id: 'hzToxic', section: '3. Zone Hazards', name: 'Toxic pool (proximity)', kind: 'loop', play: () => { startToxicPoolSound(); updateToxicPoolMix(0.85); } },
-  { id: 'hzOrbiter', section: '3. Zone Hazards', name: 'Orbiter (loop)', kind: 'loop', play: () => startPreviewPulseLoop(220, 0.25, 0.06) },
-  { id: 'hzSparkHub', section: '3. Zone Hazards', name: 'Spark hub (loop)', kind: 'loop', play: () => startPreviewPulseLoop(440, 0.125, 0.05) },
-  { id: 'hzSparkShot', section: '3. Zone Hazards', name: 'Spark projectile', kind: 'oneshot', play: () => sfxHazardFire('sparkprojectile') },
-  { id: 'hzDoor', section: '3. Zone Hazards', name: 'Moving door impact', kind: 'oneshot', play: () => sfxHazardImpact('movingdoor') },
-  { id: 'hzDoorProx', section: '3. Zone Hazards', name: 'Moving door (proximity)', kind: 'loop', play: () => { startMovingDoorSound(); updateMovingDoorMix(0.85, 0.8); } },
-  { id: 'hzSpecialDoor', section: '3. Zone Hazards', name: 'Special door', kind: 'oneshot', play: () => sfxHazardImpact('specialdoor') },
-  { id: 'hzAccessKey', section: '3. Zone Hazards', name: 'Access key pickup (item chime)', kind: 'oneshot', play: () => playKeyPickup() },
-  { id: 'hzArcPlanet', section: '3. Zone Hazards', name: 'Arc planet (loop)', kind: 'loop', play: () => startPreviewPulseLoop(82, 0.25, 0.05) },
-  { id: 'hzShootingStar', section: '3. Zone Hazards', name: 'Meteor streak (proximity)', kind: 'loop', play: () => { startMeteorStreakSound(); updateMeteorStreakMix(0.85, 1); } },
-  { id: 'hzWreckage', section: '3. Zone Hazards', name: 'Wreckage / creak', kind: 'oneshot', play: () => sfxHazardImpact('wreckage') },
-  { id: 'hzEcho', section: '3. Zone Hazards', name: 'Echo trail', kind: 'oneshot', play: () => sfxHazardImpact('echotrail') },
-  { id: 'hzStorm', section: '3. Zone Hazards', name: 'Dust tornado (proximity)', kind: 'loop', play: () => { startDustStormSound(); updateDustStormMix(0.85, 1); } },
-  { id: 'hzBillboard', section: '3. Zone Hazards', name: 'Billboard (likely silent)', kind: 'oneshot', play: () => sfxHazardImpact('billboard') },
-  { id: 'hzCloudArc', section: '3. Zone Hazards', name: 'Storm cloud arc (proximity)', kind: 'loop', play: () => { startStormCloudSound(); updateStormCloudMix(0.85, 1); } },
-  { id: 'hzStormChargeTel', section: '3. Zone Hazards', name: 'Storm charge bolt telegraph', kind: 'oneshot', play: () => playStormChargeTelegraph() },
-  { id: 'hzStormThunder', section: '3. Zone Hazards', name: 'Storm charge bolt thunder', kind: 'oneshot', play: () => playStormThunderStrike() },
-
-  { id: 'coreCharge', section: '4. Mini-Boss (Reactor Core)', name: 'Charging / charging-close', kind: 'oneshot', play: () => sfxFireBossChargeDash() },
-  { id: 'coreIdle', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core idle / bob', kind: 'loop', play: () => startMoltenCoreIdleSound({ preview: true }) },
-  { id: 'coreBodyHit', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core body hit', kind: 'oneshot', play: () => sfxFireBossBodyHit() },
-  { id: 'coreBarrageTel', section: '4. Mini-Boss (Reactor Core)', name: 'Barrage telegraph', kind: 'oneshot', play: () => sfxFireBossBarrageTelegraph() },
-  { id: 'coreBarrage', section: '4. Mini-Boss (Reactor Core)', name: 'Ember wave launch', kind: 'oneshot', play: () => sfxFireBossEmberLaunch() },
-  { id: 'coreSqueeze', section: '4. Mini-Boss (Reactor Core)', name: 'Squeeze walls', kind: 'loop', play: () => startMoltenSqueezeSound({ preview: true }) },
-  { id: 'coreEmberHit', section: '4. Mini-Boss (Reactor Core)', name: 'Ember hit', kind: 'oneshot', play: () => sfxFireBossEmberHit() },
-  { id: 'coreSqueezeHit', section: '4. Mini-Boss (Reactor Core)', name: 'Squeeze wall hit', kind: 'oneshot', play: () => sfxFireBossSqueezeHit() },
-  { id: 'moltenDeath', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core dying / dim', kind: 'oneshot', play: () => sfxFireBossDeath() },
-  { id: 'moltenAsh', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core ashing', kind: 'loop', play: () => startMoltenDeathAshSound({ preview: true }) },
-  { id: 'moltenDisperse', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core disperse', kind: 'oneshot', play: () => sfxFireBossDisperse() },
-  { id: 'coreBulkTel', section: '4. Mini-Boss (Reactor Core)', name: 'Core bulkhead close', kind: 'oneshot', play: () => sfxCoreBulkheadTelegraph() },
-  { id: 'coreBulkLock', section: '4. Mini-Boss (Reactor Core)', name: 'Core bulkhead lock', kind: 'oneshot', play: () => sfxCoreBulkheadLock() },
-  { id: 'coreBulkHold', section: '4. Mini-Boss (Reactor Core)', name: 'Core bulkhead hold', kind: 'loop', play: () => startCoreBulkheadHoldSound({ preview: true }) },
-  { id: 'coreBulk', section: '4. Mini-Boss (Reactor Core)', name: 'Core bulkhead hit', kind: 'oneshot', play: () => sfxHazardImpact('coreBulkheadActive') },
-  { id: 'coreCrossTel', section: '4. Mini-Boss (Reactor Core)', name: 'Core crossfire telegraph (silent)', kind: 'oneshot', play: () => sfxHazardFire('coreCrossfireTelegraph') },
-  { id: 'coreCross', section: '4. Mini-Boss (Reactor Core)', name: 'Core crossfire volley (laser active, once)', kind: 'oneshot', play: () => sfxHazardFire('coreCrossfireActive') },
-  { id: 'coreCrossGap', section: '4. Mini-Boss (Reactor Core)', name: 'Core crossfire gap (silent)', kind: 'oneshot', play: () => sfxHazardFire('coreCrossfireGap') },
-  { id: 'coreEmpTel', section: '4. Mini-Boss (Reactor Core)', name: 'Core EMP telegraph', kind: 'oneshot', play: () => sfxCoreEmpTelegraph() },
-  { id: 'coreEmp', section: '4. Mini-Boss (Reactor Core)', name: 'Core EMP wave launch', kind: 'oneshot', play: () => sfxCoreEmpPulse() },
-  { id: 'coreLaserTel', section: '4. Mini-Boss (Reactor Core)', name: 'Core laser telegraph', kind: 'oneshot', play: () => sfxHazardFire('coreLaserTelegraph') },
-  { id: 'coreLaser', section: '4. Mini-Boss (Reactor Core)', name: 'Core laser active', kind: 'oneshot', play: () => sfxHazardFire('coreLaserActive') },
-  { id: 'coreOrbit', section: '4. Mini-Boss (Reactor Core)', name: 'Core orbit barrage', kind: 'oneshot', play: () => sfxHazardFire('coreOrbit') },
-  { id: 'coreOrbitHit', section: '4. Mini-Boss (Reactor Core)', name: 'Core orbit hit', kind: 'oneshot', play: () => sfxHazardImpact('coreOrbit') },
-  { id: 'coreEmerge', section: '4. Mini-Boss (Reactor Core)', name: 'Core sphere emerge', kind: 'oneshot', play: () => sfxCoreEmerge() },
-  { id: 'coreGate', section: '4. Mini-Boss (Reactor Core)', name: 'Core gate open', kind: 'oneshot', play: () => sfxCoreGateOpen() },
-  { id: 'coreEyeTrack', section: '4. Mini-Boss (Reactor Core)', name: 'Core eye beam track', kind: 'oneshot', play: () => sfxCoreEyeBeamTrack() },
-  { id: 'coreEyeLock', section: '4. Mini-Boss (Reactor Core)', name: 'Core eye beam lock', kind: 'oneshot', play: () => sfxCoreEyeBeamLock() },
-  { id: 'coreEyeFire', section: '4. Mini-Boss (Reactor Core)', name: 'Core eye beam fire', kind: 'oneshot', play: () => sfxCoreEyeBeamFire() },
-  { id: 'coreEyeHit', section: '4. Mini-Boss (Reactor Core)', name: 'Core eye beam hit', kind: 'oneshot', play: () => sfxHazardImpact('coreEyeBeam') },
-  { id: 'coreTeslaCharge', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla charge (silent)', kind: 'oneshot', play: () => sfxCoreTeslaCharge() },
-  { id: 'coreTesla', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla burst (selected)', kind: 'oneshot', play: () => sfxCoreTeslaBurst() },
-  { id: 'coreTeslaContra', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Contra blast', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'contra'; sfxCoreTeslaBurstContra(); } },
-  { id: 'coreTeslaThick', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Thick pew', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'thick'; sfxCoreTeslaBurstThick(); } },
-  { id: 'coreTeslaChord', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Stacked chord', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'chord'; sfxCoreTeslaBurstChord(); } },
-  { id: 'coreTeslaCoil', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Coil snap', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'coil'; sfxCoreTeslaBurstCoil(); } },
-  { id: 'coreTeslaSpray', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Filter spray', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'spray'; sfxCoreTeslaBurstSpray(); } },
-  { id: 'coreTeslaFan', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla — Fan pellets (previous)', kind: 'oneshot', play: () => { coreTeslaBurstStyle = 'fan'; sfxCoreTeslaBurstFan(); } },
-  { id: 'coreTeslaHit', section: '4. Mini-Boss (Reactor Core)', name: 'Core tesla hit', kind: 'oneshot', play: () => sfxHazardImpact('coreTesla') },
-  { id: 'coreFlameTel', section: '4. Mini-Boss (Reactor Core)', name: 'Flame wall telegraph', kind: 'oneshot', play: () => sfxFireBossFlameWallTelegraph() },
-  { id: 'coreFlame', section: '4. Mini-Boss (Reactor Core)', name: 'Flame wall active', kind: 'loop', play: () => startMoltenFlameWallSound({ preview: true }) },
-  { id: 'coreSpark', section: '4. Mini-Boss (Reactor Core)', name: 'Core spark deploy', kind: 'oneshot', play: () => sfxHazardFire('corespark') },
-  { id: 'coreDying', section: '4. Mini-Boss (Reactor Core)', name: 'Core dying (unused wall death)', kind: 'oneshot', play: () => sfxCoreDying() },
-  { id: 'coreOverloadBuild', section: '4. Mini-Boss (Reactor Core)', name: 'Core overload buildup', kind: 'oneshot', play: () => sfxCoreOverload() },
-  { id: 'coreOverload', section: '4. Mini-Boss (Reactor Core)', name: 'Core overload dying', kind: 'oneshot', play: () => sfxCoreOverload() },
-  { id: 'coreOverloadFlash', section: '4. Mini-Boss (Reactor Core)', name: 'Core overload flash', kind: 'oneshot', play: () => sfxCoreOverloadFlash() },
-  { id: 'coreOverloadBreak', section: '4. Mini-Boss (Reactor Core)', name: 'Core overload breakdown', kind: 'oneshot', play: () => sfxCoreOverloadBreakdown() },
-  { id: 'coreReturn', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core return', kind: 'oneshot', play: () => sfxMiniBossReturn() },
-  { id: 'coreExit', section: '4. Mini-Boss (Reactor Core)', name: 'Molten Core exit', kind: 'oneshot', play: () => sfxFireBossExit() },
-
-  { id: 'sigEntrance', section: '5. Final Boss (The Signal)', name: 'Boss entrance', kind: 'oneshot', play: () => sfxSignalEntrance() },
-  { id: 'sigAttack', section: '5. Final Boss (The Signal)', name: 'Boss attack (generic)', kind: 'oneshot', play: () => sfxHazardFire('bossattack') },
-  { id: 'sigBeamTel', section: '5. Final Boss (The Signal)', name: 'Charge beam telegraph (selected)', kind: 'oneshot', play: () => playChargeTelegraph({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
-  { id: 'sigBeamTelX', section: '5. Final Boss (The Signal)', name: 'Charge telegraph — X Charge', kind: 'oneshot', play: () => playMegaManCharge({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
-  { id: 'sigBeamTelSweep', section: '5. Final Boss (The Signal)', name: 'Charge telegraph — Sweep Whine', kind: 'oneshot', play: () => playChargeSweep({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
-  { id: 'sigBeamTelBeat', section: '5. Final Boss (The Signal)', name: 'Charge telegraph — Heartbeat', kind: 'oneshot', play: () => playChargeHeartbeat({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
-  { id: 'sigBeamTelStatic', section: '5. Final Boss (The Signal)', name: 'Charge telegraph — Static Build', kind: 'oneshot', play: () => playChargeStatic({ duration: framesToSeconds(BOSS_CHARGE_BEAM_TELEGRAPH_DURATION), size: 1 }) },
-  { id: 'sigBeam', section: '5. Final Boss (The Signal)', name: 'Charge beam active', kind: 'oneshot', play: () => playChargeBeamFire({ size: 1, duration: framesToSeconds(BOSS_CHARGE_BEAM_FIRE_DURATION) }) },
-  { id: 'sigRage', section: '5. Final Boss (The Signal)', name: 'Rage pulse (meteor ring)', kind: 'oneshot', play: () => sfxHazardFire('bossragepulse') },
-  { id: 'sigDrone', section: '5. Final Boss (The Signal)', name: 'Ember drone spawn (silent in play — tester only)', kind: 'oneshot', play: () => playHotEmberRoar() },
-  { id: 'sigRing', section: '5. Final Boss (The Signal)', name: 'Diagonal ring attack', kind: 'oneshot', play: () => playMeteorRingImpact() },
-  { id: 'sigVolleyTel', section: '5. Final Boss (The Signal)', name: 'Volley telegraph', kind: 'oneshot', play: () => playTrackingLockOn() },
-  { id: 'sigVolley', section: '5. Final Boss (The Signal)', name: 'Volley active (shotgun burst)', kind: 'oneshot', play: () => sfxHazardFire('bossvolley') },
-  { id: 'sigEmber', section: '5. Final Boss (The Signal)', name: 'Ember / ash (loop)', kind: 'loop', play: () => startPreviewNoiseLoop(900, 0.05) },
-  { id: 'sigPhase', section: '5. Final Boss (The Signal)', name: 'Phase 2→3 strain / lock-in', kind: 'oneshot', play: () => sfxSignalPhaseStrain() },
-  { id: 'sigPhase5', section: '5. Final Boss (The Signal)', name: 'Phase 4→5 shatter / eclipse', kind: 'oneshot', play: () => sfxSignalPhaseEclipse() },
-  { id: 'sigFinalCharge', section: '5. Final Boss (The Signal)', name: 'Final charge / shake (into boom)', kind: 'oneshot', play: () => sfxSignalFinalCharge() },
-  { id: 'sigExplosion', section: '5. Final Boss (The Signal)', name: 'Explosion / white-out', kind: 'oneshot', play: () => sfxSignalExplosion() },
-  { id: 'sigSilenced', section: '5. Final Boss (The Signal)', name: 'Aftermath (wall recedes, after white-out)', kind: 'oneshot', play: () => sfxSignalSilenced() },
-
-  { id: 'bgmMenu', section: '6. Background Music', name: 'Menu / home loop (synth)', kind: 'bgm', profile: 'menu', play: () => {} },
-  { id: 'bgmVictory', section: '6. Background Music', name: 'Victory — Neon Rise (synth)', kind: 'bgm', profile: 'victory', play: () => {} },
-  { id: 'bgmGameOver', section: '6. Background Music', name: 'Game over stinger', kind: 'oneshot', play: () => sfxGameOver() },
-  { id: 'bgm01', section: '6. Background Music', name: '01 Synthwave', kind: 'bgm', trackId: 'bgm-01-synthwave', play: () => {} },
-  { id: 'bgm02', section: '6. Background Music', name: '02 Gravity Well', kind: 'bgm', trackId: 'bgm-02-gravity-well', play: () => {} },
-  { id: 'bgm03', section: '6. Background Music', name: '03 Deep Space', kind: 'bgm', trackId: 'bgm-03-deep-space', play: () => {} },
-  { id: 'bgm04', section: '6. Background Music', name: '04 Inferno', kind: 'bgm', trackId: 'bgm-04-inferno', play: () => {} },
-  { id: 'bgm05a', section: '6. Background Music', name: '05 Molten Core (boss)', kind: 'bgm', trackId: 'bgm-05-molten-core-boss', play: () => {} },
-  { id: 'bgm05b', section: '6. Background Music', name: '05 Molten Core (escape)', kind: 'bgm', trackId: 'bgm-05-molten-core', play: () => {} },
-  { id: 'bgm06', section: '6. Background Music', name: '06 Storm Skies', kind: 'bgm', trackId: 'bgm-06-storm-skies', play: () => {} },
-  { id: 'bgm07', section: '6. Background Music', name: '07 Ancient Ruins', kind: 'bgm', trackId: 'bgm-07-ancient-ruins', play: () => {} },
-  { id: 'bgm08', section: '6. Background Music', name: '08 Toxic Wasteland', kind: 'bgm', trackId: 'bgm-08-toxic-wasteland', play: () => {} },
-  { id: 'bgm09', section: '6. Background Music', name: '09 Derelict Station', kind: 'bgm', trackId: 'bgm-09-derelict-station', play: () => {} },
-  { id: 'bgm10a', section: '6. Background Music', name: '10 Reactor Core (phases 1–7)', kind: 'bgm', trackId: 'bgm-10-reactor-core-p1', play: () => {} },
-  { id: 'bgm10b', section: '6. Background Music', name: '10 Reactor Core (phase 8)', kind: 'bgm', trackId: 'bgm-10-reactor-core-p8', play: () => {} },
-  { id: 'bgm11', section: '6. Background Music', name: '11 The Void', kind: 'bgm', trackId: 'bgm-11-the-void', play: () => {} },
-  { id: 'bgm12', section: '6. Background Music', name: '12 Neon City', kind: 'bgm', trackId: 'bgm-12-neon-city', play: () => {} },
-  { id: 'bgm13a', section: '6. Background Music', name: '13 The Signal (phases 1–2)', kind: 'bgm', trackId: 'bgm-13-the-signal-p1', play: () => {} },
-  { id: 'bgm13b', section: '6. Background Music', name: '13 The Signal (phases 3–4)', kind: 'bgm', trackId: 'bgm-13-the-signal-p3', play: () => {} },
-  { id: 'bgm13c', section: '6. Background Music', name: '13 The Signal (phase 5)', kind: 'bgm', trackId: 'bgm-13-the-signal-p5', play: () => {} },
-];
 
