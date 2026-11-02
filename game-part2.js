@@ -1,3 +1,275 @@
+function pickCoreTeslaEmptySlot() {
+  // bias the safe gap toward wherever the ship currently is, so it's always
+  // reachable within the charge window regardless of starting position --
+  // pick randomly among slots near the ship's current height. leaves TWO
+  // adjacent slots empty (this and the next one) for a wider margin, since
+  // the ship can still get pulled away from the gap by the eye beam or
+  // orbit barrage during the charge window and need room to recover
+  const usableCount = CORE_TESLA_SLOT_FRACS.length - 1; // must leave room for the second empty slot after it
+  const slotDists = CORE_TESLA_SLOT_FRACS.slice(0, usableCount).map((frac, i) => {
+    const y = PLAY_TOP + frac * (PLAY_BOTTOM - PLAY_TOP);
+    return { i, dist: Math.abs(y - ship.y) };
+  });
+  slotDists.sort((a, b) => a.dist - b.dist);
+  const candidateSlots = slotDists.slice(0, 3);
+  return candidateSlots[Math.floor(Math.random() * candidateSlots.length)].i;
+}
+
+// death sequence: power-down instead of ashing-over -- panels go dark in
+// patches, then a final reactor implosion, fading cold rather than to ash
+const CORE_DEATH_DIM_DURATION = 40;
+const CORE_DEATH_DARKEN_DURATION = 150;
+const CORE_DEATH_COLLAPSE_DURATION = 90;
+const CORE_DEATH_PATCH_COUNT = 7;
+let coreDeathPatches = [];
+let coreDeathDebris = []; // {x, y, vx, vy, rotation, rotSpeed, size, life, maxLife}
+let coreBossDefeated = false;
+let coreBossDefeatFrame = 0;
+const CORE_BOSS_DEFEAT_PAUSE = 90;
+
+// circuit overload death -- the final sphere form's own death sequence,
+// distinct from the wall's power-down: instead of dimming and going dark,
+// the sphere builds up energy until it catastrophically overloads and
+// breaks apart, arcing with electricity as it comes undone
+const CORE_OVERLOAD_BUILDUP_DURATION = 100;
+const CORE_OVERLOAD_FLASH_DURATION = 15;
+const CORE_OVERLOAD_BREAKDOWN_DURATION = 110;
+let coreOverloadArcs = []; // {angle1, angle2, life, maxLife} -- brief electrical arcs across the surface during buildup
+
+const BOSS_ENTRANCE_DURATION = 150; // ~2.5s -- three-stage dramatic entrance before the fight begins
+const BOSS_ENTRANCE_CHARGE_END = 0.4;   // stage 1: charge-up glitch/static buildup, no orb visible
+const BOSS_ENTRANCE_ASSEMBLE_END = 0.85; // stage 2: fragments converge toward the center
+                                          // stage 3 (remaining 0.15): snap to full size + flash + shockwave + screen shake
+const BOSS_FLOAT_AMPLITUDE = 22;
+const BOSS_FLOAT_AMPLITUDE_PHASE3 = 160; // increased from 120 for more ring placement variety -- verified safe, 51px margin at the extreme
+const BOSS_FLOAT_PERIOD = 210; // slow, gentle bob -- ~3.5s per full cycle
+let bossTransitioning = false;
+let bossTransitionStartFrame = 0;
+let bossTransitionTargetPhase = 3;
+let bossWaitingForClear = false; // true once a phase transition's time threshold is reached but hazards are still on screen -- spawning pauses and elapsed freezes until the battlefield clears
+let bossWaitingForClearTargetPhase = 3;
+let bossWaitingForClearStartFrame = -1;
+const BOSS_HAZARD_TYPES = ['bossattack', 'bossragepulse', 'bossdrone', 'bossvolleytelegraph', 'bossdiagonalring'];
+const BOSS_PHASE5_TRANSITION_DURATION = 300; // ~5s -- extended for a bigger, more dramatic multi-stage spectacle
+const BOSS_PHASE_DURATION = 1500; // ~25s per phase, fixed duration -- easy to add more phases later
+const BOSS_NUM_PHASES = 5; // TEMPORARY -- currently 5, expand alongside bossDuration when adding more
+let bossTransitionEndFrame = -9999;
+const BOSS_TRANSITION_COMPLETE_FX_DURATION = 25; // brief flash/shockwave when the new form locks in
+let bossRagePulseTimer = 0;
+const BOSS_RAGE_PULSE_INTERVAL = 170; // ~2.8s between pulses
+const BOSS_RAGE_PULSE_SPEED = 5; // px/frame horizontal expansion rate
+// redesigned from a full expanding ring (which had an unbounded rate of
+// change right as its radius crossed the ship's horizontal distance --
+// the safe gap could swing from one side to the other faster than any
+// finite acceleration could track) to a horizontal-only expanding wall
+// at a fixed vertical band. safety is now trivial and constant no
+// matter how far the wall has traveled: the band's height never
+// changes, so the safe space above/below it never shrinks or moves
+const BOSS_RAGE_PULSE_THICKNESS = 80; // fixed vertical band height, leaves ~226px safe space each side
+const BOSS_RAGE_PULSE_MAX_R = 950; // despawn once expanded well past the play area
+// phase 4: two rings expanding horizontally like the phase-3 wall, but
+// each band's vertical center shifts linearly as it expands, at
+// opposite slopes -- creating a diagonal "X" look (like the reference
+// image) without any tan()-style blowup, since the relationship is
+// purely linear. verified safe before implementation: 326px minimum
+// safe gap across the full float range, far above the 33px minimum
+let bossDiagonalRingTimer = 0;
+const BOSS_DIAGONAL_RING_INTERVAL = 200;
+const BOSS_DIAGONAL_RING_SPEED = 5;
+const BOSS_DIAGONAL_RING_SLOPE = 0.5; // ~27deg
+const BOSS_DIAGONAL_RING_THICKNESS = 60;
+const BOSS_DIAGONAL_RING_MAX_R = 950;
+// phase 4: staggered double wall. reuses the bossragepulse type
+// entirely (no new collision/render code) -- just spawns two walls at
+// offset heights from a shared reference y, with the second staggered
+// in time. offset chosen small enough that once both walls are active
+// their bands merge into one continuous danger zone (no safe middle
+// gap that would trivially defeat the "commit to a side" challenge),
+// verified safe: even at the float range's extreme, whichever side
+// shrinks the other always has 300px+ of margin -- always exactly one
+// clearly-correct side, never both squeezed simultaneously
+let bossDoubleWallTimer = 0;
+const BOSS_DOUBLE_WALL_INTERVAL = 220;
+const BOSS_DOUBLE_WALL_OFFSET = 40;
+const BOSS_DOUBLE_WALL_STAGGER = 45; // ~0.75s between wall A and wall B
+// phase 4: summoned drone formation. reuses zone 10's proven
+// security-drone formation pattern and rendering wholesale (a new
+// 'bossdrone' type, since boss-zone hazards move via explicit vx
+// rather than the generic world-scroll multiplier zone 10 uses).
+// verified safe before implementation: the formation's one deliberate
+// gap is 114px wide after accounting for both drone and ship radii,
+// far above the 33px minimum -- clustered drones on either side leave
+// no ambiguity about where the real passage is
+let bossDroneFormationTimer = 0;
+const BOSS_DRONE_FORMATION_INTERVAL = 120; // more frequent, was 260
+const BOSS_DRONE_SPEED = 6; // faster, was 3.5
+const BOSS_DRONE_R = 13;
+// phase 4 exclusive: homing signal fragment. gently steers toward the
+// ship's y, but its drift is CLAMPED to within BOSS_HOMING_MAX_DRIFT of
+// its own spawn height -- it can never leave that band no matter how
+// long it homes. this makes the safety guarantee independent of
+// whether the player successfully "outruns" it: verified a 120px
+// guaranteed-safe zone always exists outside the band, regardless of
+// homing behavior, far above the 33px minimum this session uses.
+// (an earlier unbounded-homing version was rejected after simulation
+// showed it could asymptotically converge to zero separation against
+// a boundary-pinned ship given enough time)
+let bossHomingFragmentTimer = 0;
+const BOSS_HOMING_FRAGMENT_INTERVAL = 450;
+const BOSS_HOMING_FRAGMENT_VX = -3;
+const BOSS_HOMING_FRAGMENT_R = 15;
+const BOSS_HOMING_MAX_DRIFT = 150; // widened from 100 -- verified still safe (71px guaranteed margin) across the ship's full possible range
+const BOSS_HOMING_MAX_VY = 2.4; // reduced from 3.0 for gentler pursuit, still comfortably below the ship's own 5px/frame max
+const BOSS_HOMING_TURN_RATE = 0.04; // reduced from 0.06 -- smoother, less sharp direction changes
+
+// phase 5 exclusive: charge beam laser. locks onto the ship's position
+// at telegraph start (not continuously tracking, matching the proven
+// volley pattern), gives a long generous warning, then fires a
+// full-width lethal beam that lingers. verified safe: with the
+// locked position at dead-center (worst case), realistic
+// acceleration-limited ship physics needs only 18 frames to clear the
+// band -- the 120-frame telegraph gives a 102-frame buffer
+let bossChargeBeamTimer = 0;
+let bossChargeBeamNextGap = 150; // re-rolled randomly after each shot
+let bossChargeBeamCount = 0; // tracks which beam shot within phase 5 (1st, 2nd, ...) -- shots 4+ are double thickness
+
+// the climactic ending: after shot 8 completes, the boss resumes
+// normal movement for a beat, then charges one final time -- but this
+// charge never fires, it just keeps building until it detonates in a
+// full-screen explosion cinematic, after which the ship is shown
+// flying alone and victory triggers directly (bypassing the normal
+// bossTimer countdown, which is frozen throughout this whole sequence)
+let bossFinalChargeActive = false;
+let bossFinalChargeStartFrame = -1;
+let bossExplosionActive = false;
+let bossExplosionStartFrame = -1;
+let bossFullyDefeated = false; // once true, the boss is permanently gone -- no rendering at all, for the downtime/fly-off/victory screen
+const BOSS_FINAL_CHARGE_DELAY = 380; // resumed-movement beat before the final charge begins
+const BOSS_FINAL_CHARGE_DURATION = 420; // longer than even the super beam's telegraph -- the ultimate build-up
+const BOSS_EXPLOSION_DURATION = 240; // full cinematic: burst, white-out, hold, fade to reveal the ship
+
+// after the explosion, a quiet Mega Man-style beat before the ship
+// flies off screen to the right, then the victory screen appears
+let postBossDowntimeActive = false;
+let postBossDowntimeStartFrame = -1;
+let shipFlyOffActive = false;
+let shipFlyOffStartFrame = -1;
+const POST_BOSS_DOWNTIME_DURATION = 120; // ~2s quiet beat
+const SHIP_FLYOFF_ACCEL = 0.15; // gentle ramp-up rather than an instant dash
+let bossBeamHoldBlendStartFrame = -9999; // frame the beam sequence ended, used to smoothly blend boss.y back onto its normal float rather than snapping
+const BOSS_BEAM_HOLD_BLEND_DURATION = 60;
+const BOSS_CHARGE_BEAM_MIN_GAP = 90; // 1.5s
+const BOSS_CHARGE_BEAM_MAX_GAP = 300; // 5s
+
+// phase 5 secondary hazard: ember knockback. small particles drift
+// from the boss and, on contact, give the ship a brief involuntary
+// velocity nudge -- non-lethal, no tryEndGame() call at all. disabled
+// entirely once the super beam (shot 8) is active, since that phase
+// should be the beam alone
+let bossEmberTimer = 0;
+const BOSS_EMBER_INTERVAL = 110;
+const BOSS_EMBER_SPEED = 2.8;
+const BOSS_EMBER_R = 5;
+const BOSS_EMBER_KNOCKBACK = 5; // strengthened -- now matches the ship's own max speed for a genuinely noticeable jolt
+
+// phase 5 tertiary hazard: thick ash cloud. a large, slow-drifting
+// zone that -- like the black hole's pull -- smoothly reduces lift
+// and increases gravity based on proximity to its center while the
+// ship is inside. non-lethal, no tryEndGame() call. gated off
+// entirely once the super beam (shot 8) is active, same as embers
+let bossAshCloudTimer = 0;
+const BOSS_ASH_CLOUD_INTERVAL = 260;
+const BOSS_ASH_CLOUD_SPEED = 1.6;
+const BOSS_ASH_CLOUD_R = 100;
+const BOSS_ASH_CLOUD_LIFT_REDUCTION = 0.55;
+const BOSS_ASH_CLOUD_GRAVITY_INCREASE = 0.82;
+const BOSS_CHARGE_BEAM_TELEGRAPH_DURATION = 120;
+const BOSS_SUPER_BEAM_TELEGRAPH_DURATION = 320; // extended further -- a long, unmistakable charge-up for the climactic 7th shot
+const BOSS_CHARGE_BEAM_FIRE_DURATION = 90;
+const BOSS_SUPER_BEAM_FIRE_DURATION = 150; // 1 second longer than the standard beam's fire duration
+const BOSS_CHARGE_BEAM_THICKNESS = 80;
+const BOSS_DRONE_FORMATION_YFRACS = [0.1, 0.25, 0.4, 0.75, 0.9];
+let bossDoubleWallPendingFrame = -1; // -1 = no second wall pending
+const BOSS_TRANSITION_DURATION = 180; // ~3s -- boss visibly "strains" to transform, frozen and silent
+let gates = [];
+let lastSpawnX = 0;
+let fireballSpawnCounter = 0;
+let extraFireballCounter = 0;
+let extraFireballPatternIndex = 0;
+let iceChunkPatternIndex = 0;
+let iceFloePatternIndex = 0;
+let iceBergPatternIndex = 0;
+let glacierSnowContinue = false;
+let glacierSnowballX = 0;
+let glacierSnowLane = 0;
+let glacierSnowSpawned = [];
+let iceChunkSpawnX = 0;
+let extraToxicCounter = 0;
+let extraToxicPatternIndex = 0;
+let extraGeyserCounter = 0;
+let extraGeyserPatternIndex = 0;
+let extraMovingDoorCounter = 0;
+let extraMovingDoorPatternIndex = 0;
+let specialEventsSpawned = [false, false, false];
+let blackHoleEventsSpawned = [false, false, false, false];
+let windVortexEventsSpawned = [false, false, false];
+let cloudArcEventsSpawned = [false, false, false];
+let lightningStrikeEventsSpawned = [false, false, false];
+let lasergridEventsSpawned = [false, false];
+let droneSwarmEventsSpawned = [false, false, false, false];
+let billboardEventsSpawned = [false, false];
+let searchlightEventsSpawned = [false, false];
+let turretEventsSpawned = [false, false];
+let signalCorruptionEventsSpawned = [false, false];
+let empEventsSpawned = [false, false];
+let echoTrailEventsSpawned = [false, false];
+let pulsingOrbEventsSpawned = [false, false];
+let boomerangEventsSpawned = [false, false];
+let oncomingCometEventsSpawned = [false, false];
+let splitRockEventsSpawned = [false, false, false];
+let extraStormCounter = 0;
+let extraStormPatternIndex = 0;
+let extraOrbiterCounter = 0;
+let extraOrbiterPatternIndex = 0;
+let extraArcPlanetCounter = 0;
+let extraArcPlanetPatternIndex = 0;
+let lensingZoneEventsSpawned = [false, false, false];
+let supernovaEventsSpawned = [false, false];
+let specialDoorUnlocked = [false, false, false];
+let extraHubCounter = 0;
+let extraHubPatternIndex = 0;
+let extraStarCounter = 0;
+let extraStarPatternIndex = 0;
+let terrainSegments = [];
+let terrainSegmentsSinceEntry = 0;
+let patternIndex = 0;
+let terrainWaypointTarget = null;
+let terrainWaypointSegLeft = 0;
+let terrainWaypointSegTotal = 1;
+let terrainWaypointGapTarget = null;
+let terrainWaypointIslandTarget = 0;
+let terrainWaypointIslandFrom = 0;
+let terrainWaypointNosePower = 1;
+let terrainWaypointTaperShare = 0.32;
+let terrainWaypointTaperCap = 5;
+let terrainWaypointIslandShape = '';
+let terrainWaypointIslandLabel = '';
+let terrainWaypointIslandBias = 0;
+let terrainMeanderIndex = 0;
+
+let themeIndex = 0;
+let themeLevelReached = 0;
+let warpActive = false;
+let warpTimer = 0;
+let portalObject = null;
+let ghostMode = false;
+let bossGridFadeEnabled = true; // toggle: does the background grid fade out during the boss color transition?
+let bossAshGrayVariant = true; // toggle: gray is now the default -- red kept available for comparison
+let devGracePeriodEndFrame = -1; // freezes ship physics (no gravity/lift) after a dev-panel zone jump or phase skip, for a fixed window regardless of input -- prevents the ship falling into a boundary while the dev panel is being navigated, and naturally expires rather than freezing forever
+const DEV_GRACE_PERIOD_DURATION = 600; // 10s at 60fps -- generous time to navigate the dev panel
+const WARP_LANDING_GRACE_PERIOD = 60; // 1s -- brief safety window right as a new zone begins. Gravity/lift physics run continuously during the warp tunnel itself (a purely visual effect a player isn't expected to actively fly through), which can leave the ship sitting close to the boundary by the time the new zone is actually visible; this gives a beat to see and react rather than dying before the player's first real frame in the zone
+let fireballSpeedMult = 1.6; // lowered from the initial 2.4 per feedback -- live-tunable via dev panel
+
 function clampGhostShipToPlayfield() {
   const minY = PLAY_TOP + SHIP_H / 2 + 0.5;
   const maxY = PLAY_BOTTOM - SHIP_H / 2 - 0.5;
@@ -66,6 +338,15 @@ function spawnGate(x) {
   }
   if (th.obstacleShape === 'hbar') {
     return spawnHBarCluster(x);
+  }
+  if (th.obstacleShape === 'kelp') {
+    return spawnKelpCluster(x);
+  }
+  if (th.obstacleShape === 'copper') {
+    return spawnCopperCluster(x);
+  }
+  if (th.obstacleShape === 'chrome') {
+    return spawnNeonCluster(x);
   }
   if (th.obstacleShape === 'barrier') {
     return spawnBarrier(x);
@@ -209,6 +490,257 @@ function spawnHBarCluster(x) {
   return entry.spacing;
 }
 
+function kelpPose(g) {
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  const len = Math.max(80, g.lengthFrac * playHeight);
+  const sway = Math.sin((frame - zoneStartFrame) * g.freq + g.phase) * g.sway;
+  const fromTop = g.anchor !== 'bottom';
+  const y0 = fromTop ? PLAY_TOP : PLAY_BOTTOM;
+  const y1 = fromTop ? PLAY_TOP + len : PLAY_BOTTOM - len;
+  const x0 = g.x;
+  const x1 = g.x + sway;
+  return {
+    x0, y0, x1, y1,
+    mx: (x0 + x1) / 2 + sway * 0.22,
+    my: (y0 + y1) / 2,
+    thick: g.thick || 24
+  };
+}
+
+function distToSegment(px, py, x0, y0, x1, y1) {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 < 1 ? 0 : ((px - x0) * dx + (py - y0) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const qx = x0 + t * dx;
+  const qy = y0 + t * dy;
+  const ex = px - qx;
+  const ey = py - qy;
+  return Math.sqrt(ex * ex + ey * ey);
+}
+
+function jellyPose(g) {
+  const t = (frame - zoneStartFrame) * g.freq + g.phase;
+  const y = g.y + Math.sin(t) * g.bob;
+  const wag = Math.sin(t * 1.6) * 16;
+  return {
+    x: g.x,
+    y,
+    bellR: g.bellR,
+    tent: g.tent,
+    rising: Math.cos(t) < 0,
+    tx: g.x + wag,
+    ty: y + g.bellR + g.tent,
+    tx2: g.x - wag * 0.65,
+    ty2: y + g.bellR + g.tent - 10
+  };
+}
+
+function spongeTubes(g) {
+  const n = g.heights.length;
+  const step = 70;
+  return g.heights.map((h, i) => ({
+    x: g.x + (i - (n - 1) / 2) * step,
+    h,
+    w: Math.max(44, Math.min(58, 38 + h * 0.06)),
+    lean: i % 2 === 0 ? -6 : 5
+  }));
+}
+
+function spongeRight(g) {
+  const tubes = spongeTubes(g);
+  const last = tubes[tubes.length - 1];
+  return last.x + last.w / 2 + 6;
+}
+
+function urchinReach(g) {
+  const t = (frame - zoneStartFrame) * g.freq + g.phase;
+  const s = Math.max(0, Math.sin(t));
+  return g.coreR + g.spine * s * s * s * s;
+}
+
+function urchinCenter(g) {
+  const t = (frame - zoneStartFrame) * g.bobFreq + g.phase;
+  return g.y + Math.sin(t) * g.bob;
+}
+
+function bloomRadius(g) {
+  const t = (frame - zoneStartFrame) * (g.freq || 0.02) + (g.phase || 0);
+  const s = 0.5 - 0.5 * Math.cos(t);
+  return g.minR + (g.maxR - g.minR) * s;
+}
+
+function coilFiring(g) {
+  const ahead = g.x - ship.x;
+  return ahead < 36 && ahead > -80;
+}
+
+function courierPods(g) {
+  const top = PLAY_TOP + 36;
+  const bottom = PLAY_BOTTOM - 48;
+  const n = g.count || 8;
+  const step = (bottom - top) / (n - 1);
+  const pods = [];
+  for (let i = 0; i < n; i++) {
+    if (i === g.gap || i === g.gap + 1) continue;
+    pods.push(top + i * step);
+  }
+  return pods;
+}
+
+function spawnCopperCluster(x) {
+  const th = currentTheme();
+  const entry = th.pattern[patternIndex % th.pattern.length];
+  patternIndex++;
+  for (const m of entry.marquees || []) {
+    gates.push({
+      type: 'marquee',
+      anchor: m.anchor === 'ceiling' ? 'ceiling' : 'floor',
+      x,
+      width: m.width,
+      height: m.heightFrac ? (PLAY_BOTTOM - PLAY_TOP) * m.heightFrac : m.height,
+      passed: false
+    });
+  }
+  for (const c of entry.couriers || []) {
+    gates.push({
+      type: 'courier',
+      x,
+      gap: c.gap,
+      count: 8,
+      podR: 16,
+      passed: false
+    });
+  }
+  for (const b of entry.blooms || []) {
+    gates.push({
+      type: 'bloom',
+      x,
+      minR: b.minR,
+      maxR: b.maxR,
+      freq: b.freq,
+      phase: b.phase,
+      passed: false
+    });
+  }
+  for (const c of entry.coils || []) {
+    gates.push({
+      type: 'coil',
+      x,
+      sparkH: c.sparkH,
+      halfW: c.halfW,
+      passed: false
+    });
+  }
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  for (const h of entry.headlamps || []) {
+    const yFrac = Math.max(0.16, Math.min(0.84, h.yFrac));
+    const y = PLAY_TOP + yFrac * playHeight;
+    gates.push({
+      type: 'headlamp',
+      x: x + 320,
+      y,
+      baseY: y,
+      driftY: 0,
+      driftTarget: 0,
+      jumpBucket: -1,
+      lurchBucket: -1,
+      r: 28,
+      speedMult: 1.55,
+      passed: false
+    });
+  }
+  return entry.spacing;
+}
+
+function spawnNeonCluster(x) {
+  const th = currentTheme();
+  const entry = th.pattern[patternIndex % th.pattern.length];
+  patternIndex++;
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  for (const b of entry.bars || []) {
+    gates.push({
+      type: 'neonbar',
+      x,
+      y: PLAY_TOP + b.yFrac * playHeight,
+      width: b.width,
+      thick: b.thick || 26,
+      hot: !!b.hot,
+      passed: false
+    });
+  }
+  for (const w of entry.wedges || []) {
+    gates.push({
+      type: 'wedge',
+      anchor: w.anchor === 'ceiling' ? 'ceiling' : 'floor',
+      x: x + (w.xJitter || 0),
+      width: w.width,
+      height: w.height,
+      lean: w.lean || 0,
+      passed: false
+    });
+  }
+  return entry.spacing;
+}
+
+function spawnKelpCluster(x) {
+  const th = currentTheme();
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  const entry = th.pattern[patternIndex % th.pattern.length];
+  patternIndex++;
+  if (entry.kelp) {
+    for (const k of entry.kelp) {
+      gates.push({
+        type: 'kelp',
+        anchor: k.anchor === 'bottom' ? 'bottom' : 'top',
+        x: x + (k.xJitter || 0),
+        lengthFrac: k.lengthFrac,
+        sway: k.sway,
+        freq: k.freq,
+        phase: k.phase,
+        thick: k.thick || 24,
+        passed: false
+      });
+    }
+  }
+  if (entry.sponge) {
+    gates.push({ type: 'sponge', x, heights: entry.sponge.slice(), passed: false });
+  }
+  if (entry.jelly) {
+    const j = entry.jelly;
+    const bell = j.bell || 24;
+    const tent = j.tent || 90;
+    const bob = j.bob || 40;
+    const raw = PLAY_TOP + j.yFrac * playHeight;
+    const y = Math.max(PLAY_TOP + bell + bob + 36, Math.min(PLAY_BOTTOM - tent - bell - bob - 48, raw));
+    gates.push({
+      type: 'jelly', x, y, bob, tent, bellR: bell,
+      freq: j.freq || 0.022, phase: j.phase || 0, passed: false
+    });
+  }
+  if (entry.school) {
+    const s = entry.school;
+    const half = s.height / 2;
+    const y = Math.max(PLAY_TOP + half + 28, Math.min(PLAY_BOTTOM - half - 28, PLAY_TOP + s.yFrac * playHeight));
+    gates.push({
+      type: 'school', x, y, width: s.width, height: s.height, swim: s.swim, passed: false
+    });
+  }
+  if (entry.urchin) {
+    const u = entry.urchin;
+    const reach = u.core + u.spine;
+    const bob = 58;
+    const raw = PLAY_TOP + u.yFrac * playHeight;
+    const y = Math.max(PLAY_TOP + reach + bob + 16, Math.min(PLAY_BOTTOM - reach - bob - 16, raw));
+    gates.push({
+      type: 'urchin', x, y, coreR: u.core, spine: u.spine,
+      freq: u.freq, phase: u.phase, bob, bobFreq: 0.011, passed: false
+    });
+  }
+  return entry.spacing;
+}
+
 // hand-picked bolt silhouettes (normalized: x as fraction of swingWidth/2,
 // y as fraction of height from top), each a distinct filled icon shape
 const BOLT_SHAPES = {
@@ -261,6 +793,34 @@ function rectIntersectsPolygon(left, top, right, bottom, poly) {
     }
   }
   return false;
+}
+
+// Same outline drawIceSpire fills. The old hit was the full rectangle, which
+// stays wide after the crystal has already narrowed to a point.
+function iceSpirePolygon(g) {
+  const fromTop = g.anchor === 'top';
+  const half = g.width / 2;
+  const left = g.x - half;
+  const right = g.x + half;
+  const innerTop = g.y - g.height / 2;
+  const innerBot = g.y + g.height / 2;
+  const root = fromTop ? innerTop - 20 : innerBot + 20;
+  const tip = fromTop ? innerBot : innerTop;
+  const yAt = (frac) => fromTop ? root + (tip - root) * frac : root - (root - tip) * frac;
+  return [
+    [left - 14, root],
+    [left - 4, yAt(0.18)],
+    [left + 6, yAt(0.55)],
+    [left + half * 0.22, yAt(0.92)],
+    [left + half * 0.38, yAt(0.97)],
+    [left + half * 0.52, yAt(0.93)],
+    [g.x + half * 0.08, tip],
+    [g.x + half * 0.3, yAt(0.95)],
+    [right - half * 0.2, yAt(0.98)],
+    [right - 8, yAt(0.68)],
+    [right + 4, yAt(0.2)],
+    [right + 16, root]
+  ];
 }
 
 function spawnPendulumCluster(x) {
@@ -650,7 +1210,8 @@ function gateClearsPortal(g, portalSafeX) {
     return g.x + g.r * 9 * 1.2 < portalSafeX;
   }
   if (g.type === 'fireball') return g.x + g.r * 8.5 < portalSafeX;
-  if (g.type === 'splitrock' || g.type === 'asteroid' || g.type === 'pendulum' || g.type === 'aciddrip' || g.type === 'wreckage') return g.x + g.r < portalSafeX;
+  if (g.type === 'asteroid' || g.type === 'snowball') return g.x + g.r < portalSafeX;
+  if (g.type === 'splitrock' || g.type === 'pendulum' || g.type === 'aciddrip' || g.type === 'wreckage') return g.x + g.r < portalSafeX;
   if (g.type === 'zone2storm') return g.x + g.r < portalSafeX;
   if (g.type === 'securitydrone') return g.x + g.r < portalSafeX;
   if (g.type === 'turretshot') return g.x + g.r < portalSafeX;
@@ -665,11 +1226,23 @@ function gateClearsPortal(g, portalSafeX) {
   if (g.type === 'supernova') return g.x + g.planetR < portalSafeX;
   if (g.type === 'toxicpool') return g.x + g.baseR + g.pulseAmp < portalSafeX;
   if (g.type === 'geyser' || g.type === 'movingdoor' || g.type === 'specialdoor') return g.x + g.width / 2 < portalSafeX;
+  if (g.type === 'icefloe' || g.type === 'icespire' || g.type === 'icearch' || g.type === 'snowgust' || g.type === 'icecalve') return g.x + g.width / 2 < portalSafeX;
   if (g.type === 'sparkhub') return g.x < portalSafeX;
   if (g.type === 'sparkprojectile') return g.x < portalSafeX;
   if (g.type === 'supernovadebris') return g.x < portalSafeX;
   if (g.type === 'accesskey') return g.x + g.r < portalSafeX;
   if (g.type === 'hbar') return g.x + g.width / 2 < portalSafeX;
+  if (g.type === 'marquee') return g.x + g.width / 2 < portalSafeX;
+  if (g.type === 'courier') return g.x + (g.podR || 16) < portalSafeX;
+  if (g.type === 'bloom') return g.x + g.maxR < portalSafeX;
+  if (g.type === 'coil') return g.x + g.halfW < portalSafeX;
+  if (g.type === 'headlamp') return g.x + g.r < portalSafeX;
+  if (g.type === 'kelp') return g.x + Math.abs(g.sway || 0) + 30 < portalSafeX;
+  if (g.type === 'jelly') return g.x + (g.bellR || 24) + 20 < portalSafeX;
+  if (g.type === 'sponge') return spongeRight(g) < portalSafeX;
+  if (g.type === 'school') return g.x + g.width / 2 < portalSafeX;
+  if (g.type === 'urchin') return g.x + g.coreR + g.spine < portalSafeX;
+  if (g.type === 'current') return g.x + g.width / 2 < portalSafeX;
   if (g.type === 'billboard') return g.x + g.panelWidth / 2 < portalSafeX;
   if (g.type === 'emp') return g.x + 30 < portalSafeX;
   if (g.type === 'echotrail') return g.x + g.zoneWidth / 2 < portalSafeX;
@@ -688,6 +1261,7 @@ function gateClearsPortal(g, portalSafeX) {
   if (g.type === 'lbolt') return g.x + g.swingWidth / 2 < portalSafeX;
   if (g.type === 'barrier') return g.x + g.width / 2 < portalSafeX;
   if (g.type === 'lightning') return g.x + g.span / 2 < portalSafeX;
+  if (g.type === 'wedge') return g.x + g.width / 2 + Math.abs(g.lean || 0) < portalSafeX;
   return g.x + GATE_WIDTH < portalSafeX;
 }
 
@@ -1818,6 +2392,257 @@ function spawnIceChunkCluster(x) {
   }
 }
 
+function spawnIceFloeCluster(x) {
+  const th = currentTheme();
+  const entry = th.iceFloePattern[iceFloePatternIndex % th.iceFloePattern.length];
+  iceFloePatternIndex++;
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  if (entry.spires) {
+    for (const s of entry.spires) {
+      const fromTop = s.anchor === 'top';
+      const height = Math.min(Math.max(220, s.heightFrac * playHeight), playHeight - 200);
+      const root = fromTop ? PLAY_TOP : PLAY_BOTTOM;
+      const tip = fromTop ? root + height : root - height;
+      gates.push({
+        type: 'icespire',
+        anchor: fromTop ? 'top' : 'bottom',
+        x: x + (s.xJitter || 0),
+        y: (root + tip) / 2,
+        width: s.width,
+        height,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  for (const f of entry.floes) {
+    const y = PLAY_TOP + f.yFrac * playHeight;
+    gates.push({
+      type: 'icefloe',
+      x: x + (f.xJitter || 0),
+      y: Math.max(PLAY_TOP + f.thickness / 2 + 36, Math.min(PLAY_BOTTOM - f.thickness / 2 - 36, y)),
+      width: f.width,
+      thickness: f.thickness,
+      passed: false
+    });
+  }
+  return entry.spacing;
+}
+
+function pushScatteredSnowball(x, lane, vy, drift, r) {
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  const laneSpan = Math.max(80, playHeight - r * 2 - 140);
+  const laneY = PLAY_TOP + r + 70 + lane * laneSpan;
+  gates.push({
+    type: 'snowball',
+    x,
+    y: -r - 16,
+    laneY,
+    r,
+    vy,
+    drift,
+    falling: false,
+    passed: false
+  });
+}
+
+// One row per snowball. dist is the zone distance when it crosses the ship.
+// lane 0 is high, 1 is low. Angle comes from vy and drift.
+const GLACIER_SNOW_DEFAULTS = [
+  { dist: 730, lane: 0.80, vy: 3.9, drift: 0.28, r: 42 },
+  { dist: 762, lane: 0.16, vy: 1.6, drift: 0.28, r: 38 },
+  { dist: 808, lane: 0.72, vy: 3.25, drift: 0.40, r: 46 },
+  { dist: 868, lane: 0.80, vy: 2.7, drift: 0.55, r: 40 },
+  { dist: 908, lane: 0.18, vy: 1.65, drift: 1.15, r: 36 },
+  { dist: 934, lane: 0.76, vy: 3.1, drift: 0.45, r: 44 },
+  { dist: 958, lane: 0.82, vy: 3.7, drift: 0.22, r: 38 },
+  { dist: 984, lane: 0.74, vy: 4.1, drift: 0.10, r: 40 }
+];
+const GLACIER_SNOW_STORAGE = 'glacierSnowSchedule';
+
+function cloneSnowSchedule(list) {
+  return list.map(s => ({
+    dist: s.dist,
+    lane: s.lane,
+    vy: s.vy,
+    drift: s.drift,
+    r: s.r
+  }));
+}
+
+let glacierSnowSchedule = cloneSnowSchedule(GLACIER_SNOW_DEFAULTS);
+
+function snowAngleDeg(vy, drift) {
+  return Math.round(Math.atan2(vy, 2.8 + (drift || 0)) * 180 / Math.PI);
+}
+
+function snowDriftFor(vy, deg) {
+  const rad = Math.max(14, Math.min(70, deg)) * Math.PI / 180;
+  const h = vy / Math.tan(rad);
+  return Math.round((h - 2.8) * 100) / 100;
+}
+
+function loadGlacierSnowSchedule() {
+  try {
+    const raw = localStorage.getItem(GAME_STORAGE_PREFIX + GLACIER_SNOW_STORAGE);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) return;
+    const clean = [];
+    for (const s of parsed) {
+      if (!s || !isFinite(+s.dist) || !isFinite(+s.lane) || !isFinite(+s.vy)) continue;
+      clean.push({
+        dist: Math.max(620, Math.min(1000, +s.dist)),
+        lane: Math.max(0, Math.min(1, +s.lane)),
+        vy: Math.max(1.2, Math.min(4.8, +s.vy)),
+        drift: isFinite(+s.drift) ? +s.drift : 0.4,
+        r: Math.max(28, Math.min(56, +s.r || 40))
+      });
+    }
+    if (clean.length) glacierSnowSchedule = clean;
+  } catch (e) { /* keep the shipped list */ }
+}
+
+function saveGlacierSnowSchedule() {
+  try {
+    localStorage.setItem(GAME_STORAGE_PREFIX + GLACIER_SNOW_STORAGE, JSON.stringify(glacierSnowSchedule));
+  } catch (e) { /* private mode */ }
+}
+
+function resetGlacierSnowSpawned() {
+  glacierSnowSpawned = glacierSnowSchedule.map(() => false);
+}
+
+loadGlacierSnowSchedule();
+resetGlacierSnowSpawned();
+
+function spawnScheduledSnowballs() {
+  if (glacierSnowSpawned.length !== glacierSnowSchedule.length) resetGlacierSnowSpawned();
+  const zone = distance - zoneStartDistance;
+  const portalX = predictedPortalX();
+  glacierSnowSchedule.forEach((s, i) => {
+    if (glacierSnowSpawned[i]) return;
+    const hSpeed = 2.8 + (s.drift || 0);
+    if (hSpeed < 0.6) return;
+    const x = ship.x + (s.dist - zone) * hSpeed / 0.28;
+    const r = s.r || 40;
+    const portalLimit = portalX == null ? Infinity : portalX - 80;
+    if (x > portalLimit) return;
+    if (x > W + 640) return;
+    if (x < W + r + 12) {
+      glacierSnowSpawned[i] = true;
+      return;
+    }
+    glacierSnowSpawned[i] = true;
+    pushScatteredSnowball(x, s.lane, s.vy, s.drift, r);
+  });
+}
+
+function spawnIceBergCluster(x) {
+  const th = currentTheme();
+  const entry = th.iceBergPattern[iceBergPatternIndex % th.iceBergPattern.length];
+  iceBergPatternIndex++;
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  if (entry.snowballs) {
+    for (const s of entry.snowballs) {
+      const r = s.r;
+      const laneY = PLAY_TOP + r + 70 + s.lane * (playHeight - r * 2 - 140);
+      gates.push({
+        type: 'snowball',
+        x: x + (s.xJitter || 0),
+        y: -r - 16,
+        laneY,
+        r,
+        vy: s.vy,
+        drift: s.drift != null ? s.drift : 0.9,
+        falling: false,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  if (entry.gusts) {
+    for (const s of entry.gusts) {
+      const halfH = s.height / 2;
+      const y = PLAY_TOP + s.yFrac * playHeight;
+      gates.push({
+        type: 'snowgust',
+        x: x + s.width / 2 + 30 + (s.xJitter || 0),
+        y: Math.max(PLAY_TOP + halfH + 24, Math.min(PLAY_BOTTOM - halfH - 24, y)),
+        width: s.width,
+        height: s.height,
+        push: s.push >= 0 ? 0.55 : -0.55,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  if (entry.arches) {
+    for (const a of entry.arches) {
+      const fromTop = a.anchor === 'top';
+      const height = Math.min(Math.max(280, a.heightFrac * playHeight), playHeight - 170);
+      const root = fromTop ? PLAY_TOP : PLAY_BOTTOM;
+      const tip = fromTop ? root + height : root - height;
+      const holeH = Math.min(a.holeH || 140, height * 0.4);
+      const holeW = Math.min(a.holeW || 150, a.width * 0.56);
+      const crown = 70;
+      const holeY = fromTop ? tip - crown - holeH / 2 : tip + crown + holeH / 2;
+      gates.push({
+        type: 'icearch',
+        anchor: fromTop ? 'top' : 'bottom',
+        x: x + (a.xJitter || 0),
+        y: (root + tip) / 2,
+        width: a.width,
+        height,
+        holeY,
+        holeW,
+        holeH,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  if (entry.calving) {
+    const minR = 34, maxR = 48;
+    for (const a of entry.calving) {
+      const r = minR + a.rFrac * (maxR - minR);
+      const y = PLAY_TOP + a.yFrac * playHeight;
+      gates.push({
+        type: 'asteroid',
+        x: x + (a.xJitter || 0),
+        y: Math.max(PLAY_TOP + r + 36, Math.min(PLAY_BOTTOM - r - 180, y)),
+        r,
+        rotSeed: 0,
+        spin: 0,
+        vy: 0,
+        berg: true,
+        calving: true,
+        calved: false,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  if (!entry.bergs) return entry.spacing;
+  const minR = 26, maxR = 44;
+  for (const a of entry.bergs) {
+    const r = minR + a.rFrac * (maxR - minR);
+    const y = PLAY_TOP + a.yFrac * playHeight;
+    gates.push({
+      type: 'asteroid',
+      x: x + (a.xJitter || 0),
+      y: Math.max(PLAY_TOP + r + 28, Math.min(PLAY_BOTTOM - r - 28, y)),
+      r: r,
+      rotSeed: a.xJitter || a.yFrac,
+      spin: 0.006,
+      vy: a.vy || 0,
+      berg: true,
+      passed: false
+    });
+  }
+  return entry.spacing;
+}
+
 function spawnFireball() {
   const th = currentTheme();
   const playHeight = PLAY_BOTTOM - PLAY_TOP;
@@ -2363,54 +3188,114 @@ function initTerrain() {
   terrainWaypointIslandLabel = '';
   terrainWaypointIslandBias = 0;
   terrainMeanderIndex = 0;
+  if (th.iceChunks) {
+    // Distance 0 is open sky. Walls sit off screen, and nothing is placed
+    // where it would reach the ship before distance 50.
+    const openGap = playHeight + 160;
+    const center = PLAY_TOP + playHeight * 0.5;
+    const top = center - openGap / 2;
+    const bottom = center + openGap / 2;
+    terrainSegmentsSinceEntry = 16;
+    terrainSegments.push({
+      x: -spacing, topY: top, bottomY: bottom, baseTop: top, baseBottom: bottom,
+      islandTop: center, islandBottom: center, islandShape: '', islandLabel: '', field: 'floe'
+    });
+    let guard = 0;
+    // Keep a stretch of course off the right edge so objects can be born there.
+    while (terrainSegments[terrainSegments.length - 1].x < W + 760 && guard++ < 400) {
+      addTerrainSegment();
+    }
+    // Nothing reaches the ship before distance 50, and nothing is placed
+    // on the visible screen. Centers start past the right edge and scroll in.
+    const clearX = ship.x + Math.max(0, 50 - (distance - zoneStartDistance)) * 10 + 170;
+    let fx = Math.max(clearX, W + 180);
+    let spawned = 0;
+    while (fx < W + 760 && spawned++ < 12) {
+      let field = '';
+      for (let i = terrainSegments.length - 1; i >= 0; i--) {
+        if (terrainSegments[i].x <= fx) { field = terrainSegments[i].field || ''; break; }
+      }
+      if (field !== 'floe') break;
+      fx += spawnIceFloeCluster(fx);
+    }
+    iceChunkSpawnX = fx;
+    return;
+  }
   for (let x = -spacing; x <= W + spacing; x += spacing) {
     terrainSegments.push({ x, topY: startTop, bottomY: startBottom, islandTop: startCenter, islandBottom: startCenter });
     terrainSegmentsSinceEntry++;
   }
 }
 
-function buildGlacierCourse() {
-  // One pass. The tunnel still kinks in straight facets. The high run is
-  // pressed to the ceiling and the low run to the floor, and the two are
-  // different lengths and different cuts so the level does not mirror itself.
-  const facet = (center, n) => Array(n).fill(center);
-  const centers = [
-    ...facet(0.50, 3), ...facet(0.40, 2), ...facet(0.32, 2),
-    ...facet(0.28, 5), ...facet(0.36, 2), ...facet(0.29, 4), ...facet(0.40, 2),
-    ...facet(0.28, 6), ...facet(0.34, 3), ...facet(0.30, 4), ...facet(0.43, 2),
-    ...facet(0.28, 5), ...facet(0.37, 3), ...facet(0.31, 4), ...facet(0.28, 3),
-    ...facet(0.39, 2), ...facet(0.30, 5), ...facet(0.35, 2), ...facet(0.28, 4),
-    ...facet(0.40, 2), ...facet(0.52, 2), ...facet(0.64, 2), ...facet(0.72, 2),
-    ...facet(0.70, 6), ...facet(0.62, 2), ...facet(0.73, 4), ...facet(0.66, 3),
-    ...facet(0.72, 5), ...facet(0.64, 2), ...facet(0.73, 4), ...facet(0.68, 3),
-    ...facet(0.71, 2),
-    ...facet(0.64, 2), ...facet(0.54, 2), ...facet(0.46, 3),
-    ...facet(0.38, 2), ...facet(0.48, 3), ...facet(0.34, 2), ...facet(0.44, 4),
-    ...facet(0.36, 2), ...facet(0.50, 3), ...facet(0.40, 2),
-    ...facet(0.58, 2), ...facet(0.70, 2),
-    ...facet(0.68, 2), ...facet(0.73, 2), ...facet(0.64, 2), ...facet(0.71, 3),
-    ...facet(0.66, 2), ...facet(0.73, 2), ...facet(0.60, 2), ...facet(0.69, 3),
-    ...facet(0.73, 2), ...facet(0.65, 2), ...facet(0.72, 4), ...facet(0.67, 2),
-    ...facet(0.60, 2), ...facet(0.48, 2), ...facet(0.34, 2),
-    ...facet(0.28, 4), ...facet(0.36, 2), ...facet(0.28, 3), ...facet(0.42, 2),
-    ...facet(0.30, 3), ...facet(0.28, 5),
-    ...facet(0.40, 2), ...facet(0.55, 2), ...facet(0.68, 3), ...facet(0.73, 4),
-    ...facet(0.66, 2), ...facet(0.72, 3), ...facet(0.64, 2), ...facet(0.70, 4),
-    ...facet(0.60, 2), ...facet(0.48, 3),
-    ...facet(0.56, 3), ...facet(0.42, 2), ...facet(0.32, 3), ...facet(0.28, 4),
-    ...facet(0.38, 2), ...facet(0.50, 2), ...facet(0.66, 3), ...facet(0.73, 3),
-    ...facet(0.62, 2), ...facet(0.70, 4), ...facet(0.54, 2), ...facet(0.40, 3),
-    ...facet(0.30, 2), ...facet(0.46, 3), ...facet(0.62, 2), ...facet(0.72, 3),
-    ...facet(0.58, 2), ...facet(0.44, 3), ...facet(0.34, 2)
-  ];
-  return centers.map(centerFrac => ({ centerFrac, top: 0, bottom: 0 }));
+let glacierCeilingFacets = null;
+let glacierFloorFacets = null;
+function glacierFacetRun(pairs) {
+  const out = [];
+  for (let i = 0; i < pairs.length; i += 2) {
+    for (let n = 0; n < pairs[i + 1]; n++) out.push(pairs[i]);
+  }
+  return out;
 }
-
-let glacierCourseCache = null;
-function glacierCourse(segmentIndex) {
-  if (!glacierCourseCache) glacierCourseCache = buildGlacierCourse();
-  const i = Math.max(0, Math.min(glacierCourseCache.length - 1, segmentIndex));
-  return glacierCourseCache[i];
+function glacierBeatAt(segmentX) {
+  // HUD distance when this segment reaches the ship. 1 distance = 10px of scroll.
+  const arrival = (distance - zoneStartDistance) + (segmentX - ship.x) * 0.1;
+  if (!glacierCeilingFacets) {
+    glacierCeilingFacets = glacierFacetRun([
+      0.50, 3, 0.40, 2, 0.32, 2,
+      0.28, 5, 0.36, 2, 0.29, 4, 0.40, 2,
+      0.28, 6, 0.34, 3, 0.30, 4, 0.43, 2,
+      0.28, 5, 0.37, 3, 0.31, 4, 0.28, 3,
+      0.39, 2, 0.30, 5, 0.35, 2, 0.28, 4,
+      0.36, 2, 0.46, 2
+    ]);
+    glacierFloorFacets = glacierFacetRun([
+      0.62, 2, 0.73, 3,
+      0.70, 6, 0.62, 2, 0.73, 4, 0.66, 3,
+      0.72, 5, 0.64, 2, 0.73, 4, 0.68, 3, 0.71, 2,
+      0.68, 2, 0.73, 2, 0.64, 2, 0.71, 3,
+      0.66, 2, 0.73, 2, 0.60, 2, 0.69, 3,
+      0.73, 2, 0.65, 2, 0.72, 4, 0.67, 2
+    ]);
+  }
+  const pick = (list, start) => {
+    const i = Math.max(0, Math.floor((arrival - start) * 10 / 42));
+    return list[Math.min(list.length - 1, i)];
+  };
+  // Open until 350, cave through 650, then open sky to the portal.
+  // 650 is when the ship is still inside. The walls open after that.
+  // The cave rides the ceiling first and the floor second.
+  if (arrival < 260) return { open: true, field: 'floe', centerFrac: 0.5, top: 0, bottom: 0 };
+  if (arrival < 290) return { open: true, field: '', centerFrac: 0.5, top: 0, bottom: 0 };
+  if (arrival < 500) return { open: false, field: '', centerFrac: pick(glacierCeilingFacets, 290), top: 0, bottom: 0 };
+  if (arrival < 650) return { open: false, field: '', centerFrac: pick(glacierFloorFacets, 500), top: 0, bottom: 0 };
+  // Hold the first snowballs until the mouth is opening, then keep them
+  // falling for the rest of the open stretch.
+  if (arrival < 730) return { open: true, field: '', centerFrac: 0.5, top: 0, bottom: 0, mound: 0 };
+  // Rounded snow dunes. Each point is a crest or a dip; the blend
+  // between them is smooth, and the heights and widths don't repeat.
+  const peaks = [
+    [0, 0],
+    [42, 70],
+    [88, 170],
+    [124, 95],
+    [168, 28],
+    [214, 150],
+    [252, 210],
+    [310, 40]
+  ];
+  const x = arrival - 748;
+  let mound = 0;
+  if (x > 0) {
+    let i = 0;
+    while (i < peaks.length - 1 && x > peaks[i + 1][0]) i++;
+    const a = peaks[i];
+    const b = peaks[Math.min(peaks.length - 1, i + 1)];
+    const span = Math.max(1, b[0] - a[0]);
+    const t = Math.max(0, Math.min(1, (x - a[0]) / span));
+    const s = 0.5 - 0.5 * Math.cos(Math.PI * t);
+    mound = a[1] + (b[1] - a[1]) * s;
+  }
+  return { open: true, field: 'berg', centerFrac: 0.5, top: 0, bottom: 0, mound };
 }
 
 function addTerrainSegment() {
@@ -2421,6 +3306,7 @@ function addTerrainSegment() {
   // segment treat a spike as the new cave and stacks the following tooth on it.
   const steerTop = last.baseTop != null ? last.baseTop : last.topY;
   const steerBottom = last.baseBottom != null ? last.baseBottom : last.bottomY;
+  let segmentField = '';
   const margin = 20;
   const playHeight = PLAY_BOTTOM - PLAY_TOP;
   terrainSegmentsSinceEntry++;
@@ -2441,21 +3327,6 @@ function addTerrainSegment() {
   } else {
     const baseGap = currentGapSize();
 
-    if (portalObject) {
-      // funnel wide open for a clean run into the portal, instead of
-      // continuing to generate normal (possibly tight) cave shape
-      const wideGap = playHeight * 0.9;
-      const lastCenter = (steerTop + steerBottom) / 2;
-      const minCenter = PLAY_TOP + wideGap / 2;
-      const maxCenter = PLAY_BOTTOM - wideGap / 2;
-      const target = Math.max(minCenter, Math.min(maxCenter, lastCenter));
-      const nextCenter = lastCenter + (target - lastCenter) * 0.35;
-      targetTop = nextCenter - wideGap / 2;
-      targetBottom = nextCenter + wideGap / 2;
-      targetIslandTop = nextCenter;
-      targetIslandBottom = nextCenter;
-    } else {
-
     // pathing analysis: figure out how fast the ship can actually climb/dive
     // (in px per segment, at this theme's physics and scroll speed), then spread
     // each waypoint transition across enough segments to stay within that limit
@@ -2465,6 +3336,54 @@ function addTerrainSegment() {
     const maxDiveSpeed = MAX_FALL_SPEED * th.gravityMult;
     const safetyFactor = 0.55; // leave headroom for reaction time, not just raw capability
     const maxDeltaPerSegment = Math.min(maxClimbSpeed, maxDiveSpeed) * framesPerSegment * safetyFactor;
+    const lastCenterNow = (steerTop + steerBottom) / 2;
+    const lastGapNow = steerBottom - steerTop;
+
+    if (portalObject) {
+      // funnel wide open for a clean run into the portal, instead of
+      // continuing to generate normal (possibly tight) cave shape.
+      // Glacier's open sky is already wider than that funnel; don't pull
+      // the walls back in over the berg field.
+      const wideGap = playHeight * 0.9;
+      if (th.iceChunks && (lastGapNow > wideGap || last.field === 'berg')) {
+        targetTop = steerTop;
+        targetBottom = steerBottom;
+        targetIslandTop = lastCenterNow;
+        targetIslandBottom = lastCenterNow;
+        segmentField = last.field || '';
+      } else {
+        const minCenter = PLAY_TOP + wideGap / 2;
+        const maxCenter = PLAY_BOTTOM - wideGap / 2;
+        const target = Math.max(minCenter, Math.min(maxCenter, lastCenterNow));
+        const nextCenter = lastCenterNow + (target - lastCenterNow) * 0.35;
+        targetTop = nextCenter - wideGap / 2;
+        targetBottom = nextCenter + wideGap / 2;
+        targetIslandTop = nextCenter;
+        targetIslandBottom = nextCenter;
+      }
+    } else if (th.iceChunks) {
+      const course = glacierBeatAt(last.x + spacing);
+      segmentField = course.open ? (course.field || '') : '';
+      const openGap = playHeight + 160;
+      const wantGap = course.open ? openGap : baseGap;
+      const clampGap = course.open ? playHeight : baseGap;
+      const minCenter = PLAY_TOP + clampGap / 2 + (course.open ? 0 : margin);
+      const maxCenter = PLAY_BOTTOM - clampGap / 2 - (course.open ? 0 : margin);
+      const rawTarget = PLAY_TOP + course.centerFrac * playHeight;
+      const targetCenter = Math.max(minCenter, Math.min(maxCenter, rawTarget));
+      let nextTop = targetCenter - wantGap / 2;
+      let nextBottom = targetCenter + wantGap / 2;
+      if (course.open && course.mound > 0) nextBottom = PLAY_BOTTOM - course.mound;
+      const dTop = nextTop - steerTop;
+      const dBot = nextBottom - steerBottom;
+      const scale = Math.max(1, Math.abs(dTop) / maxDeltaPerSegment, Math.abs(dBot) / maxDeltaPerSegment);
+      targetTop = steerTop + dTop / scale;
+      targetBottom = steerBottom + dBot / scale;
+      const nextCenter = (targetTop + targetBottom) / 2;
+      targetIslandTop = nextCenter;
+      targetIslandBottom = nextCenter;
+      terrainWaypointSegLeft = 0;
+    } else {
 
     if (terrainWaypointSegLeft <= 0) {
       const pattern = terrainPattern(th);
@@ -2486,10 +3405,6 @@ function addTerrainSegment() {
       if (consumePattern) {
         patternIndex++;
         terrainMeanderIndex = 0;
-      }
-      if (th.iceChunks) {
-        const course = glacierCourse(Math.max(0, Math.floor(terrainLevelX / spacing) - 1));
-        entry = { centerFrac: course.centerFrac };
       }
 
       const gapMult = entry.gapMult !== undefined ? entry.gapMult : 1;
@@ -2584,8 +3499,11 @@ function addTerrainSegment() {
     targetTop = mid - minGapPx / 2;
     targetBottom = mid + minGapPx / 2;
   }
-  targetTop = Math.max(PLAY_TOP + margin, targetTop);
-  targetBottom = Math.min(PLAY_BOTTOM - margin, targetBottom);
+  const openSky = th.iceChunks && (targetBottom - targetTop) > playHeight * 0.65;
+  if (!openSky) {
+    targetTop = Math.max(PLAY_TOP + margin, targetTop);
+    targetBottom = Math.min(PLAY_BOTTOM - margin, targetBottom);
+  }
 
   // safety clamp: if a fork's island would leave either path too narrow to fly, shrink the island
   const minPathPx = minGapPx * 1.1;
@@ -2605,8 +3523,8 @@ function addTerrainSegment() {
   let nextBottom = steerBottom + (targetBottom - steerBottom) * rampFactor;
   const baseTopY = nextTop;
   const baseBottomY = nextBottom;
-  if (th.iceChunks && !portalObject && rampFactor >= 1) {
-    const course = glacierCourse(Math.floor(terrainLevelX / spacing));
+  if (th.iceChunks && !portalObject && rampFactor >= 1 && !openSky) {
+    const course = glacierBeatAt(last.x + spacing);
     let topN = course.top;
     let botN = course.bottom;
     const room = (nextBottom - nextTop) - minGapPx;
@@ -2638,874 +3556,8 @@ function addTerrainSegment() {
     islandTop: nextIslandTop,
     islandBottom: nextIslandBottom,
     islandShape: terrainWaypointIslandShape,
-    islandLabel: terrainWaypointIslandLabel
+    islandLabel: terrainWaypointIslandLabel,
+    field: segmentField
   });
 }
 
-function terrainBoundsAt(x) {
-  for (let i = 0; i < terrainSegments.length - 1; i++) {
-    const a = terrainSegments[i], b = terrainSegments[i + 1];
-    if (x >= a.x && x <= b.x) {
-      const t = (x - a.x) / (b.x - a.x);
-      return {
-        top: a.topY + (b.topY - a.topY) * t,
-        bottom: a.bottomY + (b.bottomY - a.bottomY) * t,
-        islandTop: a.islandTop + (b.islandTop - a.islandTop) * t,
-        islandBottom: a.islandBottom + (b.islandBottom - a.islandBottom) * t
-      };
-    }
-  }
-  return null;
-}
-
-function liveGateGap(gate) {
-  const theme = currentTheme();
-  const baseGap = currentGapSize();
-  if (!theme.pulseGap) return baseGap;
-  const amp = baseGap * theme.pulseAmpFrac;
-  const playHeight = PLAY_BOTTOM - PLAY_TOP;
-  const minGap = Math.max(50, baseGap * (1 - theme.pulseAmpFrac));
-  const maxGap = Math.min(playHeight - 40, baseGap * (1 + theme.pulseAmpFrac));
-  let g = baseGap + amp * Math.sin((frame - zoneStartFrame) * gate.pulseFreq + gate.pulsePhase);
-  return Math.max(minGap, Math.min(maxGap, g));
-}
-
-function diamondGeometry(gate) {
-  const radius = liveGateGap(gate) / 2;
-  const centerX = gate.x + GATE_WIDTH / 2;
-  const centerY = liveGateCenter(gate);
-  return { radius, centerX, centerY };
-}
-
-function liveGateCenter(gate) {
-  const margin = 20;
-  let minCenter;
-  let maxCenter;
-  if (gate.type === 'hbar') {
-    const half = (gate.thickness || 18) / 2;
-    minCenter = PLAY_TOP + half + margin;
-    maxCenter = PLAY_BOTTOM - half - margin;
-  } else {
-    const gap = liveGateGap(gate);
-    minCenter = PLAY_TOP + gap / 2 + margin;
-    maxCenter = PLAY_BOTTOM - gap / 2 - margin;
-  }
-  let c = gate.baseCenter + gate.amplitude * Math.sin((frame - zoneStartFrame) * gate.freq + gate.phase);
-  return Math.max(minCenter, Math.min(maxCenter, c));
-}
-
-function initBackgroundParticles(theme) {
-  bgParticles = [];
-  const playHeight = PLAY_BOTTOM - PLAY_TOP;
-  if (theme.bgStyle === 'matrix') {
-    for (let i = 0; i < 64; i++) {
-      const tint = i % 3;
-      bgParticles.push({
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        speed: 1.2 + Math.random() * 3.2,
-        len: 16 + Math.random() * 46,
-        alpha: 0.22 + Math.random() * 0.5,
-        drift: (Math.random() - 0.5) * 0.35,
-        tint
-      });
-    }
-  } else if (theme.bgStyle === 'stars') {
-    for (let i = 0; i < 90; i++) {
-      bgParticles.push({
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        r: 0.6 + Math.random() * 1.8,
-        alpha: 0.3 + Math.random() * 0.7,
-        speed: 0.3 + Math.random() * 1.4
-      });
-    }
-  } else if (theme.bgStyle === 'frozen') {
-    for (let i = 0; i < 56; i++) {
-      bgParticles.push({
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        r: 1 + Math.random() * 2.4,
-        alpha: 0.35 + Math.random() * 0.55,
-        speed: 0.6 + Math.random() * 1.6,
-        drift: 0.4 + Math.random() * 1.1
-      });
-    }
-    } else if (theme.bgStyle === 'embers') {
-    for (let i = 0; i < 16; i++) {
-      bgParticles.push({
-        kind: 'rush',
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        speed: 7 + Math.random() * 10,
-        len: 28 + Math.random() * 70,
-        alpha: 0.08 + Math.random() * 0.16,
-        thick: 1 + Math.random() * 1.4
-      });
-    }
-    for (let i = 0; i < 18; i++) {
-      bgParticles.push({
-        kind: 'spark',
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        speed: 3.2 + Math.random() * 5.5,
-        lift: 0.15 + Math.random() * 0.55,
-        len: 10 + Math.random() * 22,
-        r: 0.7 + Math.random() * 1.6,
-        alpha: 0.28 + Math.random() * 0.45
-      });
-    }
-  } else if (theme.bgStyle === 'ruins') {
-    for (let i = 0; i < 45; i++) {
-      bgParticles.push({
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        r: 0.8 + Math.random() * 1.8,
-        alpha: 0.2 + Math.random() * 0.4,
-        speed: 0.15 + Math.random() * 0.4,
-        drift: (Math.random() - 0.5) * 0.3
-      });
-    }
-  } else if (theme.bgStyle === 'toxic') {
-    for (let i = 0; i < 36; i++) {
-      bgParticles.push({
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        r: 1.2 + Math.random() * 2.4,
-        alpha: 0.12 + Math.random() * 0.18,
-        speed: 0.12 + Math.random() * 0.28,
-        drift: (Math.random() - 0.5) * 0.25,
-        wobble: Math.random() * Math.PI * 2,
-        stretch: 1.2 + Math.random() * 0.8
-      });
-    }
-  } else if (theme.bgStyle === 'station') {
-    for (let i = 0; i < 40; i++) {
-      bgParticles.push({
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        r: 0.6 + Math.random() * 1.6,
-        alpha: 0.15 + Math.random() * 0.3,
-        speed: 0.1 + Math.random() * 0.3,
-        drift: (Math.random() - 0.5) * 0.5
-      });
-    }
-  } else if (theme.bgStyle === 'void') {
-    for (let i = 0; i < 22; i++) {
-      bgParticles.push({
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        r: 0.4 + Math.random() * 1.0,
-        alpha: 0.08 + Math.random() * 0.18,
-        speed: 0.05 + Math.random() * 0.15,
-        drift: 0
-      });
-    }
-  } else if (theme.bgStyle === 'storm') {
-    for (let i = 0; i < 70; i++) {
-      bgParticles.push({
-        x: Math.random() * W,
-        y: PLAY_TOP + Math.random() * playHeight,
-        speed: 5 + Math.random() * 6,
-        len: 15 + Math.random() * 20,
-        alpha: 0.2 + Math.random() * 0.4
-      });
-    }
-  }
-}
-
-function reseedZoneObstacles(startX) {
-  gates = [];
-  shipYHistory = [];
-  patternIndex = 0;
-  fireballSpawnCounter = 0;
-  extraFireballCounter = 0;
-  extraFireballPatternIndex = 0;
-  extraToxicCounter = 0;
-  extraToxicPatternIndex = 0;
-  extraGeyserCounter = 0;
-  extraGeyserPatternIndex = 0;
-  extraStarCounter = 0;
-  extraStarPatternIndex = 0;
-  extraMovingDoorCounter = 0;
-  extraMovingDoorPatternIndex = 0;
-  specialEventsSpawned = [false, false, false];
-  specialDoorUnlocked = [false, false, false];
-  blackHoleEventsSpawned = currentTheme().blackHoleEvents ? currentTheme().blackHoleEvents.map(() => false) : [];
-  windVortexEventsSpawned = currentTheme().windVortexEvents ? currentTheme().windVortexEvents.map(() => false) : [];
-  cloudArcEventsSpawned = currentTheme().cloudArcEvents ? currentTheme().cloudArcEvents.map(() => false) : [];
-  lightningStrikeEventsSpawned = currentTheme().lightningStrikeEvents ? currentTheme().lightningStrikeEvents.map(() => false) : [];
-  lasergridEventsSpawned = currentTheme().lasergridEvents ? currentTheme().lasergridEvents.map(() => false) : [];
-  droneSwarmEventsSpawned = currentTheme().droneSwarmEvents ? currentTheme().droneSwarmEvents.map(() => false) : [];
-  billboardEventsSpawned = currentTheme().billboardEvents ? currentTheme().billboardEvents.map(() => false) : [];
-  searchlightEventsSpawned = currentTheme().searchlightEvents ? currentTheme().searchlightEvents.map(() => false) : [];
-  turretEventsSpawned = currentTheme().turretEvents ? currentTheme().turretEvents.map(() => false) : [];
-  signalCorruptionEventsSpawned = currentTheme().signalCorruptionEvents ? currentTheme().signalCorruptionEvents.map(() => false) : [];
-  empEventsSpawned = currentTheme().empEvents ? currentTheme().empEvents.map(() => false) : [];
-  echoTrailEventsSpawned = currentTheme().echoTrailEvents ? currentTheme().echoTrailEvents.map(() => false) : [];
-  pulsingOrbEventsSpawned = currentTheme().pulsingOrbEvents ? currentTheme().pulsingOrbEvents.map(() => false) : [];
-  boomerangEventsSpawned = currentTheme().boomerangEvents ? currentTheme().boomerangEvents.map(() => false) : [];
-  oncomingCometEventsSpawned = currentTheme().oncomingCometEvents ? currentTheme().oncomingCometEvents.map(() => false) : [];
-  splitRockEventsSpawned = currentTheme().splitRockEvents ? currentTheme().splitRockEvents.map(() => false) : [];
-  extraStormCounter = 0;
-  extraStormPatternIndex = 0;
-  extraOrbiterCounter = 0;
-  extraOrbiterPatternIndex = 0;
-  extraArcPlanetCounter = 0;
-  extraArcPlanetPatternIndex = 0;
-  lensingZoneEventsSpawned = currentTheme().lensingZoneEvents ? currentTheme().lensingZoneEvents.map(() => false) : [];
-  supernovaEventsSpawned = currentTheme().supernovaEvents ? currentTheme().supernovaEvents.map(() => false) : [];
-  extraHubCounter = 0;
-  extraHubPatternIndex = 0;
-  iceChunkPatternIndex = 0;
-  iceChunkSpawnX = W + 700;
-  if (currentTheme().obstacleShape === 'terrain') {
-    initTerrain();
-  } else if (currentTheme().obstacleShape !== 'none') {
-    let x = startX;
-    for (let i = 0; i < 6; i++) {
-      if (i > 0) {
-        const th0 = currentTheme();
-        x += th0.pattern[patternIndex % th0.pattern.length].spacing || GATE_SPACING;
-      }
-      spawnGate(x);
-      lastSpawnX = x;
-    }
-  }
-  if (currentTheme().isBossZone) {
-    miniBoss = null;
-    const bossBaseY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.5;
-    const bossMaxR = (PLAY_BOTTOM - PLAY_TOP) * 0.22;
-    // fixed distance from the ship, calibrated to match Claude's preview
-    // width -- not a proportion of W, which would grow the gap on wider
-    // screens. clamped so narrower windows can't push the boss's sphere
-    // off the right edge of the screen
-    const bossFinalX = Math.min(ship.x + 415, W - bossMaxR - 40);
-    const fragmentCount = 8;
-    const fragments = [];
-    for (let i = 0; i < fragmentCount; i++) {
-      const angle = (i / fragmentCount) * Math.PI * 2;
-      const dist = 280 + 60 * Math.sin(i * 2.7); // deterministic variation, not random
-      fragments.push({
-        startX: bossFinalX + Math.cos(angle) * dist,
-        startY: bossBaseY + Math.sin(angle) * dist,
-        size: 8 + 4 * Math.sin(i * 1.9)
-      });
-    }
-    boss = {
-      x: bossFinalX,
-      y: bossBaseY,
-      baseY: bossBaseY,
-      maxR: bossMaxR,
-      r: 0,
-      fragments: fragments
-    };
-    bossSpawnFrame = frame;
-    bossTimer = currentTheme().bossDuration;
-    bossPhase = 1;
-    bossDefeated = false;
-    bossDefeatFrame = 0;
-    bossAttackTimer = 0;
-    bossVolleyTimer = 0;
-    bossTransitioning = false;
-    bossTransitionStartFrame = 0;
-    bossTransitionEndFrame = -9999;
-    bossWaitingForClear = false;
-    bossWaitingForClearStartFrame = -1;
-    bossRagePulseTimer = 0;
-    bossDiagonalRingTimer = 0;
-    bossDoubleWallTimer = 0;
-    bossDoubleWallPendingFrame = -1;
-    bossDroneFormationTimer = 0;
-    bossHomingFragmentTimer = 0;
-    bossChargeBeamTimer = 0;
-    bossChargeBeamNextGap = BOSS_CHARGE_BEAM_MIN_GAP + Math.floor(Math.random() * (BOSS_CHARGE_BEAM_MAX_GAP - BOSS_CHARGE_BEAM_MIN_GAP + 1));
-    bossChargeBeamCount = 0;
-    bossEmberTimer = 0;
-    bossAshCloudTimer = 0;
-    bossBeamHoldBlendStartFrame = -9999;
-    bossFinalChargeActive = false;
-    bossFinalChargeStartFrame = -1;
-    bossExplosionActive = false;
-    bossExplosionStartFrame = -1;
-    postBossDowntimeActive = false;
-    postBossDowntimeStartFrame = -1;
-    shipFlyOffActive = false;
-    shipFlyOffStartFrame = -1;
-    bossFullyDefeated = false;
-  } else if (currentTheme().isMiniBossZone) {
-    boss = null;
-    // undo any escape-run mutations left over from a previous playthrough
-    // in this session (theme objects persist across resetGame calls)
-    const th = currentTheme();
-    th.obstacleShape = 'none';
-    th.pattern = [{ spacing: 100000 }];
-    delete th.scrollMult;
-    delete th.ampMult;
-    delete th.freqMult;
-    delete th.pulseGap;
-    delete th.gapFractionStart;
-    delete th.gapConstant;
-    delete th.terrainSpacing;
-    delete th.terrainMaxDelta;
-    const miniBaseY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.5;
-    const miniBossMaxR = (PLAY_BOTTOM - PLAY_TOP) * 0.16 * 0.85; // 15% smaller
-    // fixed distance from the ship, calibrated to match Claude's preview
-    // width -- not a proportion of W, which would grow the gap on wider
-    // screens (same issue as the main boss). clamped so narrow windows
-    // can't push it off the right edge
-    const miniRestX = th.miniBossVariant === 'core'
-      ? Math.min(ship.x + 588, W - 84) // wall boss sits at the arena edge, not mid-arena
-      : Math.min(ship.x + 366, W - miniBossMaxR - 40);
-    miniBoss = {
-      x: W + 120, // starts off-screen, flies in during the entrance
-      restX: miniRestX,
-      y: miniBaseY,
-      baseY: miniBaseY,
-      maxR: miniBossMaxR,
-      r: 0
-    };
-    miniBossSpawnFrame = frame;
-    miniBossDefeated = false;
-    miniBossDefeatFrame = 0;
-    miniBossWallRecedeStartFrame = -1;
-    miniBossAttackState = th.miniBossVariant === 'core' ? 'coreFloating' : 'floating';
-    miniBossAttackStateStartFrame = 0;
-    miniBossChargeHeights = [0.2, 0.5, 0.8];
-    miniBossChargeIndex = 0;
-    miniBossChargeRound = 1;
-    miniBossHadFirstFloat = false;
-    miniBossNextAttackSet = 1;
-    miniBossCyclesCompleted = 0;
-    miniBossBarrageEmbers = [];
-    miniBossBarrageWavesLaunched = 0;
-    miniBossDeathPatches = [];
-    miniBossDeathAshParticles = [];
-    miniBossWallCracks = [];
-    coreWallPanels = [];
-    coreWallSensors = [];
-    miniBossEscapeRunActive = false;
-    coreBossPhase = 1;
-    coreBossHadFirstFloat = false;
-    coreBossDefeated = false;
-    coreBossDefeatFrame = 0;
-    coreSparks = [];
-    coreEmpPulses = [];
-    coreCrossfireRound = 0;
-    coreCrossfireBeamYs = [];
-    lastCoreCrossfireVolleyFrame = -999;
-    coreOrbitSpawned = 0;
-    coreOrbitProjectiles = [];
-    coreOrbitEmitAngle = 0;
-    coreEyeBeamState = 'track';
-    coreEyeBeamStateStartFrame = 0;
-    coreTeslaState = 'charging';
-    coreTeslaStateStartFrame = 0;
-    coreTeslaProjectiles = [];
-    coreGateOpenAmount = 0;
-    coreDeathPatches = [];
-    coreDeathDebris = [];
-  } else {
-    boss = null;
-    miniBoss = null;
-  }
-}
-
-// maps a death count to its rank tier letter -- shared by the
-// achievement-granting logic below and the victory screen's own display
-function rankTierForDeaths(deaths) {
-  if (deaths <= 3) return 'S';
-  if (deaths <= 9) return 'A';
-  if (deaths <= 14) return 'B+';
-  if (deaths <= 18) return 'B';
-  return 'C';
-}
-const RANK_TIER_ORDER = ['S', 'A', 'B+', 'B', 'C']; // best to worst
-const RANK_TIER_HINTS = {
-  S: '0-3 deaths',
-  A: '4-9 deaths',
-  'B+': '10-14 deaths',
-  B: '15-18 deaths',
-  C: '19+ deaths'
-};
-
-function tryAwardDeathless() {
-  // Hard only, no lives lost this zone visit, and not a DEV session.
-  // Zone Select practice is allowed so a true deathless clear can be earned
-  // one zone at a time.
-  if (devSessionActive) return false;
-  if (selectedDifficulty !== 'hard') return false;
-  if (diedInCurrentZone) return false;
-  if (deathlessZones.has(themeIndex)) return false;
-  deathlessZones.add(themeIndex);
-  return true;
-}
-
-function triggerVictory() {
-  if (isPracticeRun) {
-    if (tryAwardDeathless()) savePlayerProfile();
-    endPracticeRun();
-    return;
-  }
-  stopLiftSound();
-  stopGlowDangerSound();
-  stopFireballBreathSound();
-  stopToxicHazardSounds();
-  stopDustStormSound();
-  stopMeteorStreakSound();
-  stopStormSkiesHazardSounds();
-  stopMovingDoorSound();
-  stopBlackHoleSound();
-  sfxVictory();
-  state = 'victory';
-  clearTimeMs = nowMs() - runStartTimeMs;
-  if (devSessionActive) return; // dev preview only -- screen still displays, nothing gets recorded
-  let profileChanged = false;
-  if (!completedZones.has(themeIndex)) {
-    completedZones.add(themeIndex);
-    profileChanged = true;
-  }
-  zoneCompletionCounts[themeIndex] = (zoneCompletionCounts[themeIndex] || 0) + 1;
-  profileChanged = true;
-  if (tryAwardDeathless()) profileChanged = true;
-  if (!beatenDifficulties.has(selectedDifficulty)) {
-    beatenDifficulties.add(selectedDifficulty);
-    profileChanged = true;
-  }
-  // earning a given rank tier also grants every tier below it (e.g. B
-  // Rank also unlocks the C Rank achievement), since a better rank always
-  // satisfies a worse tier's requirement too
-  const earnedTierIdx = RANK_TIER_ORDER.indexOf(rankTierForDeaths(totalDeaths));
-  for (let i = earnedTierIdx; i < RANK_TIER_ORDER.length; i++) {
-    const tier = RANK_TIER_ORDER[i];
-    if (!achievedRanks.has(tier)) {
-      achievedRanks.add(tier);
-      profileChanged = true;
-    }
-  }
-  if ((selectedDifficulty === 'normal' || selectedDifficulty === 'hard') && !extraDifficultyUnlocked) {
-    extraDifficultyUnlocked = true;
-    justUnlockedExtraDifficulty = true;
-    profileChanged = true;
-  }
-  if (profileChanged) savePlayerProfile();
-  if (justUnlockedExtraDifficulty) sfxOverdriveUnlock();
-}
-
-function resetGame() {
-  ship = { x: W * 0.28, y: H / 2, vy: 0, rotation: 0 };
-  distance = 0;
-  frame = 0;
-  holding = false;
-  pointerHolding = false;
-  keyHolding = false;
-  stopLiftSound();
-  stopGlowDangerSound();
-  stopFireballBreathSound();
-  stopToxicHazardSounds();
-  stopDustStormSound();
-  stopMeteorStreakSound();
-  stopStormSkiesHazardSounds();
-  stopMovingDoorSound();
-  stopBlackHoleSound();
-  stopMoltenCoreIdleSound();
-  stopMoltenFlameWallSound();
-  stopMoltenSqueezeSound();
-  stopMoltenDeathAshSound();
-  stopCoreBulkheadHoldSound();
-  stopAllPulsingOrbSounds();
-  stopAllBoomerangSounds();
-  stopMegaManCharge(0.02);
-  stopSignalFinalCharge(0.02);
-  stopCoreOverload(0.02);
-  stopSignalPhase(0.04);
-  state = 'ready';
-  themeIndex = 0;
-  themeLevelReached = 0;
-  warpActive = false;
-  warpTimer = 0;
-  const diffConfig = DIFFICULTY_CONFIG[selectedDifficulty] || DIFFICULTY_CONFIG.normal;
-  MAX_LIVES = diffConfig.lives;
-  continuesRemaining = diffConfig.continues;
-  invincibilityEndTime = -1;
-  freeHitCooldownEndTime = -1;
-  resetHitCyclePauseClock();
-  freeHitsUsedThisLife = 0;
-  pendingRespawnMercyEligible = false;
-  diedInCurrentZone = false;
-  awaitingFirstFlyHold = false;
-  showFlyControlsHint = false;
-  lives = MAX_LIVES;
-  maxDistanceReached = 0;
-  lastDeathDistance = 0;
-  zoneStartDistance = 0;
-  zoneStartFrame = 0;
-  portalObject = null;
-  totalDeaths = 0;
-  deathsByZone = {};
-  runStartTimeMs = nowMs();
-  clearTimeMs = 0;
-  justUnlockedExtraDifficulty = false;
-  isPracticeRun = false;
-  devSessionActive = false;
-  bossFinalChargeActive = false;
-  bossFinalChargeStartFrame = -1;
-  bossExplosionActive = false;
-  bossExplosionStartFrame = -1;
-  postBossDowntimeActive = false;
-  postBossDowntimeStartFrame = -1;
-  shipFlyOffActive = false;
-  shipFlyOffStartFrame = -1;
-  bossFullyDefeated = false;
-  bossDefeated = false;
-  miniBossEscapeRunActive = false;
-  shipTrailParticles = [];
-  shipToxicDrips = [];
-  shipToxicDripCooldown = 0;
-
-  initBackgroundParticles(currentTheme());
-  reseedZoneObstacles(ship.x + 420);
-}
-
-function respawnInZone(opts) {
-  ship = { x: W * 0.28, y: H / 2, vy: 0, rotation: 0 };
-  distance = zoneStartDistance;
-  holding = false;
-  stopLiftSound();
-  stopGlowDangerSound();
-  stopFireballBreathSound();
-  stopToxicHazardSounds();
-  stopDustStormSound();
-  stopMeteorStreakSound();
-  stopStormSkiesHazardSounds();
-  stopMovingDoorSound();
-  stopBlackHoleSound();
-  if (!opts || opts.playLifeLost !== false) sfxLifeLost();
-  state = 'respawn';
-  portalObject = null;
-  invincibilityEndTime = -1;
-  freeHitCooldownEndTime = -1;
-  freeHitsUsedThisLife = 0;
-  pendingRespawnMercyEligible = false;
-  resetHitCyclePauseClock();
-  initBackgroundParticles(currentTheme());
-  reseedZoneObstacles(ship.x + 420);
-}
-
-function armFlyControlsHint() {
-  if (flyControlsHintSeen) return;
-  flyControlsHintSeen = true;
-  awaitingFirstFlyHold = true;
-  showFlyControlsHint = true;
-  lastRenderedOverlayState = null;
-}
-
-function flyControlsHintHtml() {
-  const sub = MOBILE_PERFORMANCE_MODE
-    ? 'TAP AND HOLD  ·  RELEASE TO FALL'
-    : 'LEFT CLICK OR SPACE  ·  RELEASE TO FALL';
-  return `
-      <div class="fly-controls-hint" aria-live="polite">
-        <div class="fly-controls-hint-title">HOLD TO FLY</div>
-        <div class="fly-controls-hint-sub">${sub}</div>
-      </div>
-    `;
-}
-
-function noteFlyHold() {
-  if (!awaitingFirstFlyHold && !showFlyControlsHint) return;
-  awaitingFirstFlyHold = false;
-  if (showFlyControlsHint) {
-    showFlyControlsHint = false;
-    lastRenderedOverlayState = null;
-  }
-}
-
-function beginRunFromOptions() {
-  resetGame(); // locks in MAX_LIVES/continuesRemaining for the chosen difficulty
-  armFlyControlsHint();
-  sfxStart();
-  holding = false;
-  beginWarp(0);
-  state = 'playing';
-  // Start file-backed music while the click/key gesture is still active.
-  // Embedded hosts such as itch.io can reject HTMLAudio.play() when it is
-  // deferred until the next animation frame, even though Web Audio SFX work.
-  updateBgmForState();
-  lastRenderedOverlayState = null;
-  updateOverlay();
-}
-
-function startPress() {
-  if (state === 'home') {
-    state = 'options';
-    updateOverlay();
-  } else if (state === 'options') {
-    beginRunFromOptions();
-  } else if (state === 'ready') {
-    state = 'playing';
-  } else if (state === 'respawn') {
-    sfxRespawn();
-    state = 'playing';
-    if (pendingRespawnMercyEligible && DIFFICULTY_CONFIG[selectedDifficulty]?.invincibilityFrames) {
-      invincibilityEndTime = gameNowMs() + INVINCIBILITY_DURATION_MS;
-    }
-    pendingRespawnMercyEligible = false;
-  } else if (state === 'gameover' || state === 'victory') {
-    resetGame();
-    flyControlsHintSeen = false;
-    state = 'home';
-    return;
-  }
-  holding = true;
-}
-
-function endPress() {
-  holding = pointerHolding || keyHolding;
-}
-
-// cycles the selected difficulty in either direction, skipping over the
-// 4th tier while it's still locked so it can never be landed on by cycling
-function cycleDifficulty(direction) {
-  const order = ['easy', 'normal', 'hard', 'extra'];
-  let idx = order.indexOf(selectedDifficulty);
-  do {
-    idx = (idx + direction + order.length) % order.length;
-  } while (order[idx] === 'extra' && !extraDifficultyUnlocked);
-  selectedDifficulty = order[idx];
-  updateOverlay();
-}
-
-// pause/resume: deliberately kept off the normal hold-to-fly input (mouse
-// click, space, touch) so a misclick or accidental tap during play can
-// never trigger it -- only the dedicated pause button or the Escape key
-function pauseGame() {
-  if (state !== 'playing') return;
-  state = 'paused';
-  beginHitCyclePauseClock();
-  pointerHolding = false;
-  holding = keyHolding;
-  stopLiftSound();
-  stopGlowDangerSound();
-  sfxPause();
-}
-
-function resumeGame() {
-  if (state !== 'paused') return;
-  endHitCyclePauseClock();
-  state = 'playing';
-}
-
-function quitToHome() {
-  if (isPracticeRun) {
-    endPracticeRun();
-    return;
-  }
-  resetGame();
-  flyControlsHintSeen = false;
-  state = 'home';
-  savePlayerProfile();
-}
-
-function endPracticeRun() {
-  const returnZone = practiceZoneIndex;
-  isPracticeRun = false;
-  resetGame();
-  zoneSelectPreviewIdx = unlockedZones.has(returnZone) ? returnZone : 0;
-  state = 'zone-select';
-  lastRenderedOverlayState = null;
-  updateOverlay();
-}
-
-function startPracticeZone(zoneIndex) {
-  if (!unlockedZones.has(zoneIndex)) return; // shouldn't be reachable via the UI anyway, since locked zones aren't clickable
-  resetGame(); // sets isPracticeRun=false, lives/continues based on selectedDifficulty
-  isPracticeRun = true;
-  practiceZoneIndex = zoneIndex;
-  distance = 0;
-  themeLevelReached = 0;
-  sfxStart();
-  prefetchThemeBgm(zoneIndex);
-  armFlyControlsHint();
-  beginWarp(zoneIndex);
-  state = 'playing';
-  updateBgmForState();
-}
-
-function startInfernoPlaytest() {
-  const zoneIndex = THEMES.findIndex((t) => t.name === 'INFERNO');
-  if (zoneIndex < 0) return;
-  resetGame();
-  isPracticeRun = true;
-  practiceZoneIndex = zoneIndex;
-  distance = 0;
-  themeLevelReached = 0;
-  state = 'playing';
-  beginWarp(zoneIndex);
-  while (warpActive) finishWarp();
-}
-
-function startForkGallery() {
-  startInfernoPlaytest();
-}
-
-// continue-prompt: consumes a continue, resets lives, and respawns in
-// place -- distance/zone/theme progress is deliberately preserved, since
-// that's what distinguishes a continue from starting a fresh run
-function useContinue() {
-  if (state !== 'continue-prompt' || continuesRemaining <= 0) return;
-  continuesRemaining--;
-  lives = MAX_LIVES;
-  sfxContinueUsed();
-  respawnInZone({ playLifeLost: false }); // sets state to 'respawn' for the usual "click to continue" beat
-}
-
-// options screen: difficulty cycling and navigating to/from the Settings
-// and Achievements sub-screens. Event delegation since this content is
-// re-created via innerHTML each time updateOverlay() renders.
-// Uses pointerup rather than click -- pointer events unify mouse, touch,
-// and pen handling and don't depend on the browser synthesizing a 'click'
-// event afterward, which has had reliability quirks on some mobile
-// browsers/webviews, especially combined with CSS transitions on the target.
-function focusGameKeyboardInput() {
-  try { window.focus(); } catch (e) { /* embedded host may deny window focus */ }
-  try {
-    canvas.focus({ preventScroll: true });
-  } catch (e) {
-    try { canvas.focus(); } catch (err) { /* keyboard still has window fallback */ }
-  }
-}
-
-function handleOverlayActivate(e) {
-  if (e && e.type === 'click' && performance.now() < overlayNavLockUntil) return;
-  if (e && e.type !== 'click' && e.pointerType === 'mouse' && e.button !== 0) return;
-  if (e && e.type === 'pointerup' && overlayPointerStart && e.pointerId === overlayPointerStart.id) {
-    const moved = Math.hypot(e.clientX - overlayPointerStart.x, e.clientY - overlayPointerStart.y);
-    overlayPointerStart = null;
-    if (moved > 10) return;
-  }
-  const targetTag = e && e.target && e.target.tagName;
-  if (targetTag !== 'INPUT' && targetTag !== 'SELECT' && targetTag !== 'TEXTAREA') {
-    focusGameKeyboardInput();
-  }
-  if (state === 'home') {
-    unlockAudio();
-    try { sfxUiClick(); } catch (err) { /* audio must never block the menu */ }
-    overlayNavLockUntil = performance.now() + 400;
-    state = 'options';
-    updateOverlay();
-    return;
-  }
-  if (state === 'respawn' || state === 'ready' || state === 'gameover' || state === 'victory') {
-    startPress();
-    updateOverlay();
-    return;
-  }
-  const actionEl = e.target.closest('[data-action]');
-  if (!actionEl) return;
-  unlockAudio();
-  try { sfxUiClick(); } catch (err) { /* audio must never block the menu */ }
-  const action = actionEl.dataset.action;
-  overlayNavLockUntil = performance.now() + 400;
-  if (state === 'options') {
-    if (action === 'diff-prev') cycleDifficulty(-1);
-    else if (action === 'diff-next') cycleDifficulty(1);
-    else if (action === 'open-settings') { settingsReturnState = 'options'; state = 'settings'; }
-    else if (action === 'open-achievements') state = 'achievements';
-    else if (action === 'open-statistics') state = 'statistics';
-    else if (action === 'open-zone-select') { zoneSelectPreviewIdx = 0; state = 'zone-select'; prefetchThemeBgm(0); }
-    else if (action === 'start-game') beginRunFromOptions();
-  } else if (state === 'settings') {
-    if (action === 'back-to-options') state = settingsReturnState;
-    else if (action === 'toggle-sfx') toggleSfxEnabled();
-    else if (action === 'toggle-bgm') toggleBgmEnabled();
-    else if (action === 'reset-audio-defaults') resetAudioVolumesToDefault();
-    else if (action === 'trail-prev') cycleShipTrail(-1);
-    else if (action === 'trail-next') cycleShipTrail(1);
-    else if (action === 'skin-prev') cycleShipSkin(-1);
-    else if (action === 'skin-next') cycleShipSkin(1);
-    else if (action === 'copy-save-id') copySaveIdToClipboard();
-    else if (action === 'export-save') exportPlayerSaveFile();
-    else if (action === 'import-save') {
-      const input = document.getElementById('player-save-import');
-      if (input) input.click();
-    } else if (action === 'restore-save-id') promptRestoreSaveId();
-  } else if ((state === 'achievements' || state === 'zone-select' || state === 'statistics') && action === 'back-to-options') {
-    state = 'options';
-  } else if (state === 'statistics' && action === 'confirm-reset-stats') {
-    state = 'confirm-reset-stats';
-  } else if (state === 'confirm-reset-stats') {
-    if (action === 'cancel-reset-stats') {
-      state = 'statistics';
-    } else if (action === 'reset-stats-confirmed') {
-      resetPlayerProfile();
-      state = 'statistics';
-    }
-  } else if (state === 'zone-select') {
-    if (action === 'preview-zone') {
-      const idx = parseInt(actionEl.dataset.zoneIdx, 10);
-      if (!isNaN(idx) && unlockedZones.has(idx)) {
-        zoneSelectPreviewIdx = idx;
-        prefetchThemeBgm(idx);
-        updateOverlay();
-      }
-    } else if (action === 'warp-to-zone' && unlockedZones.has(zoneSelectPreviewIdx)) {
-      startPracticeZone(zoneSelectPreviewIdx);
-    }
-  } else if (state === 'paused') {
-    if (action === 'resume-game') resumeGame();
-    else if (action === 'quit-to-home') quitToHome();
-    else if (action === 'open-pause-options') { settingsReturnState = 'paused'; state = 'settings'; }
-  } else if (state === 'continue-prompt') {
-    if (action === 'use-continue') useContinue();
-    else if (action === 'quit-to-home') quitToHome();
-  }
-  updateOverlay();
-}
-let overlayNavLockUntil = 0;
-let overlayPointerStart = null;
-overlay.addEventListener('pointerdown', (e) => {
-  overlayPointerStart = { id: e.pointerId, x: e.clientX, y: e.clientY };
-});
-overlay.addEventListener('pointerup', handleOverlayActivate);
-overlay.addEventListener('pointercancel', () => { overlayPointerStart = null; });
-overlay.addEventListener('click', handleOverlayActivate);
-
-// Input
-window.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' || e.code === 'ArrowUp') {
-    e.preventDefault();
-    unlockAudio();
-    if (!e.repeat) {
-      keyHolding = true;
-      startPress();
-    }
-  } else if (e.code === 'Escape' && !e.repeat) {
-    if (state === 'playing') pauseGame();
-    else if (state === 'paused') resumeGame();
-  }
-});
-window.addEventListener('keyup', (e) => {
-  if (e.code === 'Space' || e.code === 'ArrowUp') {
-    e.preventDefault();
-    keyHolding = false;
-    endPress();
-  }
-});
-// Pointer capture keeps Chrome from dropping the hold when the cursor
-// crosses the pause button, HUD, or window chrome (mouseleave used to
-// call endPress and the ship would just fall).
-function canvasStartPress() {
-  unlockAudio();
-  if (state === 'home') return;
-  startPress();
-}
-function onCanvasPointerDown(e) {
-  if (e.pointerType === 'mouse' && e.button !== 0) return;
-  if (state === 'home') return;
-  e.preventDefault();
-  focusGameKeyboardInput();
-  pointerHolding = true;
-  try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
-  canvasStartPress();
-}

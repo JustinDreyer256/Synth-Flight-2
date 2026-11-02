@@ -1,3 +1,1837 @@
+function devStatus(msg) {
+  const el = document.getElementById('dev-status');
+  if (el) el.textContent = msg;
+}
+
+function devJumpToTheme(idx) {
+  if (state === 'ready' || state === 'gameover' || state === 'respawn' || state === 'victory' || state === 'continue-prompt') {
+    resetGame();
+    state = 'playing';
+  }
+  devSessionActive = true;
+  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION; // freeze the ship for a fixed window, so it survives however long the dev panel takes to navigate
+  // reset distance tracking so the jumped-to zone behaves exactly like a
+  // fresh zone entry (requires exactly 1000 distance), regardless of
+  // whatever distance was accumulated before the jump
+  distance = 0;
+  themeLevelReached = 0;
+  beginWarp(idx);
+  devStatus('Warping to zone ' + (idx + 1) + '...');
+}
+
+function devSkipWarp() {
+  if (warpActive) {
+    finishWarp();
+    devStatus('Warp skipped -- now in zone ' + (themeIndex + 1) + '.');
+  } else {
+    devStatus('Nothing to skip -- not currently warping. Jump to a zone first.');
+  }
+}
+
+function devSkipToCorePhase6() {
+  if (state === 'ready' || state === 'gameover' || state === 'respawn' || state === 'victory' || state === 'continue-prompt') {
+    resetGame();
+    state = 'playing';
+  }
+  devSessionActive = true;
+  if (themeIndex !== 11) {
+    distance = 0;
+    themeLevelReached = 0;
+    beginWarp(11);
+  }
+  while (warpActive) finishWarp();
+  if (!miniBoss) {
+    devStatus('Reactor Core boss not yet spawned -- click again in a moment.');
+    return;
+  }
+  coreBossPhase = 6;
+  coreSparkSpawned = 0;
+  coreSparks = [];
+  coreSparkPhaseStartFrame = frame;
+  coreCrossfireRound = 0;
+  const safeSlot = Math.floor(Math.random() * CORE_CROSSFIRE_SLOT_FRACS.length);
+  coreCrossfireBeamYs = computeCrossfireBeamYs(safeSlot);
+  miniBossAttackState = 'coreCrossfireTelegraph';
+  miniBossAttackStateStartFrame = frame;
+  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
+  ship.vy = 0;
+  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
+  devStatus('Jumped to Reactor Core phase 6 (crossfire + sparks).');
+}
+
+function devSkipToCorePhase8() {
+  if (state === 'ready' || state === 'gameover' || state === 'respawn' || state === 'victory' || state === 'continue-prompt') {
+    resetGame();
+    state = 'playing';
+  }
+  devSessionActive = true;
+  if (themeIndex !== 11) {
+    distance = 0;
+    themeLevelReached = 0;
+    beginWarp(11);
+  }
+  while (warpActive) finishWarp();
+  if (!miniBoss) {
+    devStatus('Reactor Core boss not yet spawned -- click again in a moment.');
+    return;
+  }
+  miniBossSpawnFrame = frame - MINI_BOSS_ENTRANCE_DURATION - 1; // entrance animation is separate from the zone warp and runs on its own timer -- without this it fires independently a moment later and overwrites the state set below
+  coreBossPhase = 8;
+  miniBoss.x = Math.min(ship.x + CORE_SPHERE_X_OFFSET, miniBoss.restX);
+  miniBoss.y = miniBoss.baseY;
+  miniBoss.r = miniBoss.maxR;
+  coreOrbitSpawned = 0;
+  coreOrbitProjectiles = [];
+  coreOrbitEmitAngle = 0;
+  coreGateOpenAmount = 1;
+  miniBossAttackState = 'coreOrbitBarrageActive';
+  miniBossAttackStateStartFrame = frame;
+  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
+  ship.vy = 0;
+  coreEyeBeamState = 'track';
+  coreEyeBeamStateStartFrame = frame;
+  coreEyeBeamY = ship.y;
+  coreTeslaState = 'charging';
+  coreTeslaStateStartFrame = frame;
+  coreTeslaProjectiles = [];
+  coreTeslaEmptySlot = pickCoreTeslaEmptySlot();
+  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
+  devStatus('Jumped to Reactor Core phase 8 (orbiting barrage).');
+}
+
+function devAddDistance() {
+  if (state === 'ready' || state === 'respawn') state = 'playing';
+  distance += 500;
+  devStatus('Distance +500 (now ' + Math.floor(distance) + ').');
+}
+
+function devSetDistanceInZone(value) {
+  if (state === 'ready' || state === 'respawn') state = 'playing';
+  distance = zoneStartDistance + value;
+  portalObject = null; // recompute cleanly from the new position
+  devStatus('Jumped to ' + value + ' / ' + THEME_DISTANCE + ' in the current zone.');
+}
+
+function devUnlockEverything() {
+  extraDifficultyUnlocked = true;
+  unlockedZones = new Set(THEMES.map((_, i) => i));
+  completedZones = new Set(THEMES.map((_, i) => i));
+  deathlessZones = new Set(THEMES.map((_, i) => i));
+  beatenDifficulties = new Set(['easy', 'normal', 'hard', 'extra']);
+  achievedRanks = new Set(RANK_TIER_ORDER);
+  if (totalDistanceTraveled < 200000) totalDistanceTraveled = 200000;
+  if (!Array.isArray(zoneCompletionCounts) || zoneCompletionCounts.length < THEMES.length) {
+    zoneCompletionCounts = new Array(THEMES.length).fill(0);
+  }
+  for (let i = 0; i < THEMES.length; i++) {
+    zoneCompletionCounts[i] = Math.max(zoneCompletionCounts[i] || 0, 1);
+  }
+  savePlayerProfile();
+  lastRenderedOverlayState = null;
+  try { updateOverlay(); } catch (e) { /* overlay may not be ready */ }
+  devStatus('Unlocked all zones, Overdrive, achievements, ranks, and distance milestones.');
+}
+
+const unlockAllBtn = document.createElement('button');
+unlockAllBtn.textContent = 'Unlock everything';
+unlockAllBtn.style.borderColor = '#ffd23f';
+unlockAllBtn.style.color = '#ffd23f';
+unlockAllBtn.addEventListener('click', devUnlockEverything);
+devPanel.appendChild(unlockAllBtn);
+
+THEMES.forEach((t, i) => {
+  const btn = document.createElement('button');
+  btn.textContent = (i + 1) + '. ' + t.name;
+  btn.addEventListener('click', () => devJumpToTheme(i));
+  devPanel.appendChild(btn);
+});
+
+const skipWarpBtn = document.createElement('button');
+skipWarpBtn.textContent = 'Skip warp animation';
+skipWarpBtn.addEventListener('click', devSkipWarp);
+devPanel.appendChild(skipWarpBtn);
+
+const skipCorePhase6Btn = document.createElement('button');
+skipCorePhase6Btn.textContent = 'Jump to Reactor Core phase 6';
+skipCorePhase6Btn.addEventListener('click', devSkipToCorePhase6);
+devPanel.appendChild(skipCorePhase6Btn);
+
+const skipCorePhase8Btn = document.createElement('button');
+skipCorePhase8Btn.textContent = 'Jump to Reactor Core phase 8 (orbit barrage)';
+skipCorePhase8Btn.addEventListener('click', devSkipToCorePhase8);
+devPanel.appendChild(skipCorePhase8Btn);
+
+const addDistBtn = document.createElement('button');
+addDistBtn.textContent = '+500 distance (difficulty)';
+addDistBtn.addEventListener('click', devAddDistance);
+devPanel.appendChild(addDistBtn);
+
+function devSkipToBossPhase3() {
+  if (!currentTheme().isBossZone || !boss) {
+    devStatus('Not in the boss zone.');
+    return;
+  }
+  if (bossPhase >= 3 || bossTransitioning) {
+    devStatus('Already at phase ' + bossPhase + (bossTransitioning ? ' (mid-transition)' : '') + ' -- ignoring, this would yank the boss backward.');
+    return;
+  }
+  // the ship has likely been falling under gravity the whole time
+  // spent navigating the dev panel to reach this button -- recenter
+  // it so the skip doesn't get immediately undone by a boundary crash
+  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
+  ship.vy = 0;
+  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
+  bossSpawnFrame = frame - BOSS_ENTRANCE_DURATION; // ensure entrance is already complete
+  const elapsedTarget = BOSS_PHASE_DURATION * 2 + 10; // just past the phase 2/3 boundary
+  bossTimer = Math.round(currentTheme().bossDuration - elapsedTarget);
+  bossPhase = 2; // so the transition trigger fires naturally on the next update
+  bossTransitioning = false;
+  gates = gates.filter(g => !BOSS_HAZARD_TYPES.includes(g.type)); // battlefield already clear
+  bossWaitingForClear = true; // will immediately proceed to the transformation since gates has no hazards
+  bossWaitingForClearStartFrame = frame;
+  bossWaitingForClearTargetPhase = 3;
+  devStatus('Skipped to the phase 2->3 transition (ship recentered, battlefield cleared) -- it will play out (~3s), then phase 3 begins.');
+}
+
+function devSkipToBossPhase4() {
+  if (!currentTheme().isBossZone || !boss) {
+    devStatus('Not in the boss zone.');
+    return;
+  }
+  if (bossPhase >= 4 || bossTransitioning) {
+    devStatus('Already at phase ' + bossPhase + (bossTransitioning ? ' (mid-transition)' : '') + ' -- ignoring, this would yank the boss backward.');
+    return;
+  }
+  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
+  ship.vy = 0;
+  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
+  bossSpawnFrame = frame - BOSS_ENTRANCE_DURATION;
+  const elapsedTarget = BOSS_PHASE_DURATION * 3 + 10; // just past the phase 3/4 boundary
+  bossTimer = Math.round(currentTheme().bossDuration - elapsedTarget);
+  bossPhase = 3;
+  bossTransitioning = false;
+  devStatus('Skipped to phase 4 (ship recentered) -- instant, no transition sequence.');
+}
+
+function devSkipToBossPhase5() {
+  if (!currentTheme().isBossZone || !boss) {
+    devStatus('Not in the boss zone.');
+    return;
+  }
+  if (bossPhase >= 5 || bossTransitioning) {
+    devStatus('Already at phase ' + bossPhase + (bossTransitioning ? ' (mid-transition)' : '') + ' -- ignoring, this would yank the boss backward.');
+    return;
+  }
+  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
+  ship.vy = 0;
+  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
+  bossSpawnFrame = frame - BOSS_ENTRANCE_DURATION;
+  const elapsedTarget = BOSS_PHASE_DURATION * 4 + 10; // just past the phase 4/5 boundary
+  bossTimer = Math.round(currentTheme().bossDuration - elapsedTarget);
+  bossPhase = 4;
+  bossTransitioning = false;
+  gates = gates.filter(g => !BOSS_HAZARD_TYPES.includes(g.type)); // battlefield already clear
+  bossWaitingForClear = true; // will immediately proceed to the transformation since gates has no hazards
+  bossWaitingForClearStartFrame = frame;
+  bossWaitingForClearTargetPhase = 5;
+  devStatus('Skipped to phase 5 -- battlefield cleared, shatter-and-reform transformation begins next frame.');
+}
+
+function devWarpToVictory() {
+  if (state === 'ready' || state === 'gameover' || state === 'respawn' || state === 'continue-prompt') {
+    resetGame();
+    state = 'playing';
+  }
+  isPracticeRun = false;
+  devSessionActive = true;
+  themeIndex = 12; // The Signal, the final zone
+  themeLevelReached = 12;
+  triggerVictory();
+  devStatus('Warped straight to the victory screen (dev preview -- not recorded to your save).');
+}
+
+const skipPhase3Btn = document.createElement('button');
+skipPhase3Btn.textContent = 'Skip to boss phase 3';
+skipPhase3Btn.addEventListener('click', devSkipToBossPhase3);
+devPanel.appendChild(skipPhase3Btn);
+
+const skipPhase4Btn = document.createElement('button');
+skipPhase4Btn.textContent = 'Skip to boss phase 4';
+skipPhase4Btn.addEventListener('click', devSkipToBossPhase4);
+devPanel.appendChild(skipPhase4Btn);
+
+const skipPhase5Btn = document.createElement('button');
+skipPhase5Btn.textContent = 'Skip to boss phase 5';
+skipPhase5Btn.addEventListener('click', devSkipToBossPhase5);
+devPanel.appendChild(skipPhase5Btn);
+
+const warpToVictoryBtn = document.createElement('button');
+warpToVictoryBtn.textContent = 'Warp to victory screen';
+warpToVictoryBtn.addEventListener('click', devWarpToVictory);
+devPanel.appendChild(warpToVictoryBtn);
+
+const triggerBeamBtn = document.createElement('button');
+triggerBeamBtn.textContent = 'Trigger charge beam';
+triggerBeamBtn.addEventListener('click', () => {
+  if (bossPhase !== 5 || bossTransitioning) {
+    devStatus('Not in phase 5 (or mid-transition) -- skip to phase 5 first.');
+    return;
+  }
+  spawnBossChargeBeamTelegraph();
+  devStatus('Charge beam telegraph spawned, locked to current ship position.');
+});
+devPanel.appendChild(triggerBeamBtn);
+
+const jump750Btn = document.createElement('button');
+jump750Btn.textContent = 'Start at 750 in zone';
+jump750Btn.addEventListener('click', () => devSetDistanceInZone(750));
+devPanel.appendChild(jump750Btn);
+
+const ghostBtn = document.createElement('button');
+ghostBtn.textContent = 'Ghost Mode: Off';
+ghostBtn.addEventListener('click', () => {
+  ghostMode = !ghostMode;
+  ghostBtn.textContent = 'Ghost Mode: ' + (ghostMode ? 'On' : 'Off');
+  devStatus(ghostMode
+    ? 'Ghost mode on -- full noclip. Hazards, walls, and pull fields cannot kill you. Portal still works.'
+    : 'Ghost mode off -- normal collision restored.');
+});
+devPanel.appendChild(ghostBtn);
+
+const gridFadeBtn = document.createElement('button');
+gridFadeBtn.textContent = 'Boss Grid Fade: On';
+gridFadeBtn.addEventListener('click', () => {
+  bossGridFadeEnabled = !bossGridFadeEnabled;
+  gridFadeBtn.textContent = 'Boss Grid Fade: ' + (bossGridFadeEnabled ? 'On' : 'Off');
+  devStatus(bossGridFadeEnabled
+    ? 'Grid will fade out during the phase 3 color transition.'
+    : 'Grid stays visible through the phase 3 color transition.');
+});
+devPanel.appendChild(gridFadeBtn);
+
+const ashVariantBtn = document.createElement('button');
+ashVariantBtn.textContent = 'Phase 5 Ash: Gray';
+ashVariantBtn.addEventListener('click', () => {
+  bossAshGrayVariant = !bossAshGrayVariant;
+  ashVariantBtn.textContent = 'Phase 5 Ash: ' + (bossAshGrayVariant ? 'Gray' : 'Red');
+  devStatus('Phase 5 ash background switched to ' + (bossAshGrayVariant ? 'gray' : 'red') + ' tint.');
+});
+devPanel.appendChild(ashVariantBtn);
+
+const CUSTOM_LEVEL_STORAGE_KEYS = ['zone4-terrain-custom', 'bolt-patterns-custom', 'blackhole-events-custom', 'windvortex-events-custom', 'cloudarc-events-custom', 'lensingzone-events-custom', 'supernova-events-custom', 'turret-events-custom', 'emp-events-custom', 'orb-events-custom'];
+
+function collectCustomLevelDataFromThemes() {
+  return {
+    _version: (window.SHIPPED_CUSTOM_LEVELS && window.SHIPPED_CUSTOM_LEVELS._version) || 'snes229',
+    'bolt-patterns-custom': THEMES.map(t => t.obstacleShape === 'lbolt' ? t.pattern : null),
+    'blackhole-events-custom': THEMES.map(t => t.blackHoleEvents || null),
+    'windvortex-events-custom': THEMES.map(t => t.windVortexEvents || null),
+    'cloudarc-events-custom': THEMES.map(t => t.cloudArcEvents || null),
+    'lensingzone-events-custom': THEMES.map(t => t.lensingZoneEvents || null),
+    'supernova-events-custom': THEMES.map(t => t.supernovaEvents || null),
+    'turret-events-custom': THEMES.map(t => t.turretEvents || null),
+    'emp-events-custom': THEMES.map(t => t.empEvents || null),
+    'orb-events-custom': THEMES.map(t => t.pulsingOrbEvents || null)
+  };
+}
+
+function downloadBakedCustomLevels() {
+  const data = collectCustomLevelDataFromThemes();
+  const text = 'window.SHIPPED_CUSTOM_LEVELS = ' + JSON.stringify(data, null, 2) + ';\n';
+  const blob = new Blob([text], { type: 'text/javascript;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'custom-levels.js';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const exportCustomBtn = document.createElement('button');
+exportCustomBtn.textContent = 'Export Saved Custom Data';
+const importCustomBtn = document.createElement('button');
+importCustomBtn.textContent = 'Import Custom Data (from textarea)';
+const bakeCustomBtn = document.createElement('button');
+bakeCustomBtn.textContent = 'Download custom-levels.js (bake into project)';
+const clearLocalCustomBtn = document.createElement('button');
+clearLocalCustomBtn.textContent = 'Clear local custom overrides';
+const exportTextarea = document.createElement('textarea');
+exportTextarea.style.cssText = 'display:none; width:100%; height:200px; margin-top:8px; font-family:monospace; font-size:11px; background:#0d0221; color:#0ff0fc; border:1px solid #ff2079;';
+exportCustomBtn.addEventListener('click', async () => {
+  devStatus('Reading saved custom data from storage...');
+  const out = {};
+  for (const k of CUSTOM_LEVEL_STORAGE_KEYS) {
+    try {
+      const result = await window.storage.get(k);
+      const parsed = parseStoredCustom(result && result.value);
+      if (parsed) out[k] = parsed;
+    } catch (e) { /* key not saved, skip */ }
+  }
+  const foundCount = Object.keys(out).length;
+  if (foundCount === 0) {
+    devStatus('No saved custom data found in storage. Paste JSON below and use Import.');
+    exportTextarea.style.display = 'block';
+  } else {
+    devStatus('Found ' + foundCount + ' saved custom dataset(s). Copy the text below and send it back.');
+    exportTextarea.style.display = 'block';
+    exportTextarea.value = JSON.stringify(out, null, 2);
+    exportTextarea.focus();
+    exportTextarea.select();
+  }
+});
+importCustomBtn.addEventListener('click', async () => {
+  let data;
+  try {
+    data = JSON.parse(exportTextarea.value);
+  } catch (e) {
+    exportTextarea.style.display = 'block';
+    devStatus('Import failed — paste the exported JSON into the box first.');
+    return;
+  }
+  let imported = 0;
+  for (const k of CUSTOM_LEVEL_STORAGE_KEYS) {
+    if (data[k] == null) continue;
+    try {
+      await window.storage.set(k, JSON.stringify(data[k]));
+      imported++;
+    } catch (e) { /* skip */ }
+  }
+  if (imported === 0) {
+    devStatus('Import found no recognized custom-level keys.');
+    return;
+  }
+  await applyAllCustomLevelData();
+  await loadCustomTerrain();
+  devStatus('Imported ' + imported + ' custom dataset(s). Reloaded into themes.');
+});
+bakeCustomBtn.addEventListener('click', async () => {
+  const data = collectCustomLevelDataFromThemes();
+  for (const [k, v] of Object.entries(data)) {
+    try { await window.storage.set(k, JSON.stringify(v)); } catch (e) { /* skip */ }
+  }
+  downloadBakedCustomLevels();
+  exportTextarea.style.display = 'block';
+  exportTextarea.value = JSON.stringify(data, null, 2);
+  devStatus('Downloaded custom-levels.js. Replace the file in the project folder, then hard-refresh. Editor Save first if you still have unsaved moves.');
+});
+clearLocalCustomBtn.addEventListener('click', async () => {
+  for (const k of CUSTOM_LEVEL_STORAGE_KEYS) {
+    try { await window.storage.set(k, ''); } catch (e) { /* skip */ }
+    try { localStorage.removeItem(GAME_STORAGE_PREFIX + k); } catch (e) { /* skip */ }
+  }
+  await applyAllCustomLevelData();
+  await loadCustomTerrain();
+  devStatus('Cleared local overrides. Using shipped custom-levels.js layouts.');
+});
+devPanel.appendChild(exportCustomBtn);
+devPanel.appendChild(importCustomBtn);
+devPanel.appendChild(bakeCustomBtn);
+devPanel.appendChild(clearLocalCustomBtn);
+devPanel.appendChild(exportTextarea);
+
+function snowHeightWord(lane) {
+  if (lane < 0.34) return 'high';
+  if (lane > 0.66) return 'low';
+  return 'mid';
+}
+
+function replayGlacierSnow() {
+  devSessionActive = true;
+  flyControlsHintSeen = true;
+  showFlyControlsHint = false;
+  awaitingFirstFlyHold = false;
+  resetGame();
+  beginWarp(2);
+  state = 'playing';
+  holding = false;
+  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
+  devStatus('Replaying glacier with this snowball list.');
+}
+
+function renderSnowBoard() {
+  const rows = document.getElementById('snow-rows');
+  if (!rows) return;
+  rows.innerHTML = '';
+  glacierSnowSchedule.forEach((s, i) => {
+    const card = document.createElement('div');
+    card.className = 'snow-card';
+    const title = document.createElement('div');
+    title.className = 'snow-title';
+    title.textContent = 'BALL ' + (i + 1);
+    card.appendChild(title);
+
+    const distLabel = document.createElement('label');
+    distLabel.appendChild(document.createTextNode('Where'));
+    const dist = document.createElement('input');
+    dist.type = 'number';
+    dist.min = '620';
+    dist.max = '1000';
+    dist.step = '1';
+    dist.value = String(Math.round(s.dist));
+    dist.addEventListener('change', () => {
+      s.dist = Math.max(620, Math.min(1000, parseFloat(dist.value) || s.dist));
+      dist.value = String(Math.round(s.dist));
+      saveGlacierSnowSchedule();
+    });
+    distLabel.appendChild(dist);
+    card.appendChild(distLabel);
+
+    const heightLabel = document.createElement('label');
+    const heightName = document.createElement('span');
+    heightName.textContent = 'Height ' + snowHeightWord(s.lane);
+    const height = document.createElement('input');
+    height.type = 'range';
+    height.min = '0';
+    height.max = '100';
+    height.step = '1';
+    height.value = String(Math.round(s.lane * 100));
+    height.addEventListener('input', () => {
+      s.lane = Math.max(0, Math.min(1, parseFloat(height.value) / 100));
+      heightName.textContent = 'Height ' + snowHeightWord(s.lane);
+      saveGlacierSnowSchedule();
+    });
+    heightLabel.appendChild(heightName);
+    heightLabel.appendChild(height);
+    card.appendChild(heightLabel);
+
+    const speedLabel = document.createElement('label');
+    speedLabel.appendChild(document.createTextNode('Speed'));
+    const speed = document.createElement('input');
+    speed.type = 'number';
+    speed.min = '1.2';
+    speed.max = '4.8';
+    speed.step = '0.1';
+    speed.value = String(s.vy);
+    const angle = document.createElement('input');
+    angle.type = 'number';
+    angle.min = '14';
+    angle.max = '70';
+    angle.step = '1';
+    angle.value = String(snowAngleDeg(s.vy, s.drift));
+    speed.addEventListener('change', () => {
+      const deg = parseFloat(angle.value) || snowAngleDeg(s.vy, s.drift);
+      s.vy = Math.max(1.2, Math.min(4.8, parseFloat(speed.value) || s.vy));
+      s.drift = snowDriftFor(s.vy, deg);
+      speed.value = String(Math.round(s.vy * 10) / 10);
+      saveGlacierSnowSchedule();
+    });
+    speedLabel.appendChild(speed);
+    card.appendChild(speedLabel);
+
+    const angleLabel = document.createElement('label');
+    angleLabel.appendChild(document.createTextNode('Angle'));
+    angle.addEventListener('change', () => {
+      const deg = Math.max(14, Math.min(70, parseFloat(angle.value) || 40));
+      angle.value = String(deg);
+      s.drift = snowDriftFor(s.vy, deg);
+      saveGlacierSnowSchedule();
+    });
+    angleLabel.appendChild(angle);
+    card.appendChild(angleLabel);
+
+    const remove = document.createElement('button');
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => {
+      glacierSnowSchedule.splice(i, 1);
+      glacierSnowSpawned.splice(i, 1);
+      saveGlacierSnowSchedule();
+      renderSnowBoard();
+    });
+    card.appendChild(remove);
+    rows.appendChild(card);
+  });
+}
+
+if (devPanel) {
+  const board = document.createElement('div');
+  board.id = 'snow-board';
+  const heading = document.createElement('div');
+  heading.className = 'dev-label';
+  heading.textContent = 'SNOWBALLS';
+  const note = document.createElement('div');
+  note.className = 'snow-note';
+  note.textContent = 'Where is the distance when it crosses the ship. Height runs from high to low. Speed is how fast it falls. Angle is the diagonal: a low number is a long slide, a high number drops steep. Replay to see the list.';
+  const rows = document.createElement('div');
+  rows.id = 'snow-rows';
+  const addBtn = document.createElement('button');
+  addBtn.textContent = 'Add snowball';
+  addBtn.addEventListener('click', () => {
+    const last = glacierSnowSchedule[glacierSnowSchedule.length - 1];
+    const dist = Math.min(1000, (last ? last.dist : 730) + 28);
+    const lane = last && last.lane > 0.5 ? 0.2 : 0.78;
+    const vy = last && last.vy > 3 ? 1.7 : 3.6;
+    glacierSnowSchedule.push({ dist, lane, vy, drift: snowDriftFor(vy, vy > 3 ? 52 : 24), r: 40 });
+    glacierSnowSpawned.push(false);
+    saveGlacierSnowSchedule();
+    renderSnowBoard();
+  });
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'Reset snowballs';
+  resetBtn.addEventListener('click', () => {
+    glacierSnowSchedule = cloneSnowSchedule(GLACIER_SNOW_DEFAULTS);
+    try { localStorage.removeItem(GAME_STORAGE_PREFIX + GLACIER_SNOW_STORAGE); } catch (e) { /* ignore */ }
+    resetGlacierSnowSpawned();
+    renderSnowBoard();
+    devStatus('Snowballs reset to the level list.');
+  });
+  const replayBtn = document.createElement('button');
+  replayBtn.textContent = 'Replay glacier';
+  replayBtn.addEventListener('click', replayGlacierSnow);
+  board.appendChild(heading);
+  board.appendChild(note);
+  board.appendChild(rows);
+  board.appendChild(addBtn);
+  board.appendChild(resetBtn);
+  board.appendChild(replayBtn);
+  const status = document.getElementById('dev-status');
+  if (status) status.insertAdjacentElement('afterend', board);
+  else devPanel.insertBefore(board, devPanel.firstChild);
+  renderSnowBoard();
+}
+
+const fireballSpeedSlider = document.getElementById('fireball-speed-slider');
+const fireballSpeedValue = document.getElementById('fireball-speed-value');
+if (DEV_TOOLS_ENABLED && fireballSpeedSlider && fireballSpeedValue) {
+  fireballSpeedSlider.addEventListener('input', () => {
+    fireballSpeedMult = parseFloat(fireballSpeedSlider.value);
+    fireballSpeedValue.textContent = fireballSpeedMult.toFixed(1);
+    devStatus('Flame speed set to ' + fireballSpeedMult.toFixed(1) + 'x world scroll.');
+  });
+}
+
+window.addEventListener('keydown', (e) => {
+  if (!DEV_TOOLS_ENABLED) return;
+  const num = parseInt(e.key, 10);
+  if (num >= 1 && num <= THEMES.length) {
+    devJumpToTheme(num - 1);
+  }
+});
+
+// ---- Zone 2 hand-drawn cave editor ----
+const editorCanvas = document.getElementById('editorCanvas');
+const editorCtx = editorCanvas.getContext('2d');
+const editorOverlay = document.getElementById('editor-overlay');
+const editorToggleBtn = document.getElementById('editor-toggle');
+const editorStatus = document.getElementById('editor-status');
+const editorToggleCustomBtn = document.getElementById('editor-toggle-custom');
+
+let editorMode = false;
+let editorTool = 'top';
+let editorPanX = 0;
+let editorDrawing = false;
+let editorLastLevelX = null;
+
+function resizeEditorCanvas() {
+  editorCanvas.width = editorCanvas.clientWidth;
+  editorCanvas.height = editorCanvas.clientHeight;
+}
+
+function editorPlayTopBottom() {
+  // mirrors the real game's proportions, using the editor canvas's own height
+  const margin = editorCanvas.height * 0.08;
+  return { top: margin, bottom: editorCanvas.height - margin };
+}
+
+function openEditor() {
+  editorMode = true;
+  editorOverlay.classList.add('active');
+  resizeEditorCanvas();
+  updateEditorToggleCustomLabel();
+  requestAnimationFrame(drawEditorLoop);
+}
+
+function closeEditor() {
+  editorMode = false;
+  editorOverlay.classList.remove('active');
+}
+
+function updateEditorToggleCustomLabel() {
+  editorToggleCustomBtn.textContent = 'Using: ' + (useCustomTerrain ? 'Custom' : 'Procedural');
+}
+
+editorToggleBtn.addEventListener('click', openEditor);
+document.getElementById('editor-close').addEventListener('click', closeEditor);
+
+document.getElementById('tool-top').addEventListener('click', () => {
+  editorTool = 'top';
+  document.getElementById('tool-top').classList.add('tool-active');
+  document.getElementById('tool-bottom').classList.remove('tool-active');
+});
+document.getElementById('tool-bottom').addEventListener('click', () => {
+  editorTool = 'bottom';
+  document.getElementById('tool-bottom').classList.add('tool-active');
+  document.getElementById('tool-top').classList.remove('tool-active');
+});
+
+document.getElementById('editor-clear').addEventListener('click', () => {
+  customTerrainZone2 = defaultCustomTerrain();
+  editorStatus.textContent = 'Reset to flat.';
+});
+
+document.getElementById('editor-save').addEventListener('click', async () => {
+  editorStatus.textContent = 'Saving...';
+  const ok = await saveCustomTerrain();
+  editorStatus.textContent = ok ? 'Saved!' : 'Save failed (kept in memory only).';
+  updateEditorToggleCustomLabel();
+});
+
+document.getElementById('editor-toggle-custom').addEventListener('click', () => {
+  useCustomTerrain = !useCustomTerrain;
+  updateEditorToggleCustomLabel();
+  editorStatus.textContent = useCustomTerrain ? 'Custom level active in-game.' : 'Procedural pattern active in-game.';
+});
+
+document.getElementById('editor-test').addEventListener('click', () => {
+  closeEditor();
+  devJumpToTheme(3);
+});
+
+function editorScreenToLevel(clientX, clientY) {
+  const rect = editorCanvas.getBoundingClientRect();
+  const px = clientX - rect.left;
+  const py = clientY - rect.top;
+  const levelX = ((px + editorPanX) % EDITOR_LEVEL_LENGTH + EDITOR_LEVEL_LENGTH) % EDITOR_LEVEL_LENGTH;
+  const { top, bottom } = editorPlayTopBottom();
+  const frac = Math.max(0, Math.min(1, (py - top) / (bottom - top)));
+  return { levelX, frac };
+}
+
+function applyEditorPoint(levelX, frac, fromLevelX) {
+  const n = customTerrainZone2.length;
+  const idx = Math.round(levelX / EDITOR_SAMPLE_SPACING) % n;
+
+  function setOne(i, f) {
+    const point = customTerrainZone2[i];
+    if (editorTool === 'top') {
+      point.topFrac = Math.min(f, point.bottomFrac - EDITOR_MIN_GAP_FRAC);
+      point.topFrac = Math.max(0, point.topFrac);
+    } else {
+      point.bottomFrac = Math.max(f, point.topFrac + EDITOR_MIN_GAP_FRAC);
+      point.bottomFrac = Math.min(1, point.bottomFrac);
+    }
+  }
+
+  if (fromLevelX === null || fromLevelX === undefined) {
+    setOne(idx, frac);
+    return;
+  }
+  // interpolate across fast drags so the stroke has no gaps
+  let a = Math.round(fromLevelX / EDITOR_SAMPLE_SPACING);
+  let b = idx;
+  const steps = Math.min(40, Math.abs(b - a) + 1);
+  for (let s = 0; s <= steps; s++) {
+    const t = steps === 0 ? 0 : s / steps;
+    const i = Math.round((a + (b - a) * t)) % n;
+    setOne(((i % n) + n) % n, frac);
+  }
+}
+
+function editorPointerDown(clientX, clientY) {
+  editorDrawing = true;
+  const { levelX, frac } = editorScreenToLevel(clientX, clientY);
+  applyEditorPoint(levelX, frac, null);
+  editorLastLevelX = levelX;
+}
+function editorPointerMove(clientX, clientY) {
+  if (!editorDrawing) return;
+  const { levelX, frac } = editorScreenToLevel(clientX, clientY);
+  applyEditorPoint(levelX, frac, editorLastLevelX);
+  editorLastLevelX = levelX;
+}
+function editorPointerUp() {
+  editorDrawing = false;
+  editorLastLevelX = null;
+}
+
+editorCanvas.addEventListener('mousedown', (e) => editorPointerDown(e.clientX, e.clientY));
+editorCanvas.addEventListener('mousemove', (e) => editorPointerMove(e.clientX, e.clientY));
+window.addEventListener('mouseup', editorPointerUp);
+editorCanvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  editorPointerDown(t.clientX, t.clientY);
+}, { passive: false });
+editorCanvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  editorPointerMove(t.clientX, t.clientY);
+}, { passive: false });
+editorCanvas.addEventListener('touchend', editorPointerUp);
+
+editorCanvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  editorPanX = Math.max(0, Math.min(EDITOR_LEVEL_LENGTH - editorCanvas.width, editorPanX + e.deltaY + e.deltaX));
+}, { passive: false });
+
+function drawEditor() {
+  const w = editorCanvas.width, h = editorCanvas.height;
+  editorCtx.clearRect(0, 0, w, h);
+  editorCtx.fillStyle = '#000d05';
+  editorCtx.fillRect(0, 0, w, h);
+
+  const { top, bottom } = editorPlayTopBottom();
+
+  // vertical rulers every 200 level-space px
+  editorCtx.strokeStyle = 'rgba(255,204,51,0.15)';
+  editorCtx.fillStyle = 'rgba(255,204,51,0.4)';
+  editorCtx.font = '10px Courier New';
+  editorCtx.lineWidth = 1;
+  const firstMark = Math.floor(editorPanX / 200) * 200;
+  for (let lx = firstMark; lx < editorPanX + w + 200; lx += 200) {
+    const sx = lx - editorPanX;
+    editorCtx.beginPath();
+    editorCtx.moveTo(sx, 0);
+    editorCtx.lineTo(sx, h);
+    editorCtx.stroke();
+    editorCtx.fillText(String(Math.round(((lx % EDITOR_LEVEL_LENGTH) + EDITOR_LEVEL_LENGTH) % EDITOR_LEVEL_LENGTH)), sx + 3, 12);
+  }
+
+  // loop point marker
+  const loopSx = EDITOR_LEVEL_LENGTH - editorPanX;
+  if (loopSx > -50 && loopSx < w + 50) {
+    editorCtx.strokeStyle = '#ff2079';
+    editorCtx.setLineDash([6, 6]);
+    editorCtx.beginPath();
+    editorCtx.moveTo(loopSx, 0);
+    editorCtx.lineTo(loopSx, h);
+    editorCtx.stroke();
+    editorCtx.setLineDash([]);
+    editorCtx.fillStyle = '#ff2079';
+    editorCtx.fillText('LOOP END', loopSx + 4, h - 6);
+  }
+
+  // draw top/bottom shapes across visible window
+  const n = customTerrainZone2.length;
+  editorCtx.fillStyle = 'rgba(255,204,51,0.5)';
+  editorCtx.beginPath();
+  editorCtx.moveTo(0, top - 4);
+  for (let sx = 0; sx <= w; sx += 4) {
+    const levelX = ((sx + editorPanX) % EDITOR_LEVEL_LENGTH + EDITOR_LEVEL_LENGTH) % EDITOR_LEVEL_LENGTH;
+    const s = sampleCustomTerrainAt(levelX);
+    editorCtx.lineTo(sx, top + s.topFrac * (bottom - top));
+  }
+  editorCtx.lineTo(w, top - 4);
+  editorCtx.closePath();
+  editorCtx.fill();
+
+  editorCtx.fillStyle = 'rgba(255,51,0,0.5)';
+  editorCtx.beginPath();
+  editorCtx.moveTo(0, bottom + 4);
+  for (let sx = 0; sx <= w; sx += 4) {
+    const levelX = ((sx + editorPanX) % EDITOR_LEVEL_LENGTH + EDITOR_LEVEL_LENGTH) % EDITOR_LEVEL_LENGTH;
+    const s = sampleCustomTerrainAt(levelX);
+    editorCtx.lineTo(sx, top + s.bottomFrac * (bottom - top));
+  }
+  editorCtx.lineTo(w, bottom + 4);
+  editorCtx.closePath();
+  editorCtx.fill();
+
+  editorCtx.fillStyle = 'rgba(255,255,255,0.5)';
+  editorCtx.font = '11px Courier New';
+  editorCtx.fillText('TOP WALL', 8, top + 14);
+  editorCtx.fillText('BOTTOM WALL', 8, bottom - 6);
+}
+
+function sampleCustomTerrainAt(levelX) {
+  // like sampleCustomTerrain() but safe to call before a game is active
+  const n = customTerrainZone2.length;
+  const idxF = (levelX / EDITOR_SAMPLE_SPACING) % (n - 1);
+  const i0 = Math.floor(idxF);
+  const i1 = (i0 + 1) % n;
+  const t = idxF - i0;
+  const a = customTerrainZone2[i0], b = customTerrainZone2[i1];
+  return {
+    topFrac: a.topFrac + (b.topFrac - a.topFrac) * t,
+    bottomFrac: a.bottomFrac + (b.bottomFrac - a.bottomFrac) * t
+  };
+}
+
+function drawEditorLoop() {
+  if (!editorMode) return;
+  drawEditor();
+  requestAnimationFrame(drawEditorLoop);
+}
+
+window.addEventListener('resize', () => {
+  if (editorMode) resizeEditorCanvas();
+});
+
+// ---- Zone preview: simulate a full 1000-distance span for any zone,
+// re-using the exact same generation functions as live gameplay, then
+// render it all on one wide static map so problem spots can be spotted
+// without playing through
+const previewCanvas = document.getElementById('previewCanvas');
+const previewCtx = previewCanvas.getContext('2d');
+const previewOverlay = document.getElementById('preview-overlay');
+const previewStatus = document.getElementById('preview-status');
+
+function captureSimState() {
+  return {
+    gates, patternIndex, lastSpawnX, fireballSpawnCounter,
+    terrainSegments, terrainSegmentsSinceEntry, terrainLevelX,
+    terrainWaypointTarget, terrainWaypointSegLeft, terrainWaypointSegTotal, terrainWaypointGapTarget, terrainWaypointIslandTarget, terrainWaypointIslandFrom,
+    terrainWaypointNosePower, terrainWaypointTaperShare, terrainWaypointTaperCap,
+    terrainWaypointIslandShape, terrainWaypointIslandLabel, terrainWaypointIslandBias,
+    themeIndex, distance, frame, ship: { x: ship.x, y: ship.y, vy: ship.vy, rotation: ship.rotation }
+  };
+}
+
+function restoreSimState(s) {
+  gates = s.gates; patternIndex = s.patternIndex; lastSpawnX = s.lastSpawnX;
+  fireballSpawnCounter = s.fireballSpawnCounter;
+  terrainSegments = s.terrainSegments; terrainSegmentsSinceEntry = s.terrainSegmentsSinceEntry;
+  terrainLevelX = s.terrainLevelX;
+  terrainWaypointTarget = s.terrainWaypointTarget; terrainWaypointSegLeft = s.terrainWaypointSegLeft;
+  terrainWaypointSegTotal = s.terrainWaypointSegTotal || 1;
+  terrainWaypointGapTarget = s.terrainWaypointGapTarget; terrainWaypointIslandTarget = s.terrainWaypointIslandTarget;
+  terrainWaypointIslandFrom = s.terrainWaypointIslandFrom || 0;
+  terrainWaypointNosePower = s.terrainWaypointNosePower || 1;
+  terrainWaypointTaperShare = s.terrainWaypointTaperShare || 0.32;
+  terrainWaypointTaperCap = s.terrainWaypointTaperCap || 5;
+  terrainWaypointIslandShape = s.terrainWaypointIslandShape || '';
+  terrainWaypointIslandLabel = s.terrainWaypointIslandLabel || '';
+  terrainWaypointIslandBias = s.terrainWaypointIslandBias || 0;
+  themeIndex = s.themeIndex; distance = s.distance; frame = s.frame;
+  ship.x = s.ship.x; ship.y = s.ship.y; ship.vy = s.ship.vy; ship.rotation = s.ship.rotation;
+}
+
+function simulateZonePreview(themeIdx, targetDistance) {
+  const saved = captureSimState();
+
+  themeIndex = themeIdx;
+  distance = 0;
+  frame = 0;
+  gates = [];
+  patternIndex = 0;
+  lastSpawnX = 0;
+  fireballSpawnCounter = 0;
+  terrainSegmentsSinceEntry = 0;
+  terrainLevelX = 0;
+  terrainWaypointTarget = null;
+  terrainWaypointSegLeft = 0;
+  terrainWaypointSegTotal = 1;
+  terrainWaypointIslandFrom = 0;
+  terrainWaypointNosePower = 1;
+  terrainWaypointTaperShare = 0.32;
+  terrainWaypointTaperCap = 5;
+  terrainWaypointIslandShape = '';
+  terrainWaypointIslandLabel = '';
+  terrainWaypointIslandBias = 0;
+  terrainMeanderIndex = 0;
+  ship.x = 0;
+  ship.y = (PLAY_TOP + PLAY_BOTTOM) / 2;
+
+  const th = THEMES[themeIdx];
+  const targetPx = targetDistance * 10;
+  const result = { themeIndex: themeIdx, obstacles: [], terrainSegments: null };
+
+  if (th.obstacleShape === 'terrain') {
+    initTerrain();
+    let guard = 0;
+    while (terrainSegments[terrainSegments.length - 1].x < targetPx && guard < 5000) {
+      addTerrainSegment();
+      distance = terrainSegments[terrainSegments.length - 1].x / 10;
+      guard++;
+    }
+    result.terrainSegments = terrainSegments.map(s => ({ ...s }));
+  } else if (th.obstacleShape === 'fireball') {
+    // timer-based spawner, not position-based -- step it like the real update loop
+    let x = 0;
+    let counter = 0;
+    let guard = 0;
+    while (x < targetPx && guard < 5000) {
+      counter++;
+      const interval = Math.max(50, (th.fireballIntervalBase || 100) - distance * 0.01);
+      if (counter >= interval) {
+        spawnFireball();
+        const last = gates[gates.length - 1];
+        last.previewX = x;
+        counter = 0;
+      }
+      x += 4;
+      distance = x / 10;
+      guard++;
+    }
+    result.obstacles = gates.map(g => ({ ...g, x: g.previewX !== undefined ? g.previewX : g.x }));
+  } else if (th.obstacleShape === 'none') {
+    // event-based zone -- place each hand-placed event directly at its
+    // trigger-distance position rather than stepping through a
+    // spacing/timer loop
+    const playHeight = PLAY_BOTTOM - PLAY_TOP;
+    const margin = 15;
+    if (th.blackHoleEvents) for (const [idx, event] of th.blackHoleEvents.entries()) {
+      gates.push({
+        type: 'blackhole',
+        x: event.triggerDistance * 10,
+        y: PLAY_TOP + margin + event.yFrac * Math.max(1, playHeight - margin * 2),
+        coreR: event.coreR,
+        reachR: event.reachR,
+        rotSeed: 0,
+        passed: false,
+        previewX: event.triggerDistance * 10,
+        _eventIdx: idx
+      });
+    }
+    if (th.lensingZoneEvents) {
+      for (const [idx, event] of th.lensingZoneEvents.entries()) {
+        gates.push({
+          type: 'lensingzone',
+          x: event.triggerDistance * 10,
+          y: PLAY_TOP + margin + event.yFrac * Math.max(1, playHeight - margin * 2),
+          coreR: event.coreR,
+          zoneRadius: event.zoneRadius,
+          rotSeed: 0,
+          passed: false,
+          previewX: event.triggerDistance * 10,
+          _lensIdx: idx
+        });
+      }
+    }
+    if (th.supernovaEvents) {
+      for (const [idx, event] of th.supernovaEvents.entries()) {
+        gates.push({
+          type: 'supernova',
+          x: event.triggerDistance * 10,
+          y: PLAY_TOP + margin + event.yFrac * Math.max(1, playHeight - margin * 2),
+          planetR: event.planetR,
+          dormantFrames: event.dormantFrames,
+          warningFrames: event.warningFrames,
+          detonated: false,
+          rotSeed: 0,
+          passed: false,
+          previewX: event.triggerDistance * 10,
+          _novaIdx: idx
+        });
+      }
+    }
+    if (th.turretEvents) {
+      for (const [idx, event] of th.turretEvents.entries()) {
+        const y = event.anchor === 'top' ? PLAY_TOP + event.mountOffset : PLAY_BOTTOM - event.mountOffset;
+        gates.push({
+          type: 'turret',
+          x: event.triggerDistance * 10,
+          y: y,
+          anchor: event.anchor,
+          fireAngleDeg: event.fireAngleDeg || 0,
+          numShots: event.numShots,
+          fireInterval: event.fireInterval,
+          rotSeed: 0,
+          passed: false,
+          previewX: event.triggerDistance * 10,
+          _turretIdx: idx
+        });
+      }
+    }
+    if (th.empEvents) {
+      for (const [idx, event] of th.empEvents.entries()) {
+        gates.push({
+          type: 'emp',
+          x: event.triggerDistance * 10,
+          anchor: event.anchor,
+          reachDepth: event.reachDepth,
+          chargeFrames: event.chargeFrames,
+          dischargeFrames: event.dischargeFrames,
+          spawnFrame: 0,
+          rotSeed: 0,
+          passed: false,
+          previewX: event.triggerDistance * 10,
+          _empIdx: idx
+        });
+      }
+    }
+    if (th.pulsingOrbEvents) {
+      const playHeight2 = PLAY_BOTTOM - PLAY_TOP;
+      for (const [idx, event] of th.pulsingOrbEvents.entries()) {
+        gates.push({
+          type: 'pulsingorb',
+          x: event.triggerDistance * 10,
+          y: PLAY_TOP + playHeight2 / 2,
+          minR: event.minR,
+          maxR: event.maxR,
+          period: event.period,
+          spawnFrame: 0,
+          rotSeed: 0,
+          passed: false,
+          previewX: event.triggerDistance * 10,
+          _orbIdx: idx
+        });
+      }
+    }
+    result.obstacles = gates.map(g => ({ ...g, x: g.previewX !== undefined ? g.previewX : g.x }));
+  } else {
+    // real gameplay's initial upfront spawn starts at ship.x + 420, not 0 --
+    // matching that offset here (ship.x is 0 in this preview simulation) is
+    // what makes bolt positions actually line up with event-based hazards
+    // like wind vortex, which are placed directly at triggerDistance*10
+    let x = 420;
+    let guard = 0;
+    while (x < targetPx && guard < 2000) {
+      const gateCountBefore = gates.length;
+      const gapAtSpawn = !th.obstacleShape ? currentGapSize() : null;
+      const entryIdxUsed = patternIndex % th.pattern.length;
+      const spacing = spawnGate(x);
+      for (let i = gateCountBefore; i < gates.length; i++) {
+        gates[i].previewGap = gapAtSpawn;
+        gates[i]._entryIdx = entryIdxUsed;
+        gates[i]._boltIdx = i - gateCountBefore;
+      }
+      x += spacing || 300;
+      distance = x / 10;
+      guard++;
+    }
+    result.obstacles = gates.map(g => ({ ...g }));
+  }
+
+  // secondary layer, independent of obstacleShape: wind vortex events run
+  // alongside whatever primary hazard the zone uses (matches how the real
+  // gameplay trigger check works -- it's never gated on obstacleShape)
+  if (th.windVortexEvents) {
+    const playHeightV = PLAY_BOTTOM - PLAY_TOP;
+    const marginV = 15;
+    th.windVortexEvents.forEach((event, idx) => {
+      result.obstacles.push({
+        type: 'windvortex',
+        x: event.triggerDistance * 10,
+        y: PLAY_TOP + marginV + event.yFrac * Math.max(1, playHeightV - marginV * 2),
+        reachR: event.reachR,
+        rotSeed: idx * 5.1,
+        passed: false,
+        previewX: event.triggerDistance * 10,
+        _vortexIdx: idx
+      });
+    });
+  }
+  if (th.cloudArcEvents) {
+    const playHeightA = PLAY_BOTTOM - PLAY_TOP;
+    const marginA = 20;
+    th.cloudArcEvents.forEach((event, idx) => {
+      const x1 = event.triggerDistance * 10;
+      const cycleLength = event.onFrames + event.offFrames;
+      const jitter = [];
+      for (let i = 0; i < 7; i++) jitter.push((i % 2 ? 0.7 : -0.7) * (0.4 + (i % 3) * 0.2));
+      result.obstacles.push({
+        type: 'cloudarc',
+        x: x1,
+        y: PLAY_TOP + marginA + event.y1Frac * Math.max(1, playHeightA - marginA * 2),
+        x2: x1 + event.spanPx,
+        y2: PLAY_TOP + marginA + event.y2Frac * Math.max(1, playHeightA - marginA * 2),
+        onFrames: event.onFrames,
+        offFrames: event.offFrames,
+        cycleLength,
+        phaseOffset: Math.round(event.phaseFrac * cycleLength),
+        jitter,
+        branchT: 0.42,
+        branchSide: idx % 2 ? -1 : 1,
+        branchLen: 52,
+        branchAngleJitter: 0.12,
+        passed: false,
+        previewX: x1,
+        _arcIdx: idx
+      });
+    });
+  }
+
+  restoreSimState(saved);
+  return result;
+}
+
+// Runs the REAL game engine -- reseedZoneObstacles() then the actual
+// per-frame update() loop -- to capture the exact obstacle set a real
+// playthrough would produce, rather than a second, separate approximation
+// of the spawn logic that can quietly drift out of sync with it. Ghost
+// mode plus an extended grace period keep the ship completely safe
+// throughout (frozen in place, no collisions, no forces) so nothing here
+// can end the run early; nothing about this affects the real game, since
+// all touched state is restored before returning.
+function captureFullZoneRun(themeIdx, targetDistance) {
+  const saved = captureSimState();
+  const savedGhost = ghostMode;
+  const savedGrace = devGracePeriodEndFrame;
+  const savedState = state;
+  const savedZoneStartDistance = zoneStartDistance;
+  const savedZoneStartFrame = zoneStartFrame;
+  const savedWarpActive = warpActive;
+  const savedPortalObject = portalObject;
+  const savedEventFlags = {
+    specialEventsSpawned, blackHoleEventsSpawned, windVortexEventsSpawned, cloudArcEventsSpawned, lightningStrikeEventsSpawned, lasergridEventsSpawned,
+    droneSwarmEventsSpawned, billboardEventsSpawned, searchlightEventsSpawned,
+    turretEventsSpawned, signalCorruptionEventsSpawned, empEventsSpawned,
+    echoTrailEventsSpawned, pulsingOrbEventsSpawned, boomerangEventsSpawned,
+    oncomingCometEventsSpawned, splitRockEventsSpawned, lensingZoneEventsSpawned, supernovaEventsSpawned,
+  };
+  // the update() loop this capture drives processes mini boss fight logic
+  // exactly like real gameplay -- without saving/restoring it, previewing
+  // this zone in the editor could advance or even complete the fight
+  // internally, leaking that progress into the player's actual game
+  const savedMiniBossState = {
+    miniBoss, miniBossCyclesCompleted, miniBossSpawnFrame, miniBossDefeated, miniBossDefeatFrame,
+    miniBossAttackState, miniBossAttackStateStartFrame, miniBossChargeHeights, miniBossChargeIndex,
+    miniBossChargeRound, miniBossFlameWallDriftDir, miniBossBarrageEmbers, miniBossBarrageWavesLaunched,
+    miniBossSqueezeTopY, miniBossSqueezeBottomY, miniBossBarragePhaseStartFrame, miniBossDeathPatches,
+    miniBossDeathAshParticles, miniBossEscapeRunActive, miniBossEscapeRunStartDistance, miniBossHadFirstFloat,
+    miniBossNextAttackSet, miniBossFloatBlendStartX, miniBossFloatBlendStartY, miniBossFloatBlendStartFrame,
+    miniBossWallRecedeStartFrame, miniBossWallCracks, snowWallDetail, coreWallPanels, coreWallSensors,
+  };
+
+  themeIndex = themeIdx;
+  distance = 0; frame = 0; zoneStartDistance = 0; zoneStartFrame = 0;
+  warpActive = false; portalObject = null; state = 'playing';
+  ship.x = 0; ship.y = (PLAY_TOP + PLAY_BOTTOM) / 2; ship.vy = 0; ship.rotation = 0;
+  ghostMode = true;
+  const savedThemeLevelReached = themeLevelReached;
+  // the real update loop auto-triggers a zone transition once distance
+  // crosses a THEME_DISTANCE boundary relative to themeLevelReached -- since
+  // this capture run's own distance climbs from 0 up toward targetDistance
+  // (often exactly one THEME_DISTANCE), that real transition could fire
+  // mid-capture and reset zoneStartDistance out from under the position math.
+  // pinning themeLevelReached far ahead keeps the check from ever tripping
+  themeLevelReached = 999999;
+
+  const th = THEMES[themeIdx];
+  const result = { themeIndex: themeIdx, obstacles: [], terrainSegments: null };
+
+  // maps each single-spawn event array to its spawned-flag array, the gate
+  // type it produces, and the tag field the editor's selection/drag code
+  // expects on each captured gate
+  const EVENT_TYPE_MAP = [
+    { flagsGetter: () => blackHoleEventsSpawned, gateType: 'blackhole', tag: '_eventIdx' },
+    { flagsGetter: () => windVortexEventsSpawned, gateType: 'windvortex', tag: '_vortexIdx' },
+    { flagsGetter: () => cloudArcEventsSpawned, gateType: 'cloudarc', tag: '_arcIdx' },
+    { flagsGetter: () => lightningStrikeEventsSpawned, gateType: 'stormchargebolttelegraph', tag: '_strikeIdx' },
+    { flagsGetter: () => lensingZoneEventsSpawned, gateType: 'lensingzone', tag: '_lensIdx' },
+    { flagsGetter: () => supernovaEventsSpawned, gateType: 'supernova', tag: '_novaIdx' },
+    { flagsGetter: () => turretEventsSpawned, gateType: 'turret', tag: '_turretIdx' },
+    { flagsGetter: () => empEventsSpawned, gateType: 'emp', tag: '_empIdx' },
+    { flagsGetter: () => pulsingOrbEventsSpawned, gateType: 'pulsingorb', tag: '_orbIdx' },
+  ];
+  const snapshotEventFlags = () => EVENT_TYPE_MAP.map(m => (m.flagsGetter() || []).slice());
+
+  if (th.obstacleShape === 'terrain') {
+    // terrain uses its own terrainSegments data structure, not gates, and
+    // isn't part of the position-mismatch issue this addresses -- keep the
+    // existing lightweight step-through for it
+    initTerrain();
+    let guard = 0;
+    while (terrainSegments[terrainSegments.length - 1].x < targetDistance * 10 && guard < 5000) {
+      addTerrainSegment();
+      distance = terrainSegments[terrainSegments.length - 1].x / 10;
+      guard++;
+    }
+    result.terrainSegments = terrainSegments.map(s => ({ ...s }));
+  } else {
+    devGracePeriodEndFrame = 999999999; // keep the ship's vertical physics frozen for the entire capture run
+    patternIndex = 0;
+    reseedZoneObstacles(ship.x + 420); // the exact same entry point a real zone transition uses
+
+    const capturedIds = new Set();
+    const capturedGates = [];
+    // computes each bolt's position directly from the pattern data and a
+    // known base spawn x, rather than searching the live `gates` array for
+    // it. A bolt with an extreme xJitter can scroll far enough off-screen
+    // to trigger the game's own despawn check within the very same frame
+    // it spawns in -- searching gates after the fact would silently miss
+    // it, and every later cycle-repetition of that same bolt along with
+    // it, making the preview quietly incomplete until something else
+    // (like an unrelated edit) happened to correct that bolt's position
+    // and "reveal" the previously-invisible instances.
+    const captureBoltsForEntry = (entryIdx, baseX, zp) => {
+      const entry = th.pattern[entryIdx];
+      if (!entry || !entry.bolts) return;
+      entry.bolts.forEach((b, bi) => {
+        const gx = baseX + b.xJitter;
+        const effectiveZoneProgress = zp + (gx - ship.x) / 10;
+        const playHeight = PLAY_BOTTOM - PLAY_TOP;
+        const margin = 28;
+        const heightPx = b.heightFrac * playHeight;
+        const cycleLength = b.onFrames + b.offFrames;
+        capturedGates.push({
+          type: 'lbolt',
+          x: effectiveZoneProgress * 10,
+          y: PLAY_TOP + margin + b.yFrac * Math.max(1, playHeight - margin * 2),
+          height: heightPx,
+          swingWidth: b.swingWidthPx,
+          shape: BOLT_SHAPES[b.shape],
+          onFrames: b.onFrames,
+          offFrames: b.offFrames,
+          cycleLength: cycleLength,
+          phaseOffset: Math.round(b.phaseFrac * cycleLength),
+          passed: false,
+          _entryIdx: entryIdx, _boltIdx: bi
+        });
+      });
+    };
+    const captureInitialPatternGates = (startX, toEntryRaw, zp) => {
+      let x = startX;
+      for (let ei = 0; ei < toEntryRaw; ei++) {
+        const entryIdx = ((ei % th.pattern.length) + th.pattern.length) % th.pattern.length;
+        if (ei > 0) x += th.pattern[entryIdx].spacing || GATE_SPACING;
+        captureBoltsForEntry(entryIdx, x, zp);
+      }
+    };
+    // captures any newly-appeared non-lbolt gate, tagging single-spawn event
+    // types using which specific flag index flipped true since flagsBefore
+    const captureOtherNewGates = (zp, flagsBefore) => {
+      const flagsAfter = snapshotEventFlags();
+      for (const g of gates) {
+        if (g.type === 'lbolt' || capturedIds.has(g)) continue;
+        capturedIds.add(g);
+        const effectiveZoneProgress = zp + (g.x - ship.x) / 10;
+        const captured = { ...g, x: effectiveZoneProgress * 10 };
+        if (g.x2 !== undefined) captured.x2 = g.x2 + (captured.x - g.x); // keep x2 consistent with the same shift applied to x
+        EVENT_TYPE_MAP.forEach((m, mi) => {
+          if (g.type !== m.gateType) return;
+          const before = flagsBefore[mi] || [];
+          const after = flagsAfter[mi] || [];
+          for (let i = 0; i < after.length; i++) {
+            if (after[i] && !before[i]) { captured[m.tag] = i; break; }
+          }
+        });
+        capturedGates.push(captured);
+      }
+    };
+
+    let prevPatternIndex = patternIndex; // after reseedZoneObstacles's initial 6-gate spawn
+    if (th.obstacleShape === 'lbolt') captureInitialPatternGates(ship.x + 420, prevPatternIndex, distance - zoneStartDistance);
+    captureOtherNewGates(distance - zoneStartDistance, EVENT_TYPE_MAP.map(() => []));
+
+    let guard = 0;
+    while ((distance - zoneStartDistance) < targetDistance && guard < 20000) {
+      const flagsBefore = snapshotEventFlags();
+      // belt-and-suspenders: pin the ship to a safe, centered position every
+      // frame, not just at setup. ghost mode and the extended grace period
+      // cover the normal death paths, but at least one Neon City mechanic
+      // was found to end the run anyway -- forcing position each frame
+      // guarantees nothing can push the ship into a boundary during capture
+      ship.y = (PLAY_TOP + PLAY_BOTTOM) / 2;
+      ship.vy = 0;
+      update();
+      if (state !== 'playing') state = 'playing'; // backstop in case something still ends the run
+      const zp = distance - zoneStartDistance;
+      if (th.obstacleShape === 'lbolt' && patternIndex > prevPatternIndex) {
+        // only one new entry can spawn per frame in the ongoing loop, so
+        // lastSpawnX (updated synchronously the instant it spawns) is
+        // exactly that entry's base position, regardless of whether the
+        // resulting gate object has already despawned by now
+        const entryIdx = ((patternIndex - 1) % th.pattern.length + th.pattern.length) % th.pattern.length;
+        captureBoltsForEntry(entryIdx, lastSpawnX, zp);
+        prevPatternIndex = patternIndex;
+      }
+      captureOtherNewGates(zp, flagsBefore);
+      guard++;
+    }
+    result.obstacles = capturedGates;
+  }
+
+  ghostMode = savedGhost;
+  themeLevelReached = savedThemeLevelReached;
+  devGracePeriodEndFrame = savedGrace;
+  state = savedState;
+  zoneStartDistance = savedZoneStartDistance;
+  zoneStartFrame = savedZoneStartFrame;
+  warpActive = savedWarpActive;
+  portalObject = savedPortalObject;
+  blackHoleEventsSpawned = savedEventFlags.blackHoleEventsSpawned;
+  specialEventsSpawned = savedEventFlags.specialEventsSpawned;
+  windVortexEventsSpawned = savedEventFlags.windVortexEventsSpawned;
+  cloudArcEventsSpawned = savedEventFlags.cloudArcEventsSpawned;
+  lightningStrikeEventsSpawned = savedEventFlags.lightningStrikeEventsSpawned;
+  lasergridEventsSpawned = savedEventFlags.lasergridEventsSpawned;
+  droneSwarmEventsSpawned = savedEventFlags.droneSwarmEventsSpawned;
+  billboardEventsSpawned = savedEventFlags.billboardEventsSpawned;
+  searchlightEventsSpawned = savedEventFlags.searchlightEventsSpawned;
+  turretEventsSpawned = savedEventFlags.turretEventsSpawned;
+  signalCorruptionEventsSpawned = savedEventFlags.signalCorruptionEventsSpawned;
+  empEventsSpawned = savedEventFlags.empEventsSpawned;
+  echoTrailEventsSpawned = savedEventFlags.echoTrailEventsSpawned;
+  pulsingOrbEventsSpawned = savedEventFlags.pulsingOrbEventsSpawned;
+  boomerangEventsSpawned = savedEventFlags.boomerangEventsSpawned;
+  oncomingCometEventsSpawned = savedEventFlags.oncomingCometEventsSpawned;
+  splitRockEventsSpawned = savedEventFlags.splitRockEventsSpawned;
+  lensingZoneEventsSpawned = savedEventFlags.lensingZoneEventsSpawned;
+  supernovaEventsSpawned = savedEventFlags.supernovaEventsSpawned;
+  miniBoss = savedMiniBossState.miniBoss;
+  miniBossCyclesCompleted = savedMiniBossState.miniBossCyclesCompleted;
+  miniBossSpawnFrame = savedMiniBossState.miniBossSpawnFrame;
+  miniBossDefeated = savedMiniBossState.miniBossDefeated;
+  miniBossDefeatFrame = savedMiniBossState.miniBossDefeatFrame;
+  miniBossAttackState = savedMiniBossState.miniBossAttackState;
+  miniBossAttackStateStartFrame = savedMiniBossState.miniBossAttackStateStartFrame;
+  miniBossChargeHeights = savedMiniBossState.miniBossChargeHeights;
+  miniBossChargeIndex = savedMiniBossState.miniBossChargeIndex;
+  miniBossChargeRound = savedMiniBossState.miniBossChargeRound;
+  miniBossFlameWallDriftDir = savedMiniBossState.miniBossFlameWallDriftDir;
+  miniBossBarrageEmbers = savedMiniBossState.miniBossBarrageEmbers;
+  miniBossBarrageWavesLaunched = savedMiniBossState.miniBossBarrageWavesLaunched;
+  miniBossSqueezeTopY = savedMiniBossState.miniBossSqueezeTopY;
+  miniBossSqueezeBottomY = savedMiniBossState.miniBossSqueezeBottomY;
+  miniBossBarragePhaseStartFrame = savedMiniBossState.miniBossBarragePhaseStartFrame;
+  miniBossDeathPatches = savedMiniBossState.miniBossDeathPatches;
+  miniBossDeathAshParticles = savedMiniBossState.miniBossDeathAshParticles;
+  miniBossEscapeRunActive = savedMiniBossState.miniBossEscapeRunActive;
+  miniBossEscapeRunStartDistance = savedMiniBossState.miniBossEscapeRunStartDistance;
+  miniBossHadFirstFloat = savedMiniBossState.miniBossHadFirstFloat;
+  miniBossNextAttackSet = savedMiniBossState.miniBossNextAttackSet;
+  miniBossFloatBlendStartX = savedMiniBossState.miniBossFloatBlendStartX;
+  miniBossFloatBlendStartY = savedMiniBossState.miniBossFloatBlendStartY;
+  miniBossFloatBlendStartFrame = savedMiniBossState.miniBossFloatBlendStartFrame;
+  miniBossWallRecedeStartFrame = savedMiniBossState.miniBossWallRecedeStartFrame;
+  miniBossWallCracks = savedMiniBossState.miniBossWallCracks;
+  snowWallDetail = savedMiniBossState.snowWallDetail || [];
+  coreWallPanels = savedMiniBossState.coreWallPanels;
+  coreWallSensors = savedMiniBossState.coreWallSensors;
+  restoreSimState(saved);
+
+  return result;
+}
+
+function resizePreviewCanvas(worldWidthPx) {
+  const wrap = document.getElementById('preview-canvas-wrap');
+  const savedScroll = wrap ? wrap.scrollLeft : null;
+  previewCanvas.width = Math.max(previewCanvas.parentElement.clientWidth, worldWidthPx * previewScale + 100);
+  previewCanvas.height = previewCanvas.parentElement.clientHeight || 500;
+  // setting canvas width/height can cause the browser to reset or clamp
+  // the scrollable wrapper's scroll position, even when the resulting
+  // canvas size is unchanged -- restore it so a re-render triggered from
+  // somewhere the user didn't directly interact with (like an auto-fix
+  // during save) never silently yanks their view away from what they were
+  // actually looking at
+  if (wrap && savedScroll !== null) wrap.scrollLeft = savedScroll;
+  return previewScale;
+}
+
+function drawZonePreview(data) {
+  const th = THEMES[data.themeIndex];
+  const targetPx = 10000;
+  const scale = resizePreviewCanvas(targetPx);
+  const w = previewCanvas.width, h = previewCanvas.height;
+  const topMargin = 30, botMargin = 30;
+  const pTop = topMargin, pBot = h - botMargin;
+  const pHeight = pBot - pTop;
+
+  previewCtx.fillStyle = th.skyMid || '#111';
+  previewCtx.fillRect(0, 0, w, h);
+  previewCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+  previewCtx.lineWidth = 1;
+  previewCtx.strokeRect(0, pTop, w, pHeight);
+
+  previewCtx.fillStyle = 'rgba(255,255,255,0.4)';
+  previewCtx.font = '10px Courier New';
+  for (let d = 0; d <= 1000; d += 100) {
+    const sx = d * 10 * scale;
+    previewCtx.beginPath();
+    previewCtx.moveTo(sx, pTop);
+    previewCtx.lineTo(sx, pBot);
+    previewCtx.strokeStyle = d % 500 === 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)';
+    previewCtx.stroke();
+    previewCtx.fillText(String(d), sx + 3, pTop - 8);
+  }
+
+  const yToScreen = (y) => pTop + ((y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * pHeight;
+
+  if (data.terrainSegments) {
+    previewCtx.fillStyle = 'rgba(255,204,51,0.55)';
+    previewCtx.beginPath();
+    data.terrainSegments.forEach((s, i) => {
+      const sx = s.x * scale;
+      const sy = yToScreen(s.topY);
+      if (i === 0) previewCtx.moveTo(sx, pTop); else previewCtx.lineTo(sx, sy);
+    });
+    for (let i = data.terrainSegments.length - 1; i >= 0; i--) {
+      previewCtx.lineTo(data.terrainSegments[i].x * scale, pTop);
+    }
+    previewCtx.closePath();
+    previewCtx.fill();
+
+    previewCtx.beginPath();
+    data.terrainSegments.forEach((s, i) => {
+      const sx = s.x * scale;
+      const sy = yToScreen(s.bottomY);
+      if (i === 0) previewCtx.moveTo(sx, sy); else previewCtx.lineTo(sx, sy);
+    });
+    for (let i = data.terrainSegments.length - 1; i >= 0; i--) {
+      previewCtx.lineTo(data.terrainSegments[i].x * scale, pBot);
+    }
+    previewCtx.closePath();
+    previewCtx.fill();
+
+    previewCtx.fillStyle = 'rgba(255,150,50,0.6)';
+    data.terrainSegments.forEach((s) => {
+      if (s.islandBottom - s.islandTop > 2) {
+        const sx = s.x * scale;
+        previewCtx.fillRect(sx, yToScreen(s.islandTop), 3, yToScreen(s.islandBottom) - yToScreen(s.islandTop));
+      }
+    });
+  }
+
+  // windvortex is a background force-field visual, not a foreground hazard --
+  // draw it first (behind) regardless of where it falls in the underlying
+  // obstacles array, so its semi-transparent overlay never washes out a
+  // bolt or other hazard that happens to sit on top of it
+  const sortedObstacles = [...data.obstacles].sort((a, b) => (a.type === 'windvortex' ? -1 : 0) - (b.type === 'windvortex' ? -1 : 0));
+  for (const g of sortedObstacles) {
+    const sx = g.x * scale;
+    if (g.type === 'gate') {
+      const gap = g.previewGap || 150;
+      const topSafe = g.baseCenter - g.amplitude - gap / 2;
+      const botSafe = g.baseCenter + g.amplitude + gap / 2;
+      previewCtx.fillStyle = 'rgba(15,240,252,0.4)';
+      previewCtx.fillRect(sx - 3, pTop, 6, yToScreen(topSafe) - pTop);
+      previewCtx.fillRect(sx - 3, yToScreen(botSafe), 6, pBot - yToScreen(botSafe));
+      previewCtx.fillStyle = 'rgba(15,240,252,0.15)';
+      previewCtx.fillRect(sx - 3, yToScreen(topSafe), 6, yToScreen(botSafe) - yToScreen(topSafe));
+    } else if (g.type === 'hbar') {
+      const top = g.baseCenter - g.amplitude - g.thickness / 2;
+      const bot = g.baseCenter + g.amplitude + g.thickness / 2;
+      previewCtx.fillStyle = 'rgba(0,255,157,0.35)';
+      previewCtx.fillRect(sx - g.width * scale / 2, yToScreen(top), Math.max(3, g.width * scale), yToScreen(bot) - yToScreen(top));
+    } else if (g.type === 'asteroid') {
+      previewCtx.fillStyle = 'rgba(200,150,100,0.6)';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, yToScreen(g.y), Math.max(2, g.r * scale), 0, Math.PI * 2);
+      previewCtx.fill();
+    } else if (g.type === 'splitrock') {
+      previewCtx.fillStyle = 'rgba(220,160,90,0.7)';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, yToScreen(g.y), Math.max(3, g.r * scale), 0, Math.PI * 2);
+      previewCtx.fill();
+    } else if (g.type === 'fireball') {
+      previewCtx.fillStyle = 'rgba(255,120,50,0.5)';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, yToScreen(g.startY), Math.max(2, g.r * scale), 0, Math.PI * 2);
+      previewCtx.fill();
+    } else if (g.type === 'barrier') {
+      const gTop = g.gapCenter - g.gapHeight / 2;
+      const gBot = g.gapCenter + g.gapHeight / 2;
+      previewCtx.fillStyle = 'rgba(255,245,157,0.4)';
+      previewCtx.fillRect(sx - 3, pTop, 6, yToScreen(gTop) - pTop);
+      previewCtx.fillRect(sx - 3, yToScreen(gBot), 6, pBot - yToScreen(gBot));
+    } else if (g.type === 'lbolt') {
+      // _entryIdx/_boltIdx identify which pattern entry this bolt came from,
+      // but that entry repeats every pattern cycle across the full preview
+      // length -- matching on those alone would highlight every repeated
+      // occurrence at once. g.x is unique per instance, so include it to
+      // select only the one actually clicked.
+      const isSelected = previewSelectedBolt && g._entryIdx === previewSelectedBolt._entryIdx && g._boltIdx === previewSelectedBolt._boltIdx && g.x === previewSelectedBolt.x;
+      const top = g.y - g.height / 2;
+      const bx = sx - Math.max(2, g.swingWidth * scale / 2);
+      const bw = Math.max(4, g.swingWidth * scale);
+      const by = yToScreen(top);
+      const bh = (g.height / (PLAY_BOTTOM - PLAY_TOP)) * pHeight;
+
+      // real gameplay renders an active bolt with a 16px glow (shadowBlur)
+      // around its silhouette -- without matching that here, a small bolt
+      // reads as much smaller in the editor than it will actually look once
+      // lit up and glowing in the real game
+      previewCtx.save();
+      previewCtx.shadowColor = th.accentA || '#fff59d';
+      previewCtx.shadowBlur = 16 * scale;
+
+      // g.shape is already the resolved polygon (array of [nx,ny] points) --
+      // draw the real silhouette so shape edits are actually visible here.
+      // use the same bright white-to-accent gradient as real gameplay's
+      // active-bolt render (not a flat fill) so it stays clearly visible
+      // even with other elements like a vortex's overlay nearby
+      if (isSelected) {
+        previewCtx.fillStyle = 'rgba(255,80,220,0.8)';
+      } else {
+        const boltGrad = previewCtx.createLinearGradient(sx, by, sx, by + bh);
+        boltGrad.addColorStop(0, '#ffffff');
+        boltGrad.addColorStop(0.5, th.accentA || '#fff59d');
+        boltGrad.addColorStop(1, th.accentB || '#5c6bc0');
+        previewCtx.fillStyle = boltGrad;
+      }
+      previewCtx.beginPath();
+      g.shape.forEach(([nx, ny], i) => {
+        const px = sx + nx * (g.swingWidth * scale) / 2;
+        const py = yToScreen(top + ny * g.height);
+        if (i === 0) previewCtx.moveTo(px, py); else previewCtx.lineTo(px, py);
+      });
+      previewCtx.closePath();
+      previewCtx.fill();
+      previewCtx.restore();
+
+      if (isSelected) {
+        previewCtx.strokeStyle = '#ff50dc';
+        previewCtx.lineWidth = 2;
+        previewCtx.strokeRect(bx, by, bw, bh);
+        // resize handle
+        previewCtx.fillStyle = '#ff50dc';
+        previewCtx.fillRect(bx + bw - 6, by + bh - 6, 10, 10);
+      }
+    } else if (g.type === 'blackhole') {
+      const isSelected = previewSelectedBlackHole && g._eventIdx === previewSelectedBlackHole._eventIdx;
+      const cy = yToScreen(g.y);
+      // use the vertical scale for both axes so these render as true
+      // circles -- the horizontal distance-compression scale is far too
+      // aggressive (flattens the whole 10000px zone into a small canvas)
+      // and would make a huge black hole look like a thin vertical sliver
+      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
+      const rReach = g.reachR * vScale;
+      const rCore = g.coreR * vScale;
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.22)' : 'rgba(138,92,245,0.18)';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy, rReach, 0, Math.PI * 2);
+      previewCtx.fill();
+      previewCtx.strokeStyle = isSelected ? '#ff50dc' : 'rgba(138,92,245,0.5)';
+      previewCtx.lineWidth = isSelected ? 2 : 1;
+      previewCtx.stroke();
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.65)' : 'rgba(10,5,15,0.9)';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy, rCore, 0, Math.PI * 2);
+      previewCtx.fill();
+      previewCtx.strokeStyle = '#8a5cf5';
+      previewCtx.lineWidth = 1.5;
+      previewCtx.stroke();
+
+      if (isSelected) {
+        previewCtx.fillStyle = '#ff50dc';
+        previewCtx.fillRect(sx + rCore - 5, cy - 5, 10, 10);
+        previewCtx.fillStyle = '#c9a0ff';
+        previewCtx.fillRect(sx + rReach - 5, cy - 5, 10, 10);
+      }
+    } else if (g.type === 'windvortex') {
+      const isSelected = previewSelectedWindVortex && g._vortexIdx === previewSelectedWindVortex._vortexIdx;
+      const cy = yToScreen(g.y);
+      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
+      const rReach = g.reachR * vScale;
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.22)' : 'rgba(92,107,192,0.18)';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy, rReach, 0, Math.PI * 2);
+      previewCtx.fill();
+      previewCtx.strokeStyle = isSelected ? '#ff50dc' : 'rgba(255,245,157,0.5)';
+      previewCtx.lineWidth = isSelected ? 2 : 1;
+      previewCtx.setLineDash(isSelected ? [] : [4, 4]);
+      previewCtx.stroke();
+      previewCtx.setLineDash([]);
+
+      // small spiral hint at center so it reads as "swirling" rather than a plain circle
+      previewCtx.strokeStyle = '#fff59d';
+      previewCtx.lineWidth = 1.5;
+      previewCtx.beginPath();
+      for (let s = 0; s <= 16; s++) {
+        const tt = s / 16;
+        const ang = tt * Math.PI * 3;
+        const r = tt * Math.min(rReach * 0.5, 14);
+        const px = sx + Math.cos(ang) * r, py = cy + Math.sin(ang) * r;
+        if (s === 0) previewCtx.moveTo(px, py); else previewCtx.lineTo(px, py);
+      }
+      previewCtx.stroke();
+
+      if (isSelected) {
+        previewCtx.fillStyle = '#c9a0ff';
+        previewCtx.fillRect(sx + rReach - 5, cy - 5, 10, 10);
+      }
+    } else if (g.type === 'cloudarc') {
+      const isSelected = previewSelectedCloudArc && g._arcIdx === previewSelectedCloudArc._arcIdx;
+      const cy1 = yToScreen(g.y);
+      const cy2 = yToScreen(g.y2);
+      const sx2 = g.x2 * scale;
+
+      previewCtx.strokeStyle = isSelected ? '#ff50dc' : 'rgba(255,245,157,0.55)';
+      previewCtx.lineWidth = isSelected ? 2.5 : 1.5;
+      previewCtx.setLineDash(isSelected ? [] : [5, 5]);
+      previewCtx.beginPath();
+      previewCtx.moveTo(sx, cy1);
+      previewCtx.lineTo(sx2, cy2);
+      previewCtx.stroke();
+      previewCtx.setLineDash([]);
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.5)' : 'rgba(146,161,209,0.5)';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy1, 8, 0, Math.PI * 2);
+      previewCtx.fill();
+      previewCtx.beginPath();
+      previewCtx.arc(sx2, cy2, 8, 0, Math.PI * 2);
+      previewCtx.fill();
+
+      if (isSelected) {
+        previewCtx.fillStyle = '#c9a0ff';
+        previewCtx.fillRect(sx2 - 5, cy2 - 5, 10, 10);
+      }
+    } else if (g.type === 'lensingzone') {
+      const isSelected = previewSelectedLensingZone && g._lensIdx === previewSelectedLensingZone._lensIdx;
+      const cy = yToScreen(g.y);
+      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
+      const rZone = g.zoneRadius * vScale;
+      const rCore = g.coreR * vScale;
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.22)' : 'rgba(94,200,232,0.16)';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy, rZone, 0, Math.PI * 2);
+      previewCtx.fill();
+      previewCtx.strokeStyle = isSelected ? '#ff50dc' : 'rgba(94,200,232,0.5)';
+      previewCtx.lineWidth = isSelected ? 2 : 1;
+      previewCtx.stroke();
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.7)' : '#5ec8e8';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy, rCore, 0, Math.PI * 2);
+      previewCtx.fill();
+
+      if (isSelected) {
+        previewCtx.fillStyle = '#ff50dc';
+        previewCtx.fillRect(sx + rCore - 5, cy - 5, 10, 10);
+        previewCtx.fillStyle = '#9de3f5';
+        previewCtx.fillRect(sx + rZone - 5, cy - 5, 10, 10);
+      }
+    } else if (g.type === 'supernova') {
+      const isSelected = previewSelectedSupernova && g._novaIdx === previewSelectedSupernova._novaIdx;
+      const cy = yToScreen(g.y);
+      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
+      const rPlanet = g.planetR * vScale;
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.7)' : '#c9683a';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy, rPlanet, 0, Math.PI * 2);
+      previewCtx.fill();
+      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#e8a84a';
+      previewCtx.lineWidth = isSelected ? 2 : 1.5;
+      previewCtx.stroke();
+
+      if (isSelected) {
+        previewCtx.fillStyle = '#ff50dc';
+        previewCtx.fillRect(sx + rPlanet - 5, cy - 5, 10, 10);
+      }
+    } else if (g.type === 'turret') {
+      const isSelected = previewSelectedTurret && g._turretIdx === previewSelectedTurret._turretIdx;
+      const cy = yToScreen(g.y);
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.8)' : '#c98aff';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy, 9, 0, Math.PI * 2);
+      previewCtx.fill();
+      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#8a5cf5';
+      previewCtx.lineWidth = isSelected ? 2 : 1.5;
+      previewCtx.stroke();
+
+      // barrel line showing the current firing angle
+      const angleRad = g.fireAngleDeg * Math.PI / 180;
+      const barrelLen = 26;
+      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#c98aff';
+      previewCtx.lineWidth = 3;
+      previewCtx.beginPath();
+      previewCtx.moveTo(sx, cy);
+      previewCtx.lineTo(sx - barrelLen * Math.cos(angleRad), cy + barrelLen * Math.sin(angleRad));
+      previewCtx.stroke();
+
+      if (isSelected) {
+        previewCtx.fillStyle = '#ff50dc';
+        previewCtx.fillRect(sx + 9 - 5, cy - 5, 10, 10);
+      }
+    } else if (g.type === 'emp') {
+      const isSelected = previewSelectedEmp && g._empIdx === previewSelectedEmp._empIdx;
+      const anchorCy = yToScreen(g.anchor === 'top' ? PLAY_TOP : PLAY_BOTTOM);
+      const reachVScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
+      const reachCy = yToScreen(g.anchor === 'top' ? PLAY_TOP + g.reachDepth : PLAY_BOTTOM - g.reachDepth);
+
+      // reach indicator line
+      previewCtx.strokeStyle = isSelected ? 'rgba(255,80,220,0.6)' : 'rgba(200,138,255,0.4)';
+      previewCtx.lineWidth = 4;
+      previewCtx.beginPath();
+      previewCtx.moveTo(sx, anchorCy);
+      previewCtx.lineTo(sx, reachCy);
+      previewCtx.stroke();
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.8)' : '#c98aff';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, anchorCy, 8, 0, Math.PI * 2);
+      previewCtx.fill();
+      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#8a5cf5';
+      previewCtx.lineWidth = isSelected ? 2 : 1.5;
+      previewCtx.stroke();
+
+      if (isSelected) {
+        previewCtx.fillStyle = '#ff50dc';
+        previewCtx.fillRect(sx + 8 - 5, anchorCy - 5, 10, 10);
+      }
+    } else if (g.type === 'pulsingorb') {
+      const isSelected = previewSelectedOrb && g._orbIdx === previewSelectedOrb._orbIdx;
+      const cy = yToScreen(g.y);
+      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
+      const midR = (g.minR + g.maxR) / 2 * vScale;
+      const maxRPreview = g.maxR * vScale;
+
+      // faint ring showing the maximum extent
+      previewCtx.strokeStyle = 'rgba(200,138,255,0.25)';
+      previewCtx.lineWidth = 1;
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy, maxRPreview, 0, Math.PI * 2);
+      previewCtx.stroke();
+
+      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.5)' : 'rgba(200,138,255,0.5)';
+      previewCtx.beginPath();
+      previewCtx.arc(sx, cy, midR, 0, Math.PI * 2);
+      previewCtx.fill();
+      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#8a5cf5';
+      previewCtx.lineWidth = isSelected ? 2 : 1.5;
+      previewCtx.stroke();
+
+      if (isSelected) {
+        previewCtx.fillStyle = '#ff50dc';
+        previewCtx.fillRect(sx + midR - 5, cy - 5, 10, 10);
+      }
+    }
+  }
+}
+
+let currentPreviewZone = 0;
+let previewMoveThrottleTs = 0;
+const PREVIEW_MOVE_THROTTLE_MS = 120; // roughly matches captureFullZoneRun's worst-case cost, so throttled calls don't queue up faster than they can complete
+let previewEditMode = false;
+let previewLastData = null;
+let previewScale = 0.75;
+let previewSelectedBolt = null;
+let previewSelectedBlackHole = null;
+let previewSelectedWindVortex = null;
+let previewSelectedCloudArc = null;
+let previewSelectedLensingZone = null;
+let previewSelectedSupernova = null;
+let previewSelectedTurret = null;
+let previewSelectedEmp = null;
+let previewSelectedOrb = null;
+let previewDragMode = null;
+let previewDragStart = null;
+
+// keep the original authored bolt patterns so "Reset to default" always works,
+// even after saving edits
+const DEFAULT_LBOLT_PATTERNS = {};
+THEMES.forEach((t, i) => {
+  if (t.obstacleShape === 'lbolt') DEFAULT_LBOLT_PATTERNS[i] = JSON.parse(JSON.stringify(t.pattern));
+});
+const DEFAULT_BLACKHOLE_EVENTS = {};
+THEMES.forEach((t, i) => {
+  if (t.blackHoleEvents) DEFAULT_BLACKHOLE_EVENTS[i] = JSON.parse(JSON.stringify(t.blackHoleEvents));
+});
+const DEFAULT_WINDVORTEX_EVENTS = {};
+THEMES.forEach((t, i) => {
+  if (t.windVortexEvents) DEFAULT_WINDVORTEX_EVENTS[i] = JSON.parse(JSON.stringify(t.windVortexEvents));
+});
+const DEFAULT_LENSINGZONE_EVENTS = {};
+THEMES.forEach((t, i) => {
+  if (t.lensingZoneEvents) DEFAULT_LENSINGZONE_EVENTS[i] = JSON.parse(JSON.stringify(t.lensingZoneEvents));
+});
+const DEFAULT_SUPERNOVA_EVENTS = {};
+THEMES.forEach((t, i) => {
+  if (t.supernovaEvents) DEFAULT_SUPERNOVA_EVENTS[i] = JSON.parse(JSON.stringify(t.supernovaEvents));
+});
+const DEFAULT_TURRET_EVENTS = {};
+THEMES.forEach((t, i) => {
+  if (t.turretEvents) DEFAULT_TURRET_EVENTS[i] = JSON.parse(JSON.stringify(t.turretEvents));
+});
+const DEFAULT_EMP_EVENTS = {};
+THEMES.forEach((t, i) => {
+  if (t.empEvents) DEFAULT_EMP_EVENTS[i] = JSON.parse(JSON.stringify(t.empEvents));
+});
+const DEFAULT_PULSING_ORB_EVENTS = {};
+THEMES.forEach((t, i) => {
+  if (t.pulsingOrbEvents) DEFAULT_PULSING_ORB_EVENTS[i] = JSON.parse(JSON.stringify(t.pulsingOrbEvents));
+});
+
 function getPreviewLayout() {
   const h = previewCanvas.height;
   const pTop = 30, pBot = h - 30;
@@ -1770,200 +3604,4 @@ window.addEventListener('mouseup', () => {
   previewDragMode = null;
   previewDragStart = null;
 });
-
-function runPreview(themeIdx) {
-  setPreviewStatus('Simulating...');
-  document.querySelectorAll('.preview-zone-btn').forEach(b => {
-    b.classList.toggle('active', parseInt(b.dataset.zone, 10) === themeIdx);
-  });
-  requestAnimationFrame(() => {
-    previewLastData = captureFullZoneRun(themeIdx, 1000);
-    drawZonePreview(previewLastData);
-    setPreviewStatus(THEMES[themeIdx].name + ' -- 0 to 1000 distance');
-  });
-}
-
-// custom saved data (bolt patterns, vortex/black-hole/etc events) loads
-// asynchronously from storage. if the user opens the level editor before
-// that load finishes, the preview renders from the not-yet-updated default
-// data while gameplay -- played moments later, after the load completes --
-// correctly reflects their saved edits, making the two appear out of sync
-// even though nothing is actually wrong. re-render the preview once loading
-// finishes so it always reflects whatever data is actually current.
-function refreshPreviewIfOpen() {
-  if (previewOverlay.classList.contains('active')) runPreview(currentPreviewZone);
-}
-
-const CUSTOM_LEVEL_APPLIERS = {
-  'bolt-patterns-custom': (t, data) => { if (t.obstacleShape === 'lbolt') t.pattern = data; },
-  'blackhole-events-custom': (t, data) => { if (t.blackHoleEvents) t.blackHoleEvents = data; },
-  'windvortex-events-custom': (t, data) => { if (t.windVortexEvents) t.windVortexEvents = data; },
-  'cloudarc-events-custom': (t, data) => { if (t.cloudArcEvents) t.cloudArcEvents = data; },
-  'lensingzone-events-custom': (t, data) => { if (t.lensingZoneEvents) t.lensingZoneEvents = data; },
-  'supernova-events-custom': (t, data) => { if (t.supernovaEvents) t.supernovaEvents = data; },
-  'turret-events-custom': (t, data) => { if (t.turretEvents) t.turretEvents = data; },
-  'emp-events-custom': (t, data) => { if (t.empEvents) t.empEvents = data; },
-  'orb-events-custom': (t, data) => { if (t.pulsingOrbEvents) t.pulsingOrbEvents = data; }
-};
-
-function applyCustomLevelArray(apply, data) {
-  if (!apply || !data) return;
-  THEMES.forEach((t, i) => {
-    if (data[i]) apply(t, data[i]);
-  });
-}
-
-function snapshotDefaultCustomLayouts() {
-  THEMES.forEach((t, i) => {
-    if (t.obstacleShape === 'lbolt') DEFAULT_LBOLT_PATTERNS[i] = JSON.parse(JSON.stringify(t.pattern));
-    if (t.blackHoleEvents) DEFAULT_BLACKHOLE_EVENTS[i] = JSON.parse(JSON.stringify(t.blackHoleEvents));
-    if (t.windVortexEvents) DEFAULT_WINDVORTEX_EVENTS[i] = JSON.parse(JSON.stringify(t.windVortexEvents));
-    if (t.lensingZoneEvents) DEFAULT_LENSINGZONE_EVENTS[i] = JSON.parse(JSON.stringify(t.lensingZoneEvents));
-    if (t.supernovaEvents) DEFAULT_SUPERNOVA_EVENTS[i] = JSON.parse(JSON.stringify(t.supernovaEvents));
-    if (t.turretEvents) DEFAULT_TURRET_EVENTS[i] = JSON.parse(JSON.stringify(t.turretEvents));
-    if (t.empEvents) DEFAULT_EMP_EVENTS[i] = JSON.parse(JSON.stringify(t.empEvents));
-    if (t.pulsingOrbEvents) DEFAULT_PULSING_ORB_EVENTS[i] = JSON.parse(JSON.stringify(t.pulsingOrbEvents));
-  });
-}
-
-async function applyAllCustomLevelData() {
-  const shipped = window.SHIPPED_CUSTOM_LEVELS;
-  const shippedVersion = shipped && shipped._version;
-  let storedVersion = null;
-  try {
-    const result = await window.storage.get('custom-levels-version');
-    storedVersion = result && result.value;
-  } catch (e) { /* missing host storage */ }
-  const storageIsCurrent = !!(shippedVersion && storedVersion === shippedVersion);
-
-  if (shipped) {
-    for (const [key, apply] of Object.entries(CUSTOM_LEVEL_APPLIERS)) {
-      applyCustomLevelArray(apply, shipped[key]);
-    }
-  }
-  if (storageIsCurrent) {
-    for (const [key, apply] of Object.entries(CUSTOM_LEVEL_APPLIERS)) {
-      const { data, fromStorage } = await readCustomLevelKey(key);
-      if (!data || !fromStorage) continue;
-      applyCustomLevelArray(apply, data);
-    }
-  } else if (shipped) {
-    for (const key of Object.keys(CUSTOM_LEVEL_APPLIERS)) {
-      if (!shipped[key]) continue;
-      try { await window.storage.set(key, JSON.stringify(shipped[key])); } catch (e) { /* read-only */ }
-    }
-    if (shippedVersion) {
-      try { await window.storage.set('custom-levels-version', shippedVersion); } catch (e) { /* read-only */ }
-    }
-  } else {
-    for (const [key, apply] of Object.entries(CUSTOM_LEVEL_APPLIERS)) {
-      const { data, fromStorage } = await readCustomLevelKey(key);
-      if (!data) continue;
-      if (!fromStorage) {
-        try { await window.storage.set(key, JSON.stringify(data)); } catch (e) { /* read-only */ }
-      }
-      applyCustomLevelArray(apply, data);
-    }
-  }
-  snapshotDefaultCustomLayouts();
-  refreshPreviewIfOpen();
-}
-applyAllCustomLevelData();
-
-window.addEventListener('resize', () => {
-  if (previewOverlay.classList.contains('active')) runPreview(currentPreviewZone);
-});
-
-loadCustomTerrain();
-
-const SIM_HZ = GAMEPLAY_HZ;
-const SIM_STEP_MS = 1000 / SIM_HZ;
-const MAX_SIM_STEPS = 8;
-let simLastNow = 0;
-let simAccumulatorMs = 0;
-let simPrevShipY = NaN;
-let simPrevShipRotation = NaN;
-
-function loop() {
-  const now = performance.now();
-  if (!isPortraitBlocked) {
-    try {
-      let elapsed = simLastNow ? now - simLastNow : SIM_STEP_MS;
-      simLastNow = now;
-      if (!isFinite(elapsed) || elapsed < 0) elapsed = SIM_STEP_MS;
-      if (elapsed > 100) elapsed = 100;
-
-      if (state === 'playing' || state === 'victory') {
-        // Gameplay was authored at 144 Hz. Accumulate real time and run the
-        // same 144 simulation ticks per second on every display: a 60 Hz
-        // panel performs 2-3 updates per paint, while faster panels may draw
-        // between ticks. Rendering smoothness varies; gameplay speed does not.
-        simAccumulatorMs += elapsed;
-        let steps = 0;
-        while (simAccumulatorMs >= SIM_STEP_MS && steps < MAX_SIM_STEPS) {
-          simPrevShipY = ship.y;
-          simPrevShipRotation = ship.rotation;
-          update();
-          simAccumulatorMs -= SIM_STEP_MS;
-          steps++;
-        }
-        // Drop excess backlog after a major stall instead of allowing a long
-        // catch-up burst that would feel like the game suddenly fast-forwarded.
-        if (steps === MAX_SIM_STEPS && simAccumulatorMs >= SIM_STEP_MS) {
-          simAccumulatorMs %= SIM_STEP_MS;
-        }
-      } else {
-        simAccumulatorMs = 0;
-        simPrevShipY = ship.y;
-        simPrevShipRotation = ship.rotation;
-        update();
-      }
-      draw();
-    } catch (err) {
-      console.error('Synth Flight frame error', err);
-      try { updateOverlay(); } catch (overlayErr) { /* keep rAF alive */ }
-    }
-  } else {
-    simLastNow = now;
-    simAccumulatorMs = 0;
-  }
-  requestAnimationFrame(loop);
-}
-
-window.addEventListener('resize', checkOrientation);
-window.addEventListener('orientationchange', checkOrientation);
-
-(function bindPlayerSaveImport() {
-  const input = document.getElementById('player-save-import');
-  if (!input) return;
-  input.addEventListener('change', () => {
-    const file = input.files && input.files[0];
-    input.value = '';
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        importPlayerSaveObject(JSON.parse(String(reader.result || '')));
-      } catch (err) {
-        window.alert('Could not import that file. Use a Synth Flight export JSON.');
-      }
-    };
-    reader.readAsText(file);
-  });
-})();
-
-try {
-  checkOrientation();
-  resetGame();
-  if (FORK_GALLERY_ACTIVE) startForkGallery();
-  else if (INFERNO_PLAYTEST) startInfernoPlaytest();
-  else state = 'home';
-  updateOverlay();
-  window.SYNTH_FLIGHT_BOOTED = true;
-  hydrateDurableSave();
-  loop();
-} catch (e) {
-  window.SYNTH_FLIGHT_BOOTED = true;
-  overlay.innerHTML = '<div id="subtitle" style="max-width:640px; font-size:14px; color:#ff2079; pointer-events:auto;">Startup error: ' + String(e && e.stack ? e.stack : e) + '</div>';
-}
 

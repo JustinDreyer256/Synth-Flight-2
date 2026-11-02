@@ -1,3 +1,218 @@
+function movingDoorProximity() {
+  let best = 0;
+  let slide = 0.5;
+  for (const g of gates) {
+    if (!g || g.type !== 'movingdoor') continue;
+    const dx = g.x - ship.x;
+    const reach = 500;
+    const adx = Math.abs(dx);
+    if (adx >= reach) continue;
+    const behind = dx < -36 ? Math.max(0, 1 + (dx + 36) / 200) : 1;
+    const prox = Math.pow(1 - adx / reach, 0.6) * behind;
+    if (prox > best) {
+      best = prox;
+      slide = Math.abs(Math.cos((frame - g.spawnFrame) * g.freq + g.phase));
+    }
+  }
+  return { prox: best, slide };
+}
+
+function syncMovingDoorSound() {
+  if (previewLoopId === 'hzDoorProx') return;
+  if (ghostMode || (state !== 'playing' && state !== 'paused')) {
+    stopMovingDoorSound();
+    return;
+  }
+  const { prox, slide } = movingDoorProximity();
+  if (prox < 0.03) {
+    stopMovingDoorSound();
+    return;
+  }
+  if (!movingDoorNodes && prox < 0.06) return;
+  startMovingDoorSound();
+  updateMovingDoorMix(prox, slide);
+}
+
+let blackHoleNodes = null;
+
+function startBlackHoleSound() {
+  if (!audioUnlocked || !audioCtx || audioSettings.muted || !sfxGain || blackHoleNodes) return;
+  const now = audioCtx.currentTime;
+  const out = audioCtx.createGain();
+  out.gain.setValueAtTime(0.0001, now);
+  out.connect(sfxGain);
+
+  // Mid whoom — laptop speakers cannot hear the old 32Hz sub.
+  const voidNoise = createGlowDangerNoise();
+  const voidFilt = audioCtx.createBiquadFilter();
+  voidFilt.type = 'lowpass';
+  voidFilt.frequency.value = 280;
+  voidFilt.Q.value = 0.7;
+  const voidGain = audioCtx.createGain();
+  voidGain.gain.value = 0.12;
+  voidNoise.connect(voidFilt);
+  voidFilt.connect(voidGain);
+  voidGain.connect(out);
+
+  const suck = createGlowDangerNoise();
+  const suckFilt = audioCtx.createBiquadFilter();
+  suckFilt.type = 'bandpass';
+  suckFilt.frequency.value = 520;
+  suckFilt.Q.value = 1.1;
+  const suckGain = audioCtx.createGain();
+  suckGain.gain.value = 0.08;
+  suck.connect(suckFilt);
+  suckFilt.connect(suckGain);
+  suckGain.connect(out);
+
+  const woom = audioCtx.createOscillator();
+  woom.type = 'sine';
+  woom.frequency.value = 78;
+  const woomGain = audioCtx.createGain();
+  woomGain.gain.value = 0.1;
+  woom.connect(woomGain);
+  woomGain.connect(out);
+
+  const drone = audioCtx.createOscillator();
+  drone.type = 'triangle';
+  drone.frequency.value = 118;
+  const droneFilt = audioCtx.createBiquadFilter();
+  droneFilt.type = 'lowpass';
+  droneFilt.frequency.value = 480;
+  const droneGain = audioCtx.createGain();
+  droneGain.gain.value = 0.055;
+  drone.connect(droneFilt);
+  droneFilt.connect(droneGain);
+  droneGain.connect(out);
+
+  const ring = audioCtx.createOscillator();
+  ring.type = 'sine';
+  ring.frequency.value = 311;
+  const ringFilt = audioCtx.createBiquadFilter();
+  ringFilt.type = 'bandpass';
+  ringFilt.frequency.value = 311;
+  ringFilt.Q.value = 4.5;
+  const ringGain = audioCtx.createGain();
+  ringGain.gain.value = 0.018;
+  ring.connect(ringFilt);
+  ringFilt.connect(ringGain);
+  ringGain.connect(out);
+
+  const swirl = audioCtx.createOscillator();
+  swirl.type = 'sine';
+  swirl.frequency.value = 0.28;
+  const swirlDepth = audioCtx.createGain();
+  swirlDepth.gain.value = 90;
+  swirl.connect(swirlDepth);
+  swirlDepth.connect(suckFilt.frequency);
+
+  const tug = audioCtx.createOscillator();
+  tug.type = 'sine';
+  tug.frequency.value = 0.4;
+  const tugDepth = audioCtx.createGain();
+  tugDepth.gain.value = 10;
+  tug.connect(tugDepth);
+  tugDepth.connect(drone.frequency);
+
+  voidNoise.start(now);
+  suck.start(now);
+  woom.start(now);
+  drone.start(now);
+  ring.start(now);
+  swirl.start(now);
+  tug.start(now);
+  blackHoleNodes = {
+    out, voidFilt, voidGain, suckFilt, suckGain, woom, woomGain,
+    drone, droneFilt, droneGain, ring, ringFilt, ringGain,
+    swirl, swirlDepth, tug, tugDepth,
+    sources: [voidNoise, suck, woom, drone, ring, swirl, tug]
+  };
+}
+
+function stopBlackHoleSound() {
+  fadeStopLoopNodes(blackHoleNodes);
+  blackHoleNodes = null;
+}
+
+function updateBlackHoleMix(prox, pull) {
+  if (!blackHoleNodes || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  const n = blackHoleNodes;
+  const depth = Math.max(prox, pull * 0.9);
+  n.out.gain.setTargetAtTime(0.08 + depth * 0.28, t, 0.08);
+  n.voidFilt.frequency.setTargetAtTime(200 + depth * 140, t, 0.1);
+  n.voidGain.gain.setTargetAtTime(0.1 + depth * 0.12, t, 0.1);
+  n.suckFilt.frequency.setTargetAtTime(620 - pull * 220, t, 0.08);
+  n.suckGain.gain.setTargetAtTime(0.05 + pull * 0.1, t, 0.1);
+  n.woom.frequency.setTargetAtTime(92 - pull * 22, t, 0.1);
+  n.woomGain.gain.setTargetAtTime(0.07 + depth * 0.08, t, 0.1);
+  n.drone.frequency.setTargetAtTime(132 - pull * 36, t, 0.1);
+  n.droneFilt.frequency.setTargetAtTime(420 - pull * 80, t, 0.1);
+  n.droneGain.gain.setTargetAtTime(0.04 + depth * 0.055, t, 0.1);
+  n.ring.frequency.setTargetAtTime(330 - pull * 70, t, 0.12);
+  n.ringFilt.frequency.setTargetAtTime(330 - pull * 70, t, 0.12);
+  n.ringGain.gain.setTargetAtTime(0.012 + prox * 0.02, t, 0.12);
+  n.swirl.frequency.setTargetAtTime(0.2 + pull * 0.5, t, 0.14);
+  n.swirlDepth.gain.setTargetAtTime(60 + depth * 80, t, 0.14);
+  n.tug.frequency.setTargetAtTime(0.28 + pull * 0.45, t, 0.14);
+  n.tugDepth.gain.setTargetAtTime(6 + pull * 12, t, 0.12);
+}
+
+function blackHoleProximity() {
+  let best = 0;
+  let pull = 0;
+  for (const g of gates) {
+    if (!g || g.type !== 'blackhole') continue;
+    const dist = Math.hypot(g.x - ship.x, g.y - ship.y);
+    const core = g.coreR || 80;
+    const well = g.reachR || core * 1.5;
+    // Hear the hole itself, not only the thin gravity shell around huge cores.
+    const hearR = Math.max(well, core + 260) * 1.5;
+    if (dist >= hearR) continue;
+    const prox = Math.pow(1 - dist / hearR, 0.4);
+    if (prox > best) {
+      best = prox;
+      pull = dist < well ? 1 - dist / well : Math.max(0, 1 - (dist - well) / Math.max(40, hearR - well));
+    }
+  }
+  return { prox: best, pull };
+}
+
+function syncBlackHoleSound() {
+  if (previewLoopId === 'hzBlackHole') return;
+  if (ghostMode || (state !== 'playing' && state !== 'paused')) {
+    stopBlackHoleSound();
+    return;
+  }
+  const { prox, pull } = blackHoleProximity();
+  if (prox < 0.02) {
+    stopBlackHoleSound();
+    return;
+  }
+  if (!blackHoleNodes && prox < 0.035) return;
+  startBlackHoleSound();
+  updateBlackHoleMix(prox, pull);
+}
+
+function playPendulumSwoosh() {
+  if (!audioUnlocked || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  playNoiseBurst({ duration: 0.22, filterFreq: 280, filterEnd: 1600, filterType: 'bandpass', filterQ: 0.7, volume: 0.26, delaySend: 0.1, when: t0 });
+  playNoiseBurst({ duration: 0.16, filterFreq: 900, filterEnd: 220, filterType: 'lowpass', filterQ: 0.6, volume: 0.16, when: t0 + 0.04 });
+  playSynth({ type: 'sine', freq: 140, freqEnd: 70, duration: 0.2, attack: 0.02, decay: 0.06, sustain: 0.4, release: 0.08, volume: 0.12, filterFreq: 400, delaySend: 0, when: t0 });
+  playSynth({ type: 'triangle', freq: 420, freqEnd: 180, duration: 0.14, attack: 0.01, decay: 0.04, sustain: 0.3, release: 0.06, volume: 0.07, filterFreq: 1400, delaySend: 0.12, when: t0 + 0.02 });
+}
+
+function playBoltZapImpact() {
+  if (!audioUnlocked || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  playElectricCrackles({ count: 8, spacing: 0.01, volume: 0.32, when: t0 });
+  playNoiseBurst({ duration: 0.12, filterFreq: 2400, filterEnd: 500, filterType: 'bandpass', filterQ: 1.4, volume: 0.28, when: t0 });
+  playNoiseBurst({ duration: 0.08, filterFreq: 5200, filterType: 'highpass', volume: 0.2, when: t0 });
+  playSynth({ type: 'sawtooth', freq: 2400, freqEnd: 80, duration: 0.12, attack: 0.001, decay: 0.03, sustain: 0.2, release: 0.05, volume: 0.16, filterType: 'highpass', filterFreq: 600, delaySend: 0.1, when: t0 });
+  playSynth({ type: 'sine', freq: 110, freqEnd: 42, duration: 0.14, attack: 0.001, decay: 0.04, sustain: 0.28, release: 0.06, volume: 0.22, filterFreq: 280, delaySend: 0, when: t0 });
+}
+
 function playEmpDischarge() {
   if (!audioUnlocked || !audioCtx) return;
   const t0 = audioCtx.currentTime;
@@ -304,7 +519,7 @@ function sfxHazardImpact(type) {
     playHBarClank();
     return;
   }
-  if (type === 'asteroid' || type === 'splitrock') {
+  if (type === 'asteroid' || type === 'splitrock' || type === 'icefloe' || type === 'icespire' || type === 'icearch' || type === 'icecalve' || type === 'snowball') {
     playAsteroidCrunch();
     return;
   }
@@ -939,7 +1154,7 @@ function syncMoltenCoreIdleSound() {
   const active = state === 'playing'
     && th
     && th.isMiniBossZone
-    && th.miniBossVariant !== 'core'
+    && !th.miniBossVariant
     && miniBoss
     && !miniBossDefeated
     && miniBossAttackState === 'floating'
@@ -1087,7 +1302,7 @@ function syncMoltenFlameWallSound() {
   const active = state === 'playing'
     && th
     && th.isMiniBossZone
-    && th.miniBossVariant !== 'core'
+    && !th.miniBossVariant
     && miniBoss
     && !miniBossDefeated
     && miniBossAttackState === 'flameWallActive';
@@ -1270,7 +1485,7 @@ function syncMoltenSqueezeSound() {
   const active = state === 'playing'
     && th
     && th.isMiniBossZone
-    && th.miniBossVariant !== 'core'
+    && !th.miniBossVariant
     && miniBoss
     && !miniBossDefeated
     && miniBossAttackState === 'barrageActive';
@@ -1391,7 +1606,7 @@ function syncMoltenDeathAshSound() {
   const active = state === 'playing'
     && th
     && th.isMiniBossZone
-    && th.miniBossVariant !== 'core'
+    && !th.miniBossVariant
     && miniBoss
     && !miniBossDefeated
     && miniBossAttackState === 'dying'
@@ -2769,166 +2984,4 @@ let bgmCurrentStep = 0;
 const BGM_LOOKAHEAD_MS = 25;
 const BGM_SCHEDULE_AHEAD_S = 0.12;
 const BGM_STEPS_PER_BAR = 32;
-
-function bgmStepDuration(profile) {
-  return (60 / profile.tempo) / 4;
-}
-
-function scheduleKick(time, volume) {
-  playSynth({ type: 'sine', freq: 52, freqEnd: 28, when: time, duration: 0.35, attack: 0.02, decay: 0.12, sustain: 0.35, release: 0.2, volume, filterFreq: 180, dest: bgmGain });
-}
-
-function scheduleBgmStep(profile, stepIndex, time) {
-  const stepDur = bgmStepDuration(profile);
-  const step = stepIndex % BGM_STEPS_PER_BAR;
-  const leadVol = profile.leadVolume != null ? profile.leadVolume : 0.07;
-  const bassVol = profile.bassVolume != null ? profile.bassVolume : 0.22;
-  const padVol = profile.padVolume != null ? profile.padVolume : 0.045;
-
-  const leadNote = profile.leadPattern[step];
-  if (leadNote) {
-    playSynth({
-      type: 'sine', freq: leadNote, when: time, duration: stepDur * 2.4,
-      attack: 0.04, decay: 0.2, sustain: 0.35, release: 0.8, volume: leadVol,
-      filterFreq: 1800, dest: bgmGain, delaySend: 0.7,
-    });
-    playSynth({
-      type: 'triangle', freq: leadNote * 2, when: time, duration: stepDur * 1.6,
-      attack: 0.06, decay: 0.15, sustain: 0.2, release: 0.7, volume: leadVol * 0.35,
-      filterFreq: 2400, dest: bgmGain, delaySend: 0.55,
-    });
-  }
-
-  const bassNote = profile.bassPattern[step];
-  if (bassNote) {
-    playSynth({
-      type: 'sine', freq: bassNote, when: time, duration: stepDur * 8,
-      attack: 0.25, decay: 0.8, sustain: 0.7, release: 1.2, volume: bassVol,
-      filterFreq: 160, dest: bgmGain,
-    });
-  }
-
-  const chord = profile.padChords && profile.padChords[step];
-  if (chord) {
-    chord.forEach((freq, i) => {
-      playSynth({
-        type: i === 0 ? 'sine' : 'triangle', freq, when: time, duration: stepDur * 16,
-        attack: 0.6, decay: 1.2, sustain: 0.45, release: 1.4, volume: padVol,
-        filterFreq: 700, dest: bgmGain, delaySend: 0.4, detune: i === 1 ? 5 : (i === 2 ? -4 : 0),
-      });
-    });
-  }
-
-  if (profile.kickSteps.includes(step) && profile.kickVolume) {
-    scheduleKick(time, profile.kickVolume);
-  }
-}
-
-function bgmSchedulerTick() {
-  if (!audioCtx || !bgmCurrentProfileName) return;
-  const profile = BGM_PROFILES[bgmCurrentProfileName];
-  while (bgmNextStepTime < audioCtx.currentTime + BGM_SCHEDULE_AHEAD_S) {
-    scheduleBgmStep(profile, bgmCurrentStep, bgmNextStepTime);
-    bgmNextStepTime += bgmStepDuration(profile);
-    bgmCurrentStep++;
-  }
-}
-
-const BGM_FILE_TRACKS = [
-  { id: 'bgm-01-glacier', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 0, start: 0, loopStart: 0, loopEnd: 22 },
-  { id: 'bgm-02-gravity-well', src: 'audio/bgm/bgm-02-gravity-well.mp3', themeIndex: 1, start: 0, loopStart: 0 },
-  { id: 'bgm-03-deep-space', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 2, start: 0, loopStart: 0, loopEnd: 22 },
-  { id: 'bgm-04-inferno', src: 'audio/bgm/bgm-04-inferno.mp3', themeIndex: 3, start: 0, loopStart: 0, loopEnd: 104 },
-  { id: 'bgm-05-molten-core-boss', src: 'audio/bgm/bgm-05-molten-core-boss.mp3?v=snes272', themeIndex: 4, phaseMin: 1, phaseMax: 1, start: 0, loopStart: 0 },
-  { id: 'bgm-05-molten-core', src: 'audio/bgm/bgm-05-molten-core.mp3', themeIndex: 4, phaseMin: 2, phaseMax: 99, start: 0, loopStart: 0, loopEnd: 104 },
-  { id: 'bgm-06-storm-skies', src: 'audio/bgm/bgm-06-storm-skies.mp3', themeIndex: 5, start: 0, loopStart: 0 },
-  { id: 'bgm-07-ancient-ruins', src: 'audio/bgm/bgm-07-ancient-ruins.ogg', themeIndex: 6, start: 0, loopStart: 0 },
-  { id: 'bgm-08-toxic-wasteland', src: 'audio/bgm/bgm-08-toxic-wasteland.mp3', themeIndex: 7, start: 0, loopStart: 0, loopEnd: 46 },
-  { id: 'bgm-09-derelict-station', src: 'audio/bgm/bgm-09-derelict-station.mp3?v=snes271', themeIndex: 8, start: 2, loopStart: 2, loopEnd: 101 },
-  { id: 'bgm-10-reactor-core-p1', src: 'audio/bgm/bgm-10-reactor-core-p1.mp3', themeIndex: 9, phaseMin: 1, phaseMax: 7, start: 0, loopStart: 0 },
-  { id: 'bgm-10-reactor-core-p8', src: 'audio/bgm/bgm-10-reactor-core-p8.mp3?v=snes267', themeIndex: 9, phaseMin: 8, phaseMax: 99, start: 50, loopStart: 50 },
-  { id: 'bgm-11-the-void', src: 'audio/bgm/bgm-11-the-void.mp3', themeIndex: 10, start: 1, loopStart: 1, loopEnd: 38 },
-  { id: 'bgm-12-neon-city', src: 'audio/bgm/bgm-12-neon-city.mp3', themeIndex: 11, start: 0, loopStart: 0 },
-  { id: 'bgm-13-the-signal-p1', src: 'audio/bgm/bgm-13-the-signal-p1.mp3?v=snes266', themeIndex: 12, phaseMin: 1, phaseMax: 2, start: 0, loopStart: 0 },
-  { id: 'bgm-13-the-signal-p3', src: 'audio/bgm/bgm-13-the-signal-p3.mp3', themeIndex: 12, phaseMin: 3, phaseMax: 4, start: 0, loopStart: 0 },
-  { id: 'bgm-13-the-signal-p5', src: 'audio/bgm/bgm-13-the-signal-p5.mp3', themeIndex: 12, phaseMin: 5, phaseMax: 99, start: 0, loopStart: 0 },
-];
-const bgmElementCache = {};
-const bgmMediaNodeCache = {};
-let bgmHtmlAudio = null;
-let bgmFileGainNode = null;
-let bgmFileTrackId = null;
-let bgmActiveFileTrack = null;
-let bgmFileLoadToken = 0;
-
-function bgmFileTrackById(id) {
-  return BGM_FILE_TRACKS.find((t) => t.id === id) || null;
-}
-
-function currentPlayPhase() {
-  const th = THEMES[warpActive ? nextThemeIndex : themeIndex];
-  if (!th) return 1;
-  if (th.isBossZone) {
-    if (bossTransitioning && bossTransitionTargetPhase) return bossTransitionTargetPhase;
-    return bossPhase || 1;
-  }
-  if (th.miniBossVariant === 'core') return coreBossPhase || 1;
-  if (th.isMiniBossZone) return (miniBossDefeated || miniBossEscapeRunActive) ? 2 : 1;
-  return 1;
-}
-
-function currentFileBgmTrack() {
-  if (!(state === 'playing' || state === 'paused' || state === 'respawn' || state === 'continue-prompt')) return null;
-  const idx = warpActive ? nextThemeIndex : themeIndex;
-  const tracks = BGM_FILE_TRACKS.filter((t) => t.themeIndex === idx);
-  if (!tracks.length) return null;
-  const phase = currentPlayPhase();
-  const hit = tracks.find((t) => phase >= (t.phaseMin || 1) && phase <= (t.phaseMax == null ? 99 : t.phaseMax));
-  return hit || tracks[0];
-}
-
-function getBgmElement(src) {
-  if (!bgmElementCache[src]) {
-    const el = new Audio();
-    el.preload = 'auto';
-    el.playsInline = true;
-    el.src = src + (src.includes('?') ? '&' : '?') + 'build=snes381';
-    bgmElementCache[src] = el;
-  }
-  return bgmElementCache[src];
-}
-
-function getBgmMediaNode(src, el) {
-  if (!bgmMediaNodeCache[src]) bgmMediaNodeCache[src] = audioCtx.createMediaElementSource(el);
-  return bgmMediaNodeCache[src];
-}
-
-function stopSynthBgm() {
-  if (bgmSchedulerId !== null) {
-    clearInterval(bgmSchedulerId);
-    bgmSchedulerId = null;
-  }
-  bgmCurrentProfileName = null;
-}
-
-function stopFileBgm(fadeSec) {
-  bgmFileLoadToken++;
-  const el = bgmHtmlAudio;
-  const gain = bgmFileGainNode;
-  bgmHtmlAudio = null;
-  bgmFileGainNode = null;
-  bgmFileTrackId = null;
-  bgmActiveFileTrack = null;
-  if (el) {
-    try { el.pause(); } catch (e) { /* already paused */ }
-  }
-  if (!audioCtx || !gain) return;
-  const t0 = audioCtx.currentTime;
-  const fade = fadeSec != null ? fadeSec : 0.12;
-  try {
-    gain.gain.cancelScheduledValues(t0);
-    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), t0);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + fade);
-  } catch (e) { /* already stopped */ }
-}
 

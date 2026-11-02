@@ -1,3 +1,1840 @@
+function drawMarquee(g) {
+  const left = g.x - g.width / 2;
+  const top = g.anchor === 'ceiling' ? PLAY_TOP : PLAY_BOTTOM - g.height;
+  ctx.save();
+  const grad = ctx.createLinearGradient(0, top, 0, top + g.height);
+  grad.addColorStop(0, 'rgba(255, 154, 60, 0.28)');
+  grad.addColorStop(1, 'rgba(216, 255, 106, 0.10)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(left, top, g.width, g.height);
+  ctx.strokeStyle = '#ff9a3c';
+  ctx.shadowColor = '#ff9a3c';
+  ctx.shadowBlur = 16;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(left, top, g.width, g.height);
+  ctx.shadowBlur = 0;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left + 6, top + 6, g.width - 12, g.height - 12);
+  ctx.clip();
+  const scroll = (frame * 1.8 + g.x) % 36;
+  for (let row = 0; row < Math.ceil(g.height / 36) + 2; row++) {
+    const y = top - 36 + row * 36 + 12 - scroll;
+    ctx.globalAlpha = row % 2 === 0 ? 0.85 : 0.45;
+    ctx.fillStyle = row % 2 === 0 ? '#ffb15a' : '#d8ff6a';
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 8;
+    ctx.fillRect(left + 18, y, g.width - 36, 10);
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#fff6d8';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const lip = g.anchor === 'ceiling' ? top + g.height - 1 : top + 1;
+  ctx.moveTo(left + 4, lip);
+  ctx.lineTo(left + g.width - 4, lip);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawCourier(g) {
+  const pods = courierPods(g);
+  ctx.save();
+  if (pods.length) {
+    ctx.strokeStyle = '#ff9a3c';
+    ctx.shadowColor = '#ff9a3c';
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 3;
+    for (let i = 1; i < pods.length; i++) {
+      if (pods[i] - pods[i - 1] > 120) continue;
+      ctx.beginPath();
+      ctx.moveTo(g.x, pods[i - 1]);
+      ctx.lineTo(g.x, pods[i]);
+      ctx.stroke();
+    }
+  }
+  for (const y of pods) {
+    ctx.shadowColor = '#ff9a3c';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#1a120c';
+    ctx.strokeStyle = '#ffb15a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(g.x, y, g.podR + 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    const blink = 0.65 + 0.35 * Math.sin(frame * 0.18 + y);
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = blink > 0.8 ? '#fff6d2' : '#d8ff6a';
+    ctx.beginPath();
+    ctx.arc(g.x, y, g.podR * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function updateHeadlamp(g) {
+  const t = frame + g.baseY * 0.37;
+  const jump = Math.floor(t / 16);
+  const lurch = Math.floor(t / 41);
+  if (g.jumpBucket !== jump) {
+    g.jumpBucket = jump;
+    g.driftTarget = Math.sin(jump * 12.9898 + g.baseY * 0.013) * 64;
+  }
+  if (g.lurchBucket !== lurch) {
+    g.lurchBucket = lurch;
+    g.driftTarget += Math.sin(lurch * 78.233 + 1.4) * 36;
+  }
+  g.driftTarget = Math.max(-64, Math.min(64, g.driftTarget));
+  const step = Math.max(-3.4, Math.min(3.4, g.driftTarget - g.driftY));
+  g.driftY += step;
+  const lo = PLAY_TOP + g.r + 12;
+  const hi = PLAY_BOTTOM - g.r - 12;
+  g.y = Math.max(lo, Math.min(hi, g.baseY + g.driftY));
+}
+
+function drawHeadlamp(g) {
+  const flicker = 0.5 + 0.5 * Math.sin(frame * 0.55 + g.baseY * 0.03);
+  const sweep = Math.sin(frame * 0.09 + g.baseY * 0.02) * 0.16;
+  ctx.save();
+  ctx.translate(g.x, g.y);
+  ctx.rotate(sweep);
+  const beam = ctx.createLinearGradient(-g.r * 5.4, 0, 0, 0);
+  beam.addColorStop(0, 'rgba(216, 255, 106, 0)');
+  beam.addColorStop(0.5, 'rgba(255, 210, 120, 0.28)');
+  beam.addColorStop(1, 'rgba(255, 246, 216, 0.8)');
+  ctx.globalAlpha = 0.35 + 0.55 * flicker;
+  ctx.fillStyle = beam;
+  ctx.beginPath();
+  ctx.moveTo(-g.r * 0.15, -g.r * 0.28);
+  ctx.lineTo(-g.r * 5.4, -g.r * 1.25);
+  ctx.lineTo(-g.r * 5.4, g.r * 1.25);
+  ctx.lineTo(-g.r * 0.15, g.r * 0.28);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#120e0a';
+  ctx.strokeStyle = '#ffb15a';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = '#d8ff6a';
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.arc(0, 0, g.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#d8ff6a';
+  ctx.lineWidth = 2;
+  ctx.rotate(frame * 0.16);
+  for (let i = 0; i < 3; i++) {
+    ctx.rotate((Math.PI * 2) / 3);
+    ctx.beginPath();
+    ctx.arc(0, 0, g.r * 0.62, -0.42, 0.42);
+    ctx.stroke();
+  }
+  ctx.restore();
+  const hot = flicker > 0.45;
+  ctx.fillStyle = hot ? '#fff6d8' : '#d8ff6a';
+  ctx.shadowColor = ctx.fillStyle;
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  ctx.arc(0, 0, g.r * (hot ? 0.36 : 0.2), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBloom(g) {
+  const r = bloomRadius(g);
+  ctx.save();
+  ctx.lineCap = 'round';
+  const grad = ctx.createRadialGradient(g.x, PLAY_BOTTOM - r * 0.55, 4, g.x, PLAY_BOTTOM, r);
+  grad.addColorStop(0, '#fff6d8');
+  grad.addColorStop(0.5, '#ff8a32');
+  grad.addColorStop(1, '#ff5a14');
+  ctx.fillStyle = grad;
+  ctx.shadowColor = '#ff9a3c';
+  ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM, r, Math.PI, 0, false);
+  ctx.fill();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#fff6d8';
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM, r, Math.PI, 0, false);
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#d8ff6a';
+  ctx.shadowBlur = 10;
+  for (const frac of [0.62, 0.33]) {
+    ctx.beginPath();
+    ctx.arc(g.x, PLAY_BOTTOM, Math.max(12, r * frac), Math.PI, 0, false);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#140e0a';
+  ctx.strokeStyle = '#ffb15a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM - 10, 16, Math.PI, 0, false);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fff6d8';
+  ctx.shadowColor = '#fff6d8';
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM - 16, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCoil(g) {
+  const firing = coilFiring(g);
+  const top = PLAY_BOTTOM - g.sparkH;
+  const left = g.x - g.halfW;
+  const pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(frame * 0.25));
+  ctx.save();
+  ctx.fillStyle = firing ? 'rgba(216, 255, 106, 0.55)' : 'rgba(255, 154, 60, ' + (0.12 + pulse * 0.18) + ')';
+  ctx.shadowColor = firing ? '#d8ff6a' : '#ff9a3c';
+  ctx.shadowBlur = firing ? 24 : 12;
+  ctx.fillRect(left, top, g.halfW * 2, g.sparkH);
+  ctx.shadowBlur = firing ? 16 : 8;
+  ctx.strokeStyle = firing ? '#fff6d8' : '#ffb15a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(left, top, g.halfW * 2, g.sparkH);
+  if (firing) {
+    ctx.shadowBlur = 18;
+    ctx.strokeStyle = '#d8ff6a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(g.x, top);
+    ctx.lineTo(g.x, PLAY_BOTTOM);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = '#1a120c';
+  ctx.strokeStyle = firing ? '#d8ff6a' : '#ff9a3c';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM - 14, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = firing ? '#fff6d8' : '#ffb15a';
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM - 14, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function wedgePolygon(g) {
+  const half = g.width / 2;
+  const lean = g.lean || 0;
+  if (g.anchor === 'ceiling') {
+    return [
+      [g.x - half, PLAY_TOP],
+      [g.x + half, PLAY_TOP],
+      [g.x + lean, PLAY_TOP + g.height]
+    ];
+  }
+  return [
+    [g.x - half, PLAY_BOTTOM],
+    [g.x + half, PLAY_BOTTOM],
+    [g.x + lean, PLAY_BOTTOM - g.height]
+  ];
+}
+
+function drawWedge(g, theme) {
+  const poly = wedgePolygon(g);
+  const apex = poly[2];
+  ctx.save();
+  ctx.shadowBlur = 0;
+  const glow = ctx.createLinearGradient(apex[0], apex[1], g.x, g.anchor === 'ceiling' ? PLAY_TOP : PLAY_BOTTOM);
+  glow.addColorStop(0, '#fffef8');
+  glow.addColorStop(0.45, '#fff0b0');
+  glow.addColorStop(1, '#ffd15a');
+  ctx.beginPath();
+  ctx.moveTo(poly[0][0], poly[0][1]);
+  ctx.lineTo(poly[1][0], poly[1][1]);
+  ctx.lineTo(poly[2][0], poly[2][1]);
+  ctx.closePath();
+  ctx.fillStyle = '#ffe08a';
+  ctx.fill();
+  ctx.fillStyle = glow;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 252, 236, 0.95)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawKelp(g, theme) {
+  const pose = kelpPose(g);
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#14584a';
+  ctx.lineWidth = pose.thick;
+  ctx.beginPath();
+  ctx.moveTo(pose.x0, pose.y0);
+  ctx.quadraticCurveTo(pose.mx, pose.my, pose.x1, pose.y1);
+  ctx.stroke();
+  ctx.strokeStyle = theme.accentA || '#b8ffe6';
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = Math.max(2, pose.thick * 0.22);
+  ctx.stroke();
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = '#1f8f72';
+  const steps = 5;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / (steps + 1);
+    const omt = 1 - t;
+    const x = omt * omt * pose.x0 + 2 * omt * t * pose.mx + t * t * pose.x1;
+    const y = omt * omt * pose.y0 + 2 * omt * t * pose.my + t * t * pose.y1;
+    const side = i % 2 === 0 ? 1 : -1;
+    const dx = pose.x1 - pose.x0;
+    const dy = pose.y1 - pose.y0;
+    const len = Math.max(1, Math.hypot(dx, dy));
+    const nx = -dy / len;
+    const ny = dx / len;
+    const fx = x + nx * side * (pose.thick * 0.55 + 8);
+    const fy = y + ny * side * (pose.thick * 0.35 + 6);
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, 11, 5, Math.atan2(dy, dx) + side * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#d8fff2';
+  ctx.beginPath();
+  ctx.arc(pose.x1, pose.y1, pose.thick * 0.28, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawHBar(g, theme) {
+  const y = liveGateCenter(g);
+  const left = g.x - g.width / 2;
+  const top = y - g.thickness / 2;
+  const magenta = theme.wellAccent || '#e85cff';
+  const palettes = [
+    { rim: theme.accentA, body: '#102a28', gem: '#d4ff8a' },
+    { rim: theme.accentB, body: '#0c2438', gem: '#9ee7ff' },
+    { rim: magenta, body: '#24102e', gem: '#ffb3e8' }
+  ];
+  const pal = palettes[Math.abs(Math.floor((g.phase || 0) * 8)) % palettes.length];
+
+  ctx.save();
+  ctx.shadowColor = pal.rim;
+  ctx.shadowBlur = 14;
+  const r = Math.min(6, g.thickness / 2);
+  ctx.beginPath();
+  ctx.moveTo(left + r, top);
+  ctx.lineTo(left + g.width - r, top);
+  ctx.quadraticCurveTo(left + g.width, top, left + g.width, top + r);
+  ctx.lineTo(left + g.width, top + g.thickness - r);
+  ctx.quadraticCurveTo(left + g.width, top + g.thickness, left + g.width - r, top + g.thickness);
+  ctx.lineTo(left + r, top + g.thickness);
+  ctx.quadraticCurveTo(left, top + g.thickness, left, top + g.thickness - r);
+  ctx.lineTo(left, top + r);
+  ctx.quadraticCurveTo(left, top, left + r, top);
+  ctx.closePath();
+  const body = ctx.createLinearGradient(left, top, left, top + g.thickness);
+  body.addColorStop(0, pal.rim);
+  body.addColorStop(0.35, pal.body);
+  body.addColorStop(0.65, pal.body);
+  body.addColorStop(1, pal.rim);
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = pal.rim;
+  ctx.lineWidth = 1.6;
+  ctx.globalAlpha = 0.85;
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = pal.gem;
+  const gemH = Math.max(3, g.thickness * 0.28);
+  ctx.fillRect(left + 10, y - gemH / 2, g.width - 20, gemH);
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.arc(g.x, y, Math.min(4.5, g.thickness * 0.28), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBarrier(g, theme) {
+  const active = barrierIsActive(g);
+  const framesToToggle = barrierFramesToToggle(g);
+  const warning = !active && framesToToggle < 25; // pre-activation flicker warning
+
+  const gTop = g.gapCenter - g.gapHeight / 2;
+  const gBottom = g.gapCenter + g.gapHeight / 2;
+  const left = g.x - g.width / 2;
+  const right = g.x + g.width / 2;
+  const cx = g.x;
+
+  // build a jagged vertical path (zigzagging left-right) for a mass spanning yStart..yEnd
+  function jaggedMassPath(yStart, yEnd) {
+    const n = g.jitter.length;
+    const points = [];
+    for (let i = 0; i <= n + 1; i++) {
+      const t = i / (n + 1);
+      const y = yStart + (yEnd - yStart) * t;
+      const jx = (i > 0 && i <= n) ? g.jitter[i - 1] * g.width * 0.7 : 0;
+      points.push([cx + jx, y]);
+    }
+    return points;
+  }
+
+  function fillJaggedMass(yStart, yEnd) {
+    if (yEnd <= yStart) return;
+    const path = jaggedMassPath(yStart, yEnd);
+    ctx.beginPath();
+    ctx.moveTo(left, yStart);
+    path.forEach(([px, py]) => ctx.lineTo(px + g.width / 2, py));
+    ctx.lineTo(right, yEnd);
+    // close back along the left side
+    ctx.lineTo(right, yEnd);
+    for (let i = path.length - 1; i >= 0; i--) ctx.lineTo(path[i][0] - g.width / 2, path[i][1]);
+    ctx.closePath();
+    ctx.fill();
+
+    // bright jagged energy line down the middle -- the "shaped like a lightning bolt" part
+    ctx.save();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    path.forEach(([px, py], i) => { if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.save();
+
+  if (active || warning) {
+    const flicker = warning
+      ? 0.4 + 0.5 * Math.abs(Math.sin(frame * 0.9))
+      : 0.85 + 0.15 * Math.sin(frame * 1.7);
+    ctx.globalAlpha = flicker;
+    ctx.shadowColor = theme.accentA;
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = theme.accentA;
+
+    fillJaggedMass(PLAY_TOP, gTop);
+    fillJaggedMass(gBottom, PLAY_BOTTOM);
+  } else {
+    // inactive: faint dashed outline only, no danger
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = theme.accentB;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 5]);
+    ctx.strokeRect(left, PLAY_TOP, g.width, gTop - PLAY_TOP);
+    ctx.strokeRect(left, gBottom, g.width, PLAY_BOTTOM - gBottom);
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore();
+}
+
+function drawLightningBolt(g, theme) {
+  const left = g.x - g.span / 2;
+  const right = g.x + g.span / 2;
+
+  // brief fade-in flash when it first appears
+  const age = frame - g.spawnFrame;
+  const fadeIn = Math.min(1, age / 20);
+
+  // build the jagged path using the bolt's fixed jitter values
+  const points = [];
+  const segs = g.jitter.length + 1;
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    const px = left + (right - left) * t;
+    const py = g.y1 + (g.y2 - g.y1) * t + (i > 0 && i < segs ? g.jitter[i - 1] * g.thickness : 0);
+    points.push([px, py]);
+  }
+
+  ctx.save();
+  ctx.globalAlpha = fadeIn * (0.8 + 0.2 * Math.sin(frame * 1.5));
+
+  // outer glow
+  ctx.strokeStyle = theme.accentB;
+  ctx.lineWidth = g.thickness;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = fadeIn * 0.35;
+  ctx.beginPath();
+  points.forEach(([px, py], i) => { if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+  ctx.stroke();
+
+  // bright jagged core
+  ctx.globalAlpha = fadeIn;
+  ctx.strokeStyle = theme.accentA;
+  ctx.lineWidth = 3;
+  ctx.shadowColor = theme.accentA;
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  points.forEach(([px, py], i) => { if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawCloud(cx, cy, theme, lit) {
+  ctx.save();
+  const puffs = [[0, 0, 20], [-17, 5, 15], [17, 5, 15], [-7, -8, 13], [8, -9, 13], [0, 8, 14]];
+  // soft glow behind the whole cloud so it reads clearly against the sky
+  ctx.globalAlpha = lit ? 0.35 : 0.2;
+  ctx.fillStyle = theme.accentA;
+  ctx.beginPath();
+  puffs.forEach(([dx, dy, r]) => {
+    ctx.moveTo(cx + dx + r * 1.4, cy + dy);
+    ctx.arc(cx + dx, cy + dy, r * 1.4, 0, Math.PI * 2);
+  });
+  ctx.fill();
+  // shadowed base
+  ctx.globalAlpha = 0.75;
+  ctx.fillStyle = '#3a3f5c';
+  ctx.beginPath();
+  puffs.forEach(([dx, dy, r]) => {
+    ctx.moveTo(cx + dx + r, cy + dy + 2);
+    ctx.arc(cx + dx, cy + dy + 2, r, 0, Math.PI * 2);
+  });
+  ctx.fill();
+  // lit top -- brighter when the arc is actively discharging
+  ctx.globalAlpha = lit ? 0.85 : 0.6;
+  ctx.fillStyle = lit ? theme.accentA : '#8992b8';
+  ctx.beginPath();
+  puffs.forEach(([dx, dy, r]) => {
+    ctx.moveTo(cx + dx + r * 0.9, cy + dy - 2);
+    ctx.arc(cx + dx, cy + dy - 2, r * 0.9, 0, Math.PI * 2);
+  });
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCloudArc(g, theme) {
+  const active = barrierIsActive(g);
+  const framesToToggle = barrierFramesToToggle(g);
+  const warning = !active && framesToToggle < 25;
+
+  drawCloud(g.x, g.y, theme, active);
+  drawCloud(g.x2, g.y2, theme, active);
+
+  const dx = g.x2 - g.x, dy = g.y2 - g.y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const px = -dy / len, py = dx / len; // unit perpendicular, for jitter offset
+  const n = g.jitter.length;
+  const amplitude = 14;
+  const points = [];
+  for (let i = 0; i <= n + 1; i++) {
+    const t = i / (n + 1);
+    const baseX = g.x + dx * t, baseY = g.y + dy * t;
+    const j = (i > 0 && i <= n) ? g.jitter[i - 1] * amplitude : 0;
+    points.push([baseX + px * j, baseY + py * j]);
+  }
+  // find the main-line point closest to the fixed branchT to fork from
+  const branchIdx = Math.round(g.branchT * (points.length - 1));
+  const [bx, by] = points[branchIdx];
+  const mainAngle = Math.atan2(dy, dx);
+  const branchAngle = mainAngle + g.branchSide * (0.6 + g.branchAngleJitter);
+  const bx2 = bx + Math.cos(branchAngle) * g.branchLen;
+  const by2 = by + Math.sin(branchAngle) * g.branchLen;
+
+  ctx.save();
+  if (active || warning) {
+    const flicker = warning
+      ? 0.4 + 0.5 * Math.abs(Math.sin(frame * 0.9))
+      : 0.85 + 0.15 * Math.sin(frame * 1.7);
+    ctx.globalAlpha = flicker;
+    ctx.shadowColor = theme.accentA;
+    ctx.shadowBlur = 22;
+
+    // wide outer glow pass
+    ctx.strokeStyle = theme.accentA;
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    points.forEach(([x, y], i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    ctx.stroke();
+
+    // secondary branch fork, thinner and dimmer than the main bolt
+    if (active) {
+      ctx.globalAlpha = flicker * 0.7;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx2, by2);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#fff';
+      ctx.stroke();
+    }
+
+    // bright white-hot core on the main line
+    ctx.globalAlpha = flicker;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    points.forEach(([x, y], i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawStormChargeBolt(g, theme, firing) {
+  const { pts, forks } = getStormChargeBoltGeometry(g);
+  const elapsed = frame - g.spawnFrame;
+  const strokePts = (list, count) => {
+    ctx.beginPath();
+    for (let i = 0; i < count; i++) {
+      if (i === 0) ctx.moveTo(list[i][0], list[i][1]);
+      else ctx.lineTo(list[i][0], list[i][1]);
+    }
+    ctx.stroke();
+  };
+  const strokeForks = (width, alpha) => {
+    if (!forks) return;
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = width;
+    for (let f = 0; f < forks.length; f++) strokePts(forks[f], forks[f].length);
+  };
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'miter';
+  if (!firing) {
+    const progress = Math.min(1, elapsed / (g.warningFrames || 84));
+    const count = stormBoltRevealCount(pts.length, progress);
+    const pulse = 0.55 + 0.45 * Math.sin(frame * 0.42);
+    ctx.strokeStyle = theme.accentA;
+    ctx.globalAlpha = 0.28 + progress * 0.45 * pulse;
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([5, 6]);
+    ctx.shadowColor = theme.accentA;
+    ctx.shadowBlur = 8;
+    strokePts(pts, count);
+    ctx.setLineDash([]);
+    const tip = pts[count - 1];
+    ctx.globalAlpha = 0.45 + progress * 0.5;
+    ctx.fillStyle = '#fffde7';
+    ctx.beginPath();
+    ctx.arc(tip[0], tip[1], 2.2 + progress * 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  const dur = g.fireDuration || 42;
+  const progress = Math.min(1, elapsed / dur);
+  const reveal = Math.min(1, elapsed / 5);
+  const count = stormBoltRevealCount(pts.length, reveal);
+  const flicker = 0.72 + 0.28 * Math.abs(Math.sin(elapsed * 1.7));
+  const hot = elapsed < 10 || (elapsed % 7 < 4);
+  const fadeOut = progress > 0.7 ? Math.max(0, 1 - (progress - 0.7) / 0.3) : 1;
+  const a = fadeOut * flicker;
+  if (elapsed < 6) {
+    ctx.globalAlpha = (1 - elapsed / 6) * 0.28;
+    ctx.fillStyle = '#e8eeff';
+    ctx.fillRect(0, PLAY_TOP, W, PLAY_BOTTOM - PLAY_TOP);
+  }
+  ctx.shadowColor = theme.accentA;
+  ctx.shadowBlur = hot ? 28 : 14;
+  ctx.strokeStyle = theme.accentA;
+  ctx.globalAlpha = a * 0.55;
+  ctx.lineWidth = 9;
+  strokePts(pts, count);
+  strokeForks(4.5, a * 0.4);
+  ctx.strokeStyle = '#c5d4ff';
+  ctx.globalAlpha = a * 0.9;
+  ctx.lineWidth = hot ? 4.2 : 2.8;
+  strokePts(pts, count);
+  strokeForks(2.2, a * 0.75);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#fff59d';
+  ctx.globalAlpha = a;
+  ctx.lineWidth = hot ? 2.2 : 1.4;
+  strokePts(pts, count);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = hot ? 1.35 : 0.9;
+  strokePts(pts, count);
+  strokeForks(0.8, a * 0.95);
+  const tip = pts[count - 1];
+  ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = a;
+  ctx.beginPath();
+  ctx.arc(tip[0], tip[1], hot ? 3.2 : 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawFloatingBolt(g, theme) {
+  const active = barrierIsActive(g);
+  const framesToToggle = barrierFramesToToggle(g);
+  const warning = !active && framesToToggle < 25;
+
+  const topY = g.y - g.height / 2;
+  const px = g.shape.map(([nx, ny]) => [g.x + nx * g.swingWidth / 2, topY + ny * g.height]);
+
+  ctx.save();
+
+  if (active || warning) {
+    const flicker = warning
+      ? 0.4 + 0.5 * Math.abs(Math.sin(frame * 0.9))
+      : 0.85 + 0.15 * Math.sin(frame * 1.7);
+    ctx.globalAlpha = flicker;
+    ctx.shadowColor = theme.accentA;
+    ctx.shadowBlur = 16;
+
+    const grad = ctx.createLinearGradient(g.x, topY, g.x, topY + g.height);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.5, theme.accentA);
+    grad.addColorStop(1, theme.accentB);
+    ctx.fillStyle = grad;
+
+    ctx.beginPath();
+    px.forEach(([rx, ry], i) => { if (i === 0) ctx.moveTo(rx, ry); else ctx.lineTo(rx, ry); });
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.2;
+    ctx.globalAlpha = flicker * 0.8;
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawPendulum(g, theme) {
+  const bobY = livePendulumBobY(g);
+
+  ctx.save();
+
+  // bob
+  ctx.shadowColor = theme.accentA;
+  ctx.shadowBlur = 14;
+  const grad = ctx.createRadialGradient(g.x - g.r * 0.3, bobY - g.r * 0.3, g.r * 0.15, g.x, bobY, g.r);
+  grad.addColorStop(0, '#fff3c4');
+  grad.addColorStop(0.55, theme.accentA);
+  grad.addColorStop(1, '#8a6a1a');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(g.x, bobY, g.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = theme.accentB;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.7;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawAcidDripVisual(x, y, r, accentA, accentB) {
+  ctx.save();
+  ctx.shadowColor = accentA;
+  ctx.shadowBlur = 10;
+  const grad = ctx.createRadialGradient(x, y + r * 0.15, r * 0.1, x, y + r * 0.15, r);
+  grad.addColorStop(0, '#e8ffb0');
+  grad.addColorStop(0.5, accentA);
+  grad.addColorStop(1, accentB);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(x, y - r * 1.3);
+  ctx.quadraticCurveTo(x + r * 0.95, y - r * 0.2, x + r * 0.75, y + r * 0.35);
+  ctx.arc(x, y + r * 0.15, r * 0.78, Math.PI * 0.25, Math.PI * 0.75);
+  ctx.quadraticCurveTo(x - r * 0.95, y - r * 0.2, x, y - r * 1.3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = accentA;
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.6;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawAcidDrip(g, theme) {
+  drawAcidDripVisual(g.x, liveAcidDripY(g), g.r, theme.accentA, theme.accentB);
+}
+
+function drawShootingStar(g, theme) {
+  const y = liveShootingStarY(g);
+  const effScroll = SCROLL_SPEED * (currentTheme().scrollMult || 1);
+
+  // direction of travel via recent velocity, so the tail orients correctly
+  // for any diagonal slope
+  const dt = 6;
+  const prevFrame = Math.max(g.spawnFrame, frame - dt);
+  const framesBack = frame - prevFrame;
+  const prevT = Math.min(1, (prevFrame - g.spawnFrame) / g.life);
+  const prevY = g.startY + (g.endY - g.startY) * prevT;
+  const dx = g.oncoming ? framesBack * (g.vx || 0) : -framesBack * effScroll;
+  const dy = y - prevY;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const dirX = dx / len, dirY = dy / len;
+
+  // tail extends OPPOSITE the direction of travel (behind, where it came
+  // from) -- the bright head at (g.x, y) leads, the fading tail trails
+  const pulse = 1 + Math.sin(frame * 0.35 + g.spawnFrame) * 0.15;
+  const tailLen = g.r * 9 * pulse;
+  const tailX = g.x - dirX * tailLen;
+  const tailY = y - dirY * tailLen;
+
+  ctx.save();
+  ctx.shadowColor = theme.accentA;
+  ctx.shadowBlur = 10;
+
+  const grad = ctx.createLinearGradient(tailX, tailY, g.x, y);
+  grad.addColorStop(0, 'rgba(255,255,255,0)');
+  grad.addColorStop(0.6, theme.accentA);
+  grad.addColorStop(1, '#fff3d6');
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = g.r * 0.9 * pulse;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(tailX, tailY);
+  ctx.lineTo(g.x, y);
+  ctx.stroke();
+
+  // twinkling sparkles along the tail's length, each with its own phase
+  ctx.fillStyle = '#fff3d6';
+  const sparkleCount = 4;
+  for (let i = 1; i <= sparkleCount; i++) {
+    const along = i / (sparkleCount + 1);
+    const sx = g.x - dirX * tailLen * along;
+    const sy = y - dirY * tailLen * along;
+    const twinkle = 0.4 + 0.6 * Math.max(0, Math.sin(frame * 0.25 + i * 1.9 + g.spawnFrame * 0.1));
+    ctx.globalAlpha = twinkle * (1 - along * 0.6);
+    ctx.beginPath();
+    ctx.arc(sx, sy, g.r * 0.18 * (1 - along * 0.4), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(g.x, y, g.r * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawMovingDoor(g, theme) {
+  const ranges = liveDoorGapRanges(g).slice().sort((a, b) => a.top - b.top);
+
+  ctx.save();
+  ctx.strokeStyle = theme.accentA;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.moveTo(g.x - g.width / 2, PLAY_TOP);
+  ctx.lineTo(g.x - g.width / 2, PLAY_BOTTOM);
+  ctx.moveTo(g.x + g.width / 2, PLAY_TOP);
+  ctx.lineTo(g.x + g.width / 2, PLAY_BOTTOM);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // solid slab everywhere except the gaps
+  ctx.fillStyle = '#2a323b';
+  let cursor = PLAY_TOP;
+  for (const r of ranges) {
+    if (r.top > cursor) {
+      ctx.fillRect(g.x - g.width / 2, cursor, g.width, r.top - cursor);
+    }
+    cursor = Math.max(cursor, r.bottom);
+  }
+  if (cursor < PLAY_BOTTOM) {
+    ctx.fillRect(g.x - g.width / 2, cursor, g.width, PLAY_BOTTOM - cursor);
+  }
+
+  // warning stripe accents at the solid segment edges
+  ctx.fillStyle = theme.accentB;
+  ctx.globalAlpha = 0.5;
+  for (const r of ranges) {
+    ctx.fillRect(g.x - g.width / 2, r.top - 4, g.width, 4);
+    ctx.fillRect(g.x - g.width / 2, r.bottom, g.width, 4);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawAccessKey(g, theme) {
+  ctx.save();
+  ctx.translate(g.x, g.y + Math.sin(frame * 0.06) * 4);
+  const spin = Math.sin(frame * 0.04);
+  ctx.scale(spin * 0.6 + 0.7, 1);
+
+  ctx.shadowColor = theme.accentB;
+  ctx.shadowBlur = 14;
+  ctx.strokeStyle = theme.accentB;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+
+  ctx.beginPath();
+  ctx.arc(0, -10, 8, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, -2);
+  ctx.lineTo(0, 14);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, 8);
+  ctx.lineTo(7, 8);
+  ctx.moveTo(0, 14);
+  ctx.lineTo(5, 14);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.arc(0, -10, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawSparkHub(g, theme) {
+  const charging = sparkHubIsCharging(g);
+  const chargeT = charging ? sparkHubPhase(g) / g.chargeFrames : 0;
+
+  ctx.save();
+
+  // T1 tower: a straight industrial strut connecting the hub to the
+  // ceiling or floor it's mounted on
+  const boundaryY = g.mountSide === 'ceiling' ? PLAY_TOP : PLAY_BOTTOM;
+  ctx.fillStyle = '#2a323b';
+  ctx.strokeStyle = theme.accentA;
+  ctx.lineWidth = 1.5;
+  const towerTop = Math.min(boundaryY, g.y);
+  const towerBottom = Math.max(boundaryY, g.y);
+  ctx.fillRect(g.x - 6, towerTop, 12, towerBottom - towerTop);
+  ctx.strokeRect(g.x - 6, towerTop, 12, towerBottom - towerTop);
+  // mounting bracket at the boundary
+  ctx.fillStyle = '#3a4450';
+  ctx.fillRect(g.x - 10, boundaryY - (g.mountSide === 'ceiling' ? 0 : 8), 20, 8);
+
+  ctx.translate(g.x, g.y);
+
+  // pointy satellite spikes, one per firing direction -- doubles as a
+  // visual hint for where the burst will launch
+  ctx.strokeStyle = theme.accentA;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 8; i++) {
+    const ang = (i * Math.PI) / 4;
+    const innerR = 7, outerR = 17;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(ang) * innerR, Math.sin(ang) * innerR);
+    ctx.lineTo(Math.cos(ang) * outerR, Math.sin(ang) * outerR);
+    ctx.stroke();
+    ctx.fillStyle = theme.accentB;
+    ctx.beginPath();
+    ctx.arc(Math.cos(ang) * outerR, Math.sin(ang) * outerR, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // small satellite dish panel
+  ctx.fillStyle = '#2a323b';
+  ctx.strokeStyle = theme.accentA;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, g.mountSide === 'ceiling' ? -20 : 20, 9, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // angular central core body
+  ctx.fillStyle = '#1a2a3a';
+  ctx.strokeStyle = theme.accentA;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -9); ctx.lineTo(9, 0); ctx.lineTo(0, 9); ctx.lineTo(-9, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // charge-up glow building toward the moment it fires
+  if (charging && chargeT > 0.3) {
+    const pulse = (chargeT - 0.3) / 0.7;
+    ctx.fillStyle = theme.accentA;
+    ctx.shadowColor = theme.accentA;
+    ctx.shadowBlur = 20 * pulse;
+    ctx.globalAlpha = pulse * (0.5 + 0.5 * Math.sin(frame * 0.6));
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+function drawSparkProjectile(g, theme) {
+  const pos = liveProjectilePos(g);
+  ctx.save();
+
+  // crackling electric tendrils radiating from the ball -- evenly spaced
+  // with a shared slow rotation so the overall shape stays symmetric,
+  // with only small independent jitter/length variation per tendril for
+  // liveliness without throwing off the balance
+  ctx.strokeStyle = theme.accentA;
+  ctx.lineWidth = 1.2;
+  ctx.shadowColor = theme.accentA;
+  ctx.shadowBlur = 6;
+  const tendrilCount = 6;
+  const sharedRotation = frame * 0.03 + g.spawnFrame * 0.7;
+  for (let i = 0; i < tendrilCount; i++) {
+    const seed = g.spawnFrame * 3.7 + i * 5.3;
+    const baseAngle = (i / tendrilCount) * Math.PI * 2 + sharedRotation;
+    const jitterAngle = baseAngle + Math.sin(frame * 0.8 + seed) * 0.15;
+    const len = g.r * (1.2 + 0.4 * Math.abs(Math.sin(frame * 0.5 + seed)));
+    const midLen = len * 0.5;
+    const midAngle = baseAngle + Math.sin(frame * 0.9 + seed) * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    ctx.lineTo(pos.x + Math.cos(midAngle) * midLen, pos.y + Math.sin(midAngle) * midLen);
+    ctx.lineTo(pos.x + Math.cos(jitterAngle) * len, pos.y + Math.sin(jitterAngle) * len);
+    ctx.stroke();
+  }
+
+  // bright core ball
+  ctx.shadowBlur = 12;
+  const grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, g.r);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.45, theme.accentA);
+  grad.addColorStop(1, 'rgba(94,200,232,0.15)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, g.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawSpecialDoor(g, theme) {
+  const unlocked = specialDoorUnlocked[g.eventIndex];
+  ctx.save();
+
+  ctx.fillStyle = unlocked ? 'rgba(26,17,8,0.3)' : '#1a1108';
+  ctx.globalAlpha = unlocked ? 0.35 : 1;
+  ctx.fillRect(g.x - g.width / 2, PLAY_TOP, g.width, PLAY_BOTTOM - PLAY_TOP);
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = theme.accentB;
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = unlocked ? 0.4 : 0.9;
+  ctx.strokeRect(g.x - g.width / 2, PLAY_TOP, g.width, PLAY_BOTTOM - PLAY_TOP);
+  ctx.globalAlpha = 1;
+
+  // card reader panel and status light
+  const panelY = (PLAY_TOP + PLAY_BOTTOM) / 2;
+  ctx.fillStyle = '#0a0e14';
+  ctx.fillRect(g.x - 12, panelY - 20, 24, 40);
+  ctx.strokeStyle = theme.accentB;
+  ctx.globalAlpha = unlocked ? 0.3 : 0.8;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(g.x - 12, panelY - 20, 24, 40);
+  ctx.globalAlpha = 1;
+
+  const pulse = unlocked ? 1 : 0.6 + 0.4 * Math.sin(frame * 0.15);
+  ctx.fillStyle = unlocked ? '#5ec870' : '#d84545';
+  ctx.shadowColor = ctx.fillStyle;
+  ctx.shadowBlur = 10 * pulse;
+  ctx.globalAlpha = pulse;
+  ctx.beginPath();
+  ctx.arc(g.x, panelY, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
+function drawGeyser(g, theme) {
+  const h = liveGeyserHeight(g);
+  const warning = geyserIsWarning(g);
+  const dir = g.pivotSide === 'floor' ? -1 : 1;
+  const baseY = g.pivotSide === 'floor' ? PLAY_BOTTOM : PLAY_TOP;
+  const tipY = baseY + dir * h;
+
+  ctx.save();
+
+  // warning pulse at the base, telegraphing an incoming eruption
+  if (warning) {
+    const pulse = 0.3 + 0.3 * Math.sin(frame * 0.4);
+    ctx.fillStyle = theme.accentA;
+    ctx.globalAlpha = pulse;
+    ctx.beginPath();
+    ctx.ellipse(g.x, baseY - dir * 2, g.width * 0.7, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // tapering spike body from base to current tip height
+  ctx.shadowColor = theme.accentA;
+  ctx.shadowBlur = 12;
+  const grad = ctx.createLinearGradient(g.x, baseY, g.x, tipY);
+  grad.addColorStop(0, theme.accentB);
+  grad.addColorStop(1, '#e8ffb0');
+  ctx.fillStyle = grad;
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  ctx.moveTo(g.x - g.width / 2, baseY);
+  ctx.lineTo(g.x - g.width * 0.15, tipY);
+  ctx.lineTo(g.x + g.width * 0.15, tipY);
+  ctx.lineTo(g.x + g.width / 2, baseY);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = theme.accentA;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.6;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
+function drawToxicPool(g, theme) {
+  const r = liveToxicPoolRadius(g);
+
+  ctx.save();
+  ctx.shadowColor = theme.accentA;
+  ctx.shadowBlur = 16;
+
+  const grad = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, r);
+  grad.addColorStop(0, '#e8ffb0');
+  grad.addColorStop(0.5, theme.accentA);
+  grad.addColorStop(1, theme.accentB);
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(g.x, g.y, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // small bubbling dots inside for a toxic-ooze texture
+  ctx.globalAlpha = 0.6;
+  ctx.fillStyle = theme.accentB;
+  for (let i = 0; i < 3; i++) {
+    const a = frame * 0.04 + i * 2.1;
+    const dist = r * 0.5;
+    const bx = g.x + Math.cos(a) * dist;
+    const by = g.y + Math.sin(a) * dist;
+    ctx.beginPath();
+    ctx.arc(bx, by, Math.max(1.5, r * 0.15), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = theme.accentA;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.arc(g.x, g.y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
+function drawGates(theme) {
+  for (let g of gates) {
+    if (g.type === 'asteroid') {
+      drawAsteroid(g, theme);
+      continue;
+    }
+    if (g.type === 'icefloe') {
+      drawIceFloe(g, theme);
+      continue;
+    }
+    if (g.type === 'icespire') {
+      drawIceSpire(g, theme);
+      continue;
+    }
+    if (g.type === 'snowgust') {
+      drawSnowGust(g, theme);
+      continue;
+    }
+    if (g.type === 'icearch') {
+      drawIceArch(g, theme);
+      continue;
+    }
+    if (g.type === 'snowball') {
+      drawSnowball(g);
+      continue;
+    }
+    if (g.type === 'icecalve') {
+      drawIceCalve(g, theme);
+      continue;
+    }
+    if (g.type === 'splitrock') {
+      drawSplitRock(g, theme);
+      continue;
+    }
+    if (g.type === 'wreckage') {
+      drawWreckage(g, theme);
+      continue;
+    }
+    if (g.type === 'blackhole') {
+      drawBlackHole(g, theme);
+      continue;
+    }
+    if (g.type === 'windvortex') {
+      drawWindVortex(g, theme);
+      continue;
+    }
+    if (g.type === 'orbiter') {
+      drawOrbiter(g, theme);
+      continue;
+    }
+    if (g.type === 'arcplanet') {
+      drawArcPlanet(g, theme);
+      continue;
+    }
+    if (g.type === 'zone2storm') {
+      drawZone2Storm(g, theme);
+      continue;
+    }
+    if (g.type === 'searchlight') {
+      drawSearchlight(g, theme);
+      continue;
+    }
+    if (g.type === 'turret') {
+      drawTurret(g, theme);
+      continue;
+    }
+    if (g.type === 'turretshot') {
+      drawTurretShot(g, theme);
+      continue;
+    }
+    if (g.type === 'billboard') {
+      drawBillboard(g, theme);
+      continue;
+    }
+    if (g.type === 'emp') {
+      drawEmp(g, theme);
+      continue;
+    }
+    if (g.type === 'echotrail') {
+      drawEchoTrail(g, theme);
+      continue;
+    }
+    if (g.type === 'pulsingorb') {
+      drawPulsingOrb(g, theme);
+      continue;
+    }
+    if (g.type === 'boomerang') {
+      drawBoomerang(g, theme);
+      continue;
+    }
+    if (g.type === 'bossattack') {
+      drawBossAttack(g, theme);
+      continue;
+    }
+    if (g.type === 'bossragepulse') {
+      drawBossRagePulse(g, theme);
+      continue;
+    }
+    if (g.type === 'bossdiagonalring') {
+      drawBossDiagonalRings(g, theme);
+      continue;
+    }
+    if (g.type === 'bossdrone') {
+      if (g.homing) drawBossHomingOrb(g, theme); else drawBossDroneShard(g, theme);
+      continue;
+    }
+    if (g.type === 'bossvolleytelegraph') {
+      drawBossVolleyTelegraph(g, theme);
+      continue;
+    }
+    if (g.type === 'bossember') {
+      drawBossEmber(g, theme);
+      continue;
+    }
+    if (g.type === 'bossashcloud') {
+      drawBossAshCloud(g, theme);
+      continue;
+    }
+    if (g.type === 'bosschargebeamtelegraph') {
+      drawBossChargeBeamTelegraph(g, theme);
+      continue;
+    }
+    if (g.type === 'bosschargebeam') {
+      drawBossChargeBeam(g, theme);
+      continue;
+    }
+    if (g.type === 'securitydrone') {
+      drawSecurityDrone(g, theme);
+      continue;
+    }
+    if (g.type === 'lasergrid') {
+      drawLaserGrid(g, theme);
+      continue;
+    }
+    if (g.type === 'lensingzone') {
+      drawLensingZone(g, theme);
+      continue;
+    }
+    if (g.type === 'signalcorruption') {
+      drawSignalCorruption(g, theme);
+      continue;
+    }
+    if (g.type === 'supernova') {
+      drawSupernovaPlanet(g, theme);
+      continue;
+    }
+    if (g.type === 'supernovadebris') {
+      drawSupernovaDebris(g, theme);
+      continue;
+    }
+    if (g.type === 'movingdoor') {
+      drawMovingDoor(g, theme);
+      continue;
+    }
+    if (g.type === 'accesskey') {
+      drawAccessKey(g, theme);
+      continue;
+    }
+    if (g.type === 'specialdoor') {
+      drawSpecialDoor(g, theme);
+      continue;
+    }
+    if (g.type === 'sparkhub') {
+      drawSparkHub(g, theme);
+      continue;
+    }
+    if (g.type === 'sparkprojectile') {
+      drawSparkProjectile(g, theme);
+      continue;
+    }
+    if (g.type === 'shootingstar') {
+      drawShootingStar(g, theme);
+      continue;
+    }
+    if (g.type === 'toxicpool') {
+      drawToxicPool(g, theme);
+      continue;
+    }
+    if (g.type === 'aciddrip') {
+      drawAcidDrip(g, theme);
+      continue;
+    }
+    if (g.type === 'geyser') {
+      drawGeyser(g, theme);
+      continue;
+    }
+    if (g.type === 'fireball') {
+      drawFireball(g, theme);
+      continue;
+    }
+    if (g.type === 'pendulum') {
+      drawPendulum(g, theme);
+      continue;
+    }
+    if (g.type === 'hbar') {
+      drawHBar(g, theme);
+      continue;
+    }
+    if (g.type === 'marquee') {
+      drawMarquee(g);
+      continue;
+    }
+    if (g.type === 'courier') {
+      drawCourier(g);
+      continue;
+    }
+    if (g.type === 'headlamp') {
+      drawHeadlamp(g);
+      continue;
+    }
+    if (g.type === 'bloom') {
+      drawBloom(g);
+      continue;
+    }
+    if (g.type === 'coil') {
+      drawCoil(g);
+      continue;
+    }
+    if (g.type === 'neonbar') {
+      drawNeonBar(g, theme);
+      continue;
+    }
+    if (g.type === 'wedge') {
+      drawWedge(g, theme);
+      continue;
+    }
+    if (g.type === 'kelp') {
+      drawKelp(g, theme);
+      continue;
+    }
+    if (g.type === 'sponge') {
+      drawSponges(g);
+      continue;
+    }
+    if (g.type === 'jelly') {
+      drawJelly(g);
+      continue;
+    }
+    if (g.type === 'school') {
+      drawSchool(g);
+      continue;
+    }
+    if (g.type === 'urchin') {
+      drawUrchin(g);
+      continue;
+    }
+    if (g.type === 'lbolt') {
+      drawFloatingBolt(g, theme);
+      continue;
+    }
+    if (g.type === 'cloudarc') {
+      drawCloudArc(g, theme);
+      continue;
+    }
+    if (g.type === 'stormchargebolttelegraph') {
+      drawStormChargeBolt(g, theme, false);
+      continue;
+    }
+    if (g.type === 'stormchargebolt') {
+      drawStormChargeBolt(g, theme, true);
+      continue;
+    }
+    if (g.type === 'barrier') {
+      drawBarrier(g, theme);
+      continue;
+    }
+    if (g.type === 'lightning') {
+      drawLightningBolt(g, theme);
+      continue;
+    }
+    if (theme.obstacleShape === 'diamond') {
+      drawDiamondGate(g, theme);
+      continue;
+    }
+    const center = liveGateCenter(g);
+    const gap = liveGateGap(g);
+    const topH = center - gap / 2 - PLAY_TOP;
+    const botY = center + gap / 2;
+    const botH = PLAY_BOTTOM - botY;
+
+    ctx.save();
+    const gateX = MOBILE_PERFORMANCE_MODE ? Math.round(g.x) : g.x;
+    ctx.shadowColor = theme.accentB;
+    ctx.shadowBlur = MOBILE_PERFORMANCE_MODE ? 6 : 14;
+    const grad = ctx.createLinearGradient(gateX, 0, gateX + GATE_WIDTH, 0);
+    grad.addColorStop(0, theme.accentA);
+    grad.addColorStop(1, theme.accentB);
+    ctx.fillStyle = grad;
+
+    ctx.fillRect(gateX, PLAY_TOP, GATE_WIDTH, topH);
+    ctx.fillRect(gateX, botY, GATE_WIDTH, botH);
+    if (MOBILE_PERFORMANCE_MODE) {
+      // Keep the obstacle silhouette readable after the mobile canvas is
+      // downscaled over the bright synthwave grid.
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = theme.accentB;
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(gateX + 1, PLAY_TOP + 1, GATE_WIDTH - 2, Math.max(0, topH - 2));
+      ctx.strokeRect(gateX + 1, botY + 1, GATE_WIDTH - 2, Math.max(0, botH - 2));
+    }
+    ctx.restore();
+  }
+}
+
+const PORTAL_VANISH_RANGE = 260; // px -- how far before the portal the ship starts vanishing
+
+function getShipVanishProgress() {
+  if (warpActive) return 1; // stay hidden through the entire warp tunnel sequence
+  if (!portalObject) return 0;
+  const dist = portalObject.x - ship.x;
+  if (dist > PORTAL_VANISH_RANGE) return 0;
+  if (dist < 0) return 1;
+  return Math.max(0, Math.min(1, (PORTAL_VANISH_RANGE - dist) / PORTAL_VANISH_RANGE));
+}
+
+const INVINCIBILITY_BLINK_INTERVAL_MS = 66; // ~15 toggles/sec -- classic NES-style flicker rate
+
+function unlockedShipTrails() {
+  return SHIP_TRAILS.filter((t) => t.unlocked());
+}
+
+function currentShipTrail() {
+  const spec = SHIP_TRAILS.find((t) => t.id === shipTrailStyle);
+  if (spec && spec.unlocked()) return spec;
+  shipTrailStyle = 'classic';
+  savePlayerProfile();
+  return SHIP_TRAILS.find((t) => t.id === 'classic') || SHIP_TRAILS[0];
+}
+
+function cycleShipTrail(dir) {
+  const unlocked = unlockedShipTrails();
+  if (!unlocked.length) return;
+  let i = unlocked.findIndex((t) => t.id === currentShipTrail().id);
+  if (i < 0) i = 0;
+  shipTrailStyle = unlocked[(i + dir + unlocked.length) % unlocked.length].id;
+  savePlayerProfile();
+  lastRenderedOverlayState = null;
+  updateOverlay();
+}
+
+function unlockedShipSkins() {
+  return SHIP_SKINS.filter((s) => s.unlocked());
+}
+
+function currentShipSkin() {
+  if (shipSkinStyle === 'gravity') shipSkinStyle = 'neon';
+  const spec = SHIP_SKINS.find((s) => s.id === shipSkinStyle);
+  if (spec && spec.unlocked()) return spec;
+  shipSkinStyle = 'classic';
+  savePlayerProfile();
+  return SHIP_SKINS[0];
+}
+
+function cycleShipSkin(dir) {
+  const unlocked = unlockedShipSkins();
+  if (!unlocked.length) return;
+  let i = unlocked.findIndex((s) => s.id === currentShipSkin().id);
+  if (i < 0) i = 0;
+  shipSkinStyle = unlocked[(i + dir + unlocked.length) % unlocked.length].id;
+  savePlayerProfile();
+  lastRenderedOverlayState = null;
+  updateOverlay();
+}
+
+function updateShipTrailParticles() {
+  const trail = currentShipTrail().id;
+  if (trail !== 'sparks' && trail !== 'overdrive') {
+    if (shipTrailParticles.length) shipTrailParticles = [];
+    return;
+  }
+  if (trail === 'overdrive') {
+    const spawn = holding ? 4 : 2;
+    for (let i = 0; i < spawn; i++) {
+      const flash = Math.random() < 0.2;
+      shipTrailParticles.push({
+        kind: flash ? 'flash' : 'ember',
+        x: ship.x - SHIP_W * 0.5 - Math.random() * 10,
+        y: ship.y + (Math.random() - 0.5) * (holding ? 18 : 10),
+        vx: -2.4 - Math.random() * (holding ? 3.6 : 1.8),
+        vy: (Math.random() - 0.5) * 1.25,
+        life: 0,
+        maxLife: flash ? 6 + Math.floor(Math.random() * 5) : 16 + Math.floor(Math.random() * 14),
+        r: flash ? 2.2 + Math.random() * 1.6 : 1.3 + Math.random() * 2.2,
+        len: 10 + Math.random() * 16
+      });
+    }
+  } else {
+    const spawn = holding ? 2 : 1;
+    for (let i = 0; i < spawn; i++) {
+      shipTrailParticles.push({
+        kind: 'spark',
+        x: ship.x - SHIP_W * 0.45,
+        y: ship.y + (Math.random() - 0.5) * 7,
+        vx: -1.2 - Math.random() * (holding ? 2.4 : 1.1),
+        vy: (Math.random() - 0.5) * 0.7,
+        life: 0,
+        maxLife: 10 + Math.floor(Math.random() * 10),
+        r: 1.2 + Math.random() * 1.2
+      });
+    }
+  }
+  for (let i = shipTrailParticles.length - 1; i >= 0; i--) {
+    const p = shipTrailParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life++;
+    if (p.life >= p.maxLife) shipTrailParticles.splice(i, 1);
+  }
+  const cap = trail === 'overdrive' ? 120 : 80;
+  if (shipTrailParticles.length > cap) shipTrailParticles.splice(0, shipTrailParticles.length - cap);
+}
+
+function updateShipToxicDrips() {
+  if (currentShipSkin().id !== 'toxic') {
+    if (shipToxicDrips.length) shipToxicDrips = [];
+    shipToxicDripCooldown = 0;
+    return;
+  }
+  const th = currentTheme();
+  const effScroll = SCROLL_SPEED * (th.scrollMult || 1);
+  shipToxicDripCooldown--;
+  const interval = holding ? 48 : 84;
+  if (shipToxicDripCooldown <= 0) {
+    shipToxicDripCooldown = interval;
+    shipToxicDrips.push({
+      x: ship.x - SHIP_W * 0.28 + (Math.random() - 0.5) * 6,
+      startY: ship.y + SHIP_H * 0.28,
+      spawnFrame: frame,
+      fallSpeed: 2.2 + Math.random() * 1.4,
+      r: 5.5 + Math.random() * 2.8,
+      vx: -effScroll * (0.35 + Math.random() * 0.2)
+    });
+  }
+  for (let i = shipToxicDrips.length - 1; i >= 0; i--) {
+    const d = shipToxicDrips[i];
+    d.x += d.vx;
+    const y = d.startY + d.fallSpeed * (frame - d.spawnFrame);
+    if (y > PLAY_BOTTOM + d.r * 2 || d.x < -40) shipToxicDrips.splice(i, 1);
+  }
+  if (shipToxicDrips.length > 24) shipToxicDrips.splice(0, shipToxicDrips.length - 24);
+}
+
+function traceShipDart() {
+  ctx.beginPath();
+  ctx.moveTo(SHIP_W / 2, 0);
+  ctx.lineTo(-SHIP_W / 2, -SHIP_H / 2);
+  ctx.lineTo(-SHIP_W / 2 + 8, 0);
+  ctx.lineTo(-SHIP_W / 2, SHIP_H / 2);
+  ctx.closePath();
+}
+
+function classicShipPalette(theme) {
+  if (theme && theme.bgStyle === 'toxic' && currentShipSkin().id === 'classic') {
+    return { accentA: '#0ff0fc', accentB: '#7af6ff', hull: '#1a2a44', hullMid: '#3d5a78', nose: '#e8fbff' };
+  }
+  return { accentA: theme.accentA, accentB: theme.accentB };
+}
+
+function drawShipSkinClassic(theme) {
+  const pal = classicShipPalette(theme);
+  const toxicReadability = theme && theme.bgStyle === 'toxic';
+  ctx.shadowColor = toxicReadability ? pal.accentA : pal.accentB;
+  ctx.shadowBlur = toxicReadability ? 14 : 12;
+  const bodyGrad = ctx.createLinearGradient(-SHIP_W / 2, 0, SHIP_W / 2, 0);
+  bodyGrad.addColorStop(0, toxicReadability ? pal.hull : pal.accentB);
+  if (toxicReadability) bodyGrad.addColorStop(0.55, pal.hullMid);
+  bodyGrad.addColorStop(1, toxicReadability ? pal.nose : '#ffffff');
+  ctx.fillStyle = bodyGrad;
+  traceShipDart();
+  ctx.fill();
+  ctx.strokeStyle = pal.accentA;
+  ctx.lineWidth = toxicReadability ? 2 : 1.5;
+  ctx.stroke();
+}
+
+function drawShipSkinSignal() {
+  const r = SHIP_H * 0.85;
+  ctx.save();
+  ctx.shadowColor = '#ff6aa8';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#ff4d8d';
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.clip();
+  const grad = ctx.createLinearGradient(0, -r, 0, r);
+  grad.addColorStop(0, '#ffe066');
+  grad.addColorStop(0.22, '#ff9a4a');
+  grad.addColorStop(0.42, '#ff5a9a');
+  grad.addColorStop(0.55, '#ff2ec4');
+  grad.addColorStop(0.72, '#7a7ae8');
+  grad.addColorStop(1, '#3ad6d0');
+  ctx.fillStyle = grad;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  ctx.fillStyle = '#1a0b3a';
+  const barStart = r * 0.06;
+  const barGap = r * 0.155;
+  const barH = r * 0.055;
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(-r, barStart + i * barGap, r * 2, barH);
+  }
+  const shade = ctx.createRadialGradient(-r * 0.32, -r * 0.38, r * 0.04, 0, 0, r);
+  shade.addColorStop(0, 'rgba(255,255,255,0.55)');
+  shade.addColorStop(0.28, 'rgba(255,255,255,0.08)');
+  shade.addColorStop(0.72, 'rgba(0,0,0,0)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.28)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  ctx.restore();
+}
+
+function drawShipSkinEclipse() {
+  const t = nowMs() * 0.004;
+  const pulse = 0.55 + 0.45 * Math.sin(t);
+  const glowR = SHIP_W * 0.92;
+  const corona = ctx.createRadialGradient(0, 0, 2, 0, 0, glowR);
+  corona.addColorStop(0, `rgba(255, 90, 36, ${0.42 * pulse})`);
+  corona.addColorStop(0.4, `rgba(255, 32, 90, ${0.2 * pulse})`);
+  corona.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = corona;
+  ctx.beginPath();
+  ctx.arc(0, 0, glowR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + t * 0.35;
+    const len = SHIP_W * (0.32 + 0.14 * Math.sin(t * 2.2 + i * 1.7));
+    ctx.strokeStyle = i % 2 ? `rgba(255,80,40,${0.45 * pulse})` : `rgba(255,210,80,${0.35 * pulse})`;
+    ctx.lineWidth = 1.15;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * 5, Math.sin(a) * 4);
+    ctx.lineTo(Math.cos(a) * (6 + len), Math.sin(a) * (5 + len * 0.7));
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.shadowColor = '#ff4020';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#080006';
+  traceShipDart();
+  ctx.fill();
+  ctx.strokeStyle = '#ff5a3a';
+  ctx.lineWidth = 1.7;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = `rgba(255, 226, 180, ${0.5 + 0.4 * pulse})`;
+  ctx.beginPath();
+  ctx.moveTo(5, 0);
+  ctx.lineTo(0, -3.2);
+  ctx.lineTo(-5, 0);
+  ctx.lineTo(0, 3.2);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawShipSkinGold() {
+  const shine = 0.5 + 0.5 * Math.sin(nowMs() * 0.006);
+  ctx.shadowColor = '#ffd23f';
+  ctx.shadowBlur = 16 + shine * 10;
+  const bodyGrad = ctx.createLinearGradient(-SHIP_W / 2, -SHIP_H / 2, SHIP_W / 2, SHIP_H / 2);
+  bodyGrad.addColorStop(0, '#8a5a08');
+  bodyGrad.addColorStop(0.28, '#c99010');
+  bodyGrad.addColorStop(0.52 + shine * 0.08, '#fff4c8');
+  bodyGrad.addColorStop(0.78, '#ffd23f');
+  bodyGrad.addColorStop(1, '#fffdf0');
+  ctx.fillStyle = bodyGrad;
+  traceShipDart();
+  ctx.fill();
+  ctx.strokeStyle = '#ffe9a0';
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+  ctx.save();
+  traceShipDart();
+  ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha *= 0.32 + 0.28 * shine;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(-SHIP_W / 2 + 3, -SHIP_H / 2 + 1);
+  ctx.lineTo(SHIP_W / 2 - 5, SHIP_H / 2 - 3);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawShipSkinRainbow() {
+  const t = nowMs();
+  const hue = (t * 0.22) % 360;
+  const flicker = Math.sin(t * 0.041) > 0.7 || ((Math.floor(t / 38) * 17) % 11) === 0;
+  const h = flicker ? (hue + 130 + (t % 90)) % 360 : hue;
+  const sat = flicker ? 100 : 92;
+  const lit = flicker ? 70 : 56;
+  ctx.shadowColor = `hsl(${h}, 100%, 58%)`;
+  ctx.shadowBlur = flicker ? 22 : 14;
+  const bodyGrad = ctx.createLinearGradient(-SHIP_W / 2, 0, SHIP_W / 2, 0);
+  bodyGrad.addColorStop(0, `hsl(${(h + 50) % 360}, ${sat}%, ${lit - 6}%)`);
+  bodyGrad.addColorStop(0.5, `hsl(${h}, 100%, ${lit + 12}%)`);
+  bodyGrad.addColorStop(1, flicker ? '#ffffff' : `hsl(${(h + 90) % 360}, ${sat}%, 78%)`);
+  ctx.fillStyle = bodyGrad;
+  traceShipDart();
+  ctx.fill();
+  ctx.strokeStyle = `hsl(${(h + 180) % 360}, 90%, 68%)`;
+  ctx.lineWidth = flicker ? 2.1 : 1.5;
+  ctx.stroke();
+}
+
+function drawShipSkinCore() {
+  const t = frame;
+  ctx.strokeStyle = '#5ec8e8';
+  ctx.lineWidth = 1.2;
+  ctx.shadowColor = '#5ec8e8';
+  ctx.shadowBlur = 6;
+  const tendrilCount = 6;
+  const sharedRotation = t * 0.03;
+  const sparkR = Math.max(SHIP_H * 0.95, SHIP_W * 0.38);
+  for (let i = 0; i < tendrilCount; i++) {
+    const seed = i * 5.3;
+    const baseAngle = (i / tendrilCount) * Math.PI * 2 + sharedRotation;
+    const jitterAngle = baseAngle + Math.sin(t * 0.8 + seed) * 0.15;
+    const len = sparkR * (1.2 + 0.4 * Math.abs(Math.sin(t * 0.5 + seed)));
+    const midLen = len * 0.5;
+    const midAngle = baseAngle + Math.sin(t * 0.9 + seed) * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(midAngle) * midLen, Math.sin(midAngle) * midLen);
+    ctx.lineTo(Math.cos(jitterAngle) * len, Math.sin(jitterAngle) * len);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 14;
+  const bodyGrad = ctx.createRadialGradient(2, 0, 0, 0, 0, SHIP_W * 0.55);
+  bodyGrad.addColorStop(0, '#ffffff');
+  bodyGrad.addColorStop(0.45, '#5ec8e8');
+  bodyGrad.addColorStop(1, 'rgba(94,200,232,0.18)');
+  ctx.fillStyle = bodyGrad;
+  traceShipDart();
+  ctx.fill();
+  ctx.save();
+  traceShipDart();
+  ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(220,245,255,0.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    const yOff = (i - 1) * 4.2;
+    ctx.beginPath();
+    ctx.moveTo(-SHIP_W / 2 + 3, yOff);
+    ctx.lineTo(-2 + Math.sin(t * 0.7 + i) * 3.2, yOff + Math.sin(t * 1.1 + i * 2) * 2);
+    ctx.lineTo(SHIP_W / 2 - 5, yOff * 0.25);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawShipSkinMolten() {
+  drawMoltenCoreBody(0, 0, SHIP_H * 0.78);
+}
+
+function drawShipSkinNeon() {
+  ctx.save();
+  ctx.shadowColor = '#ff2ec4';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#1a1428';
+  traceShipDart();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.save();
+  traceShipDart();
+  ctx.clip();
+  const scrollOffset = (frame * 1.5) % 10;
+  for (let row = 0; row < 6; row++) {
+    const y = -SHIP_H + row * 8 + 4 - scrollOffset;
+    ctx.fillStyle = row % 2 === 0 ? 'rgba(46,232,255,0.35)' : 'rgba(255,46,196,0.32)';
+    ctx.fillRect(-SHIP_W, y, SHIP_W * 2, 3.5);
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#ff2ec4';
+  ctx.shadowColor = '#ff2ec4';
+  ctx.shadowBlur = 8;
+  ctx.lineWidth = 2.2;
+  traceShipDart();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#ffffff';
+  ctx.globalAlpha = 0.85;
+  ctx.lineWidth = 0.9;
+  traceShipDart();
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  const blink = Math.sin(frame * 0.2) > 0.3;
+  ctx.shadowColor = '#ff2ec4';
+  ctx.shadowBlur = blink ? 10 : 3;
+  ctx.fillStyle = blink ? '#ff2ec4' : '#802060';
+  ctx.beginPath();
+  ctx.arc(3, 0, 2.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawShipSkinStorm() {
   const accentA = '#fff59d';
   const accentB = '#5c6bc0';
@@ -835,6 +2672,28 @@ function drawTerrain(theme) {
       if (i === 0) ctx.moveTo(s.x, s.bottomY - 3); else ctx.lineTo(s.x, s.bottomY - 3);
     });
     ctx.stroke();
+
+    const mounds = terrainSegments.filter(s => s.topY < PLAY_TOP - 8 && s.bottomY < PLAY_BOTTOM - 16);
+    if (mounds.length > 1) {
+      const snow = ctx.createLinearGradient(0, PLAY_BOTTOM - 220, 0, PLAY_BOTTOM);
+      snow.addColorStop(0, '#f7fcff');
+      snow.addColorStop(0.4, '#e7f4fb');
+      snow.addColorStop(1, '#b7d7e8');
+      ctx.fillStyle = snow;
+      ctx.beginPath();
+      ctx.moveTo(mounds[0].x, PLAY_BOTTOM + 4);
+      for (const s of mounds) ctx.lineTo(s.x, s.bottomY);
+      ctx.lineTo(mounds[mounds.length - 1].x, PLAY_BOTTOM + 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      mounds.forEach((s, i) => {
+        if (i === 0) ctx.moveTo(s.x, s.bottomY); else ctx.lineTo(s.x, s.bottomY);
+      });
+      ctx.stroke();
+    }
   }
 
   // fork island: a solid mass splitting the passage -- draw only the contiguous
@@ -1107,7 +2966,8 @@ function draw() {
   // those rendering on top of it
   if (theme.isBossZone) drawBossArenaBarrierWall(theme, boss);
   if (theme.isMiniBossZone && miniBoss && theme.miniBossVariant !== 'core') {
-    drawBossArenaObsidianWall(theme, miniBoss);
+    if (theme.miniBossVariant === 'snow') drawSnowArenaWall(theme, miniBoss);
+    else drawBossArenaObsidianWall(theme, miniBoss);
   }
   if (state !== 'home' && state !== 'options') {
     drawShip(theme);
@@ -1575,1677 +3435,4 @@ if (DEV_TOOLS_ENABLED && devToggle && devPanel) {
     devPanel.classList.toggle('active');
   });
 }
-
-function devStatus(msg) {
-  const el = document.getElementById('dev-status');
-  if (el) el.textContent = msg;
-}
-
-function devJumpToTheme(idx) {
-  if (state === 'ready' || state === 'gameover' || state === 'respawn' || state === 'victory' || state === 'continue-prompt') {
-    resetGame();
-    state = 'playing';
-  }
-  devSessionActive = true;
-  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION; // freeze the ship for a fixed window, so it survives however long the dev panel takes to navigate
-  // reset distance tracking so the jumped-to zone behaves exactly like a
-  // fresh zone entry (requires exactly 1000 distance), regardless of
-  // whatever distance was accumulated before the jump
-  distance = 0;
-  themeLevelReached = 0;
-  beginWarp(idx);
-  devStatus('Warping to zone ' + (idx + 1) + '...');
-}
-
-function devSkipWarp() {
-  if (warpActive) {
-    finishWarp();
-    devStatus('Warp skipped -- now in zone ' + (themeIndex + 1) + '.');
-  } else {
-    devStatus('Nothing to skip -- not currently warping. Jump to a zone first.');
-  }
-}
-
-function devSkipToCorePhase6() {
-  if (state === 'ready' || state === 'gameover' || state === 'respawn' || state === 'victory' || state === 'continue-prompt') {
-    resetGame();
-    state = 'playing';
-  }
-  devSessionActive = true;
-  if (themeIndex !== 9) {
-    distance = 0;
-    themeLevelReached = 0;
-    beginWarp(9);
-  }
-  while (warpActive) finishWarp();
-  if (!miniBoss) {
-    devStatus('Reactor Core boss not yet spawned -- click again in a moment.');
-    return;
-  }
-  coreBossPhase = 6;
-  coreSparkSpawned = 0;
-  coreSparks = [];
-  coreSparkPhaseStartFrame = frame;
-  coreCrossfireRound = 0;
-  const safeSlot = Math.floor(Math.random() * CORE_CROSSFIRE_SLOT_FRACS.length);
-  coreCrossfireBeamYs = computeCrossfireBeamYs(safeSlot);
-  miniBossAttackState = 'coreCrossfireTelegraph';
-  miniBossAttackStateStartFrame = frame;
-  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
-  ship.vy = 0;
-  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
-  devStatus('Jumped to Reactor Core phase 6 (crossfire + sparks).');
-}
-
-function devSkipToCorePhase8() {
-  if (state === 'ready' || state === 'gameover' || state === 'respawn' || state === 'victory' || state === 'continue-prompt') {
-    resetGame();
-    state = 'playing';
-  }
-  devSessionActive = true;
-  if (themeIndex !== 9) {
-    distance = 0;
-    themeLevelReached = 0;
-    beginWarp(9);
-  }
-  while (warpActive) finishWarp();
-  if (!miniBoss) {
-    devStatus('Reactor Core boss not yet spawned -- click again in a moment.');
-    return;
-  }
-  miniBossSpawnFrame = frame - MINI_BOSS_ENTRANCE_DURATION - 1; // entrance animation is separate from the zone warp and runs on its own timer -- without this it fires independently a moment later and overwrites the state set below
-  coreBossPhase = 8;
-  miniBoss.x = Math.min(ship.x + CORE_SPHERE_X_OFFSET, miniBoss.restX);
-  miniBoss.y = miniBoss.baseY;
-  miniBoss.r = miniBoss.maxR;
-  coreOrbitSpawned = 0;
-  coreOrbitProjectiles = [];
-  coreOrbitEmitAngle = 0;
-  coreGateOpenAmount = 1;
-  miniBossAttackState = 'coreOrbitBarrageActive';
-  miniBossAttackStateStartFrame = frame;
-  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
-  ship.vy = 0;
-  coreEyeBeamState = 'track';
-  coreEyeBeamStateStartFrame = frame;
-  coreEyeBeamY = ship.y;
-  coreTeslaState = 'charging';
-  coreTeslaStateStartFrame = frame;
-  coreTeslaProjectiles = [];
-  coreTeslaEmptySlot = pickCoreTeslaEmptySlot();
-  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
-  devStatus('Jumped to Reactor Core phase 8 (orbiting barrage).');
-}
-
-function devAddDistance() {
-  if (state === 'ready' || state === 'respawn') state = 'playing';
-  distance += 500;
-  devStatus('Distance +500 (now ' + Math.floor(distance) + ').');
-}
-
-function devSetDistanceInZone(value) {
-  if (state === 'ready' || state === 'respawn') state = 'playing';
-  distance = zoneStartDistance + value;
-  portalObject = null; // recompute cleanly from the new position
-  devStatus('Jumped to ' + value + ' / ' + THEME_DISTANCE + ' in the current zone.');
-}
-
-function devUnlockEverything() {
-  extraDifficultyUnlocked = true;
-  unlockedZones = new Set(THEMES.map((_, i) => i));
-  completedZones = new Set(THEMES.map((_, i) => i));
-  deathlessZones = new Set(THEMES.map((_, i) => i));
-  beatenDifficulties = new Set(['easy', 'normal', 'hard', 'extra']);
-  achievedRanks = new Set(RANK_TIER_ORDER);
-  if (totalDistanceTraveled < 200000) totalDistanceTraveled = 200000;
-  if (!Array.isArray(zoneCompletionCounts) || zoneCompletionCounts.length < THEMES.length) {
-    zoneCompletionCounts = new Array(THEMES.length).fill(0);
-  }
-  for (let i = 0; i < THEMES.length; i++) {
-    zoneCompletionCounts[i] = Math.max(zoneCompletionCounts[i] || 0, 1);
-  }
-  savePlayerProfile();
-  lastRenderedOverlayState = null;
-  try { updateOverlay(); } catch (e) { /* overlay may not be ready */ }
-  devStatus('Unlocked all zones, Overdrive, achievements, ranks, and distance milestones.');
-}
-
-const unlockAllBtn = document.createElement('button');
-unlockAllBtn.textContent = 'Unlock everything';
-unlockAllBtn.style.borderColor = '#ffd23f';
-unlockAllBtn.style.color = '#ffd23f';
-unlockAllBtn.addEventListener('click', devUnlockEverything);
-devPanel.appendChild(unlockAllBtn);
-
-THEMES.forEach((t, i) => {
-  const btn = document.createElement('button');
-  btn.textContent = (i + 1) + '. ' + t.name;
-  btn.addEventListener('click', () => devJumpToTheme(i));
-  devPanel.appendChild(btn);
-});
-
-const skipWarpBtn = document.createElement('button');
-skipWarpBtn.textContent = 'Skip warp animation';
-skipWarpBtn.addEventListener('click', devSkipWarp);
-devPanel.appendChild(skipWarpBtn);
-
-const skipCorePhase6Btn = document.createElement('button');
-skipCorePhase6Btn.textContent = 'Jump to Reactor Core phase 6';
-skipCorePhase6Btn.addEventListener('click', devSkipToCorePhase6);
-devPanel.appendChild(skipCorePhase6Btn);
-
-const skipCorePhase8Btn = document.createElement('button');
-skipCorePhase8Btn.textContent = 'Jump to Reactor Core phase 8 (orbit barrage)';
-skipCorePhase8Btn.addEventListener('click', devSkipToCorePhase8);
-devPanel.appendChild(skipCorePhase8Btn);
-
-const addDistBtn = document.createElement('button');
-addDistBtn.textContent = '+500 distance (difficulty)';
-addDistBtn.addEventListener('click', devAddDistance);
-devPanel.appendChild(addDistBtn);
-
-function devSkipToBossPhase3() {
-  if (!currentTheme().isBossZone || !boss) {
-    devStatus('Not in the boss zone.');
-    return;
-  }
-  if (bossPhase >= 3 || bossTransitioning) {
-    devStatus('Already at phase ' + bossPhase + (bossTransitioning ? ' (mid-transition)' : '') + ' -- ignoring, this would yank the boss backward.');
-    return;
-  }
-  // the ship has likely been falling under gravity the whole time
-  // spent navigating the dev panel to reach this button -- recenter
-  // it so the skip doesn't get immediately undone by a boundary crash
-  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
-  ship.vy = 0;
-  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
-  bossSpawnFrame = frame - BOSS_ENTRANCE_DURATION; // ensure entrance is already complete
-  const elapsedTarget = BOSS_PHASE_DURATION * 2 + 10; // just past the phase 2/3 boundary
-  bossTimer = Math.round(currentTheme().bossDuration - elapsedTarget);
-  bossPhase = 2; // so the transition trigger fires naturally on the next update
-  bossTransitioning = false;
-  gates = gates.filter(g => !BOSS_HAZARD_TYPES.includes(g.type)); // battlefield already clear
-  bossWaitingForClear = true; // will immediately proceed to the transformation since gates has no hazards
-  bossWaitingForClearStartFrame = frame;
-  bossWaitingForClearTargetPhase = 3;
-  devStatus('Skipped to the phase 2->3 transition (ship recentered, battlefield cleared) -- it will play out (~3s), then phase 3 begins.');
-}
-
-function devSkipToBossPhase4() {
-  if (!currentTheme().isBossZone || !boss) {
-    devStatus('Not in the boss zone.');
-    return;
-  }
-  if (bossPhase >= 4 || bossTransitioning) {
-    devStatus('Already at phase ' + bossPhase + (bossTransitioning ? ' (mid-transition)' : '') + ' -- ignoring, this would yank the boss backward.');
-    return;
-  }
-  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
-  ship.vy = 0;
-  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
-  bossSpawnFrame = frame - BOSS_ENTRANCE_DURATION;
-  const elapsedTarget = BOSS_PHASE_DURATION * 3 + 10; // just past the phase 3/4 boundary
-  bossTimer = Math.round(currentTheme().bossDuration - elapsedTarget);
-  bossPhase = 3;
-  bossTransitioning = false;
-  devStatus('Skipped to phase 4 (ship recentered) -- instant, no transition sequence.');
-}
-
-function devSkipToBossPhase5() {
-  if (!currentTheme().isBossZone || !boss) {
-    devStatus('Not in the boss zone.');
-    return;
-  }
-  if (bossPhase >= 5 || bossTransitioning) {
-    devStatus('Already at phase ' + bossPhase + (bossTransitioning ? ' (mid-transition)' : '') + ' -- ignoring, this would yank the boss backward.');
-    return;
-  }
-  ship.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) / 2;
-  ship.vy = 0;
-  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
-  bossSpawnFrame = frame - BOSS_ENTRANCE_DURATION;
-  const elapsedTarget = BOSS_PHASE_DURATION * 4 + 10; // just past the phase 4/5 boundary
-  bossTimer = Math.round(currentTheme().bossDuration - elapsedTarget);
-  bossPhase = 4;
-  bossTransitioning = false;
-  gates = gates.filter(g => !BOSS_HAZARD_TYPES.includes(g.type)); // battlefield already clear
-  bossWaitingForClear = true; // will immediately proceed to the transformation since gates has no hazards
-  bossWaitingForClearStartFrame = frame;
-  bossWaitingForClearTargetPhase = 5;
-  devStatus('Skipped to phase 5 -- battlefield cleared, shatter-and-reform transformation begins next frame.');
-}
-
-function devWarpToVictory() {
-  if (state === 'ready' || state === 'gameover' || state === 'respawn' || state === 'continue-prompt') {
-    resetGame();
-    state = 'playing';
-  }
-  isPracticeRun = false;
-  devSessionActive = true;
-  themeIndex = 12; // The Signal, the final zone
-  themeLevelReached = 12;
-  triggerVictory();
-  devStatus('Warped straight to the victory screen (dev preview -- not recorded to your save).');
-}
-
-const skipPhase3Btn = document.createElement('button');
-skipPhase3Btn.textContent = 'Skip to boss phase 3';
-skipPhase3Btn.addEventListener('click', devSkipToBossPhase3);
-devPanel.appendChild(skipPhase3Btn);
-
-const skipPhase4Btn = document.createElement('button');
-skipPhase4Btn.textContent = 'Skip to boss phase 4';
-skipPhase4Btn.addEventListener('click', devSkipToBossPhase4);
-devPanel.appendChild(skipPhase4Btn);
-
-const skipPhase5Btn = document.createElement('button');
-skipPhase5Btn.textContent = 'Skip to boss phase 5';
-skipPhase5Btn.addEventListener('click', devSkipToBossPhase5);
-devPanel.appendChild(skipPhase5Btn);
-
-const warpToVictoryBtn = document.createElement('button');
-warpToVictoryBtn.textContent = 'Warp to victory screen';
-warpToVictoryBtn.addEventListener('click', devWarpToVictory);
-devPanel.appendChild(warpToVictoryBtn);
-
-const triggerBeamBtn = document.createElement('button');
-triggerBeamBtn.textContent = 'Trigger charge beam';
-triggerBeamBtn.addEventListener('click', () => {
-  if (bossPhase !== 5 || bossTransitioning) {
-    devStatus('Not in phase 5 (or mid-transition) -- skip to phase 5 first.');
-    return;
-  }
-  spawnBossChargeBeamTelegraph();
-  devStatus('Charge beam telegraph spawned, locked to current ship position.');
-});
-devPanel.appendChild(triggerBeamBtn);
-
-const jump750Btn = document.createElement('button');
-jump750Btn.textContent = 'Start at 750 in zone';
-jump750Btn.addEventListener('click', () => devSetDistanceInZone(750));
-devPanel.appendChild(jump750Btn);
-
-const ghostBtn = document.createElement('button');
-ghostBtn.textContent = 'Ghost Mode: Off';
-ghostBtn.addEventListener('click', () => {
-  ghostMode = !ghostMode;
-  ghostBtn.textContent = 'Ghost Mode: ' + (ghostMode ? 'On' : 'Off');
-  devStatus(ghostMode
-    ? 'Ghost mode on -- full noclip. Hazards, walls, and pull fields cannot kill you. Portal still works.'
-    : 'Ghost mode off -- normal collision restored.');
-});
-devPanel.appendChild(ghostBtn);
-
-const gridFadeBtn = document.createElement('button');
-gridFadeBtn.textContent = 'Boss Grid Fade: On';
-gridFadeBtn.addEventListener('click', () => {
-  bossGridFadeEnabled = !bossGridFadeEnabled;
-  gridFadeBtn.textContent = 'Boss Grid Fade: ' + (bossGridFadeEnabled ? 'On' : 'Off');
-  devStatus(bossGridFadeEnabled
-    ? 'Grid will fade out during the phase 3 color transition.'
-    : 'Grid stays visible through the phase 3 color transition.');
-});
-devPanel.appendChild(gridFadeBtn);
-
-const ashVariantBtn = document.createElement('button');
-ashVariantBtn.textContent = 'Phase 5 Ash: Gray';
-ashVariantBtn.addEventListener('click', () => {
-  bossAshGrayVariant = !bossAshGrayVariant;
-  ashVariantBtn.textContent = 'Phase 5 Ash: ' + (bossAshGrayVariant ? 'Gray' : 'Red');
-  devStatus('Phase 5 ash background switched to ' + (bossAshGrayVariant ? 'gray' : 'red') + ' tint.');
-});
-devPanel.appendChild(ashVariantBtn);
-
-const CUSTOM_LEVEL_STORAGE_KEYS = ['zone4-terrain-custom', 'bolt-patterns-custom', 'blackhole-events-custom', 'windvortex-events-custom', 'cloudarc-events-custom', 'lensingzone-events-custom', 'supernova-events-custom', 'turret-events-custom', 'emp-events-custom', 'orb-events-custom'];
-
-function collectCustomLevelDataFromThemes() {
-  return {
-    _version: (window.SHIPPED_CUSTOM_LEVELS && window.SHIPPED_CUSTOM_LEVELS._version) || 'snes229',
-    'bolt-patterns-custom': THEMES.map(t => t.obstacleShape === 'lbolt' ? t.pattern : null),
-    'blackhole-events-custom': THEMES.map(t => t.blackHoleEvents || null),
-    'windvortex-events-custom': THEMES.map(t => t.windVortexEvents || null),
-    'cloudarc-events-custom': THEMES.map(t => t.cloudArcEvents || null),
-    'lensingzone-events-custom': THEMES.map(t => t.lensingZoneEvents || null),
-    'supernova-events-custom': THEMES.map(t => t.supernovaEvents || null),
-    'turret-events-custom': THEMES.map(t => t.turretEvents || null),
-    'emp-events-custom': THEMES.map(t => t.empEvents || null),
-    'orb-events-custom': THEMES.map(t => t.pulsingOrbEvents || null)
-  };
-}
-
-function downloadBakedCustomLevels() {
-  const data = collectCustomLevelDataFromThemes();
-  const text = 'window.SHIPPED_CUSTOM_LEVELS = ' + JSON.stringify(data, null, 2) + ';\n';
-  const blob = new Blob([text], { type: 'text/javascript;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'custom-levels.js';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-const exportCustomBtn = document.createElement('button');
-exportCustomBtn.textContent = 'Export Saved Custom Data';
-const importCustomBtn = document.createElement('button');
-importCustomBtn.textContent = 'Import Custom Data (from textarea)';
-const bakeCustomBtn = document.createElement('button');
-bakeCustomBtn.textContent = 'Download custom-levels.js (bake into project)';
-const clearLocalCustomBtn = document.createElement('button');
-clearLocalCustomBtn.textContent = 'Clear local custom overrides';
-const exportTextarea = document.createElement('textarea');
-exportTextarea.style.cssText = 'display:none; width:100%; height:200px; margin-top:8px; font-family:monospace; font-size:11px; background:#0d0221; color:#0ff0fc; border:1px solid #ff2079;';
-exportCustomBtn.addEventListener('click', async () => {
-  devStatus('Reading saved custom data from storage...');
-  const out = {};
-  for (const k of CUSTOM_LEVEL_STORAGE_KEYS) {
-    try {
-      const result = await window.storage.get(k);
-      const parsed = parseStoredCustom(result && result.value);
-      if (parsed) out[k] = parsed;
-    } catch (e) { /* key not saved, skip */ }
-  }
-  const foundCount = Object.keys(out).length;
-  if (foundCount === 0) {
-    devStatus('No saved custom data found in storage. Paste JSON below and use Import.');
-    exportTextarea.style.display = 'block';
-  } else {
-    devStatus('Found ' + foundCount + ' saved custom dataset(s). Copy the text below and send it back.');
-    exportTextarea.style.display = 'block';
-    exportTextarea.value = JSON.stringify(out, null, 2);
-    exportTextarea.focus();
-    exportTextarea.select();
-  }
-});
-importCustomBtn.addEventListener('click', async () => {
-  let data;
-  try {
-    data = JSON.parse(exportTextarea.value);
-  } catch (e) {
-    exportTextarea.style.display = 'block';
-    devStatus('Import failed — paste the exported JSON into the box first.');
-    return;
-  }
-  let imported = 0;
-  for (const k of CUSTOM_LEVEL_STORAGE_KEYS) {
-    if (data[k] == null) continue;
-    try {
-      await window.storage.set(k, JSON.stringify(data[k]));
-      imported++;
-    } catch (e) { /* skip */ }
-  }
-  if (imported === 0) {
-    devStatus('Import found no recognized custom-level keys.');
-    return;
-  }
-  await applyAllCustomLevelData();
-  await loadCustomTerrain();
-  devStatus('Imported ' + imported + ' custom dataset(s). Reloaded into themes.');
-});
-bakeCustomBtn.addEventListener('click', async () => {
-  const data = collectCustomLevelDataFromThemes();
-  for (const [k, v] of Object.entries(data)) {
-    try { await window.storage.set(k, JSON.stringify(v)); } catch (e) { /* skip */ }
-  }
-  downloadBakedCustomLevels();
-  exportTextarea.style.display = 'block';
-  exportTextarea.value = JSON.stringify(data, null, 2);
-  devStatus('Downloaded custom-levels.js. Replace the file in the project folder, then hard-refresh. Editor Save first if you still have unsaved moves.');
-});
-clearLocalCustomBtn.addEventListener('click', async () => {
-  for (const k of CUSTOM_LEVEL_STORAGE_KEYS) {
-    try { await window.storage.set(k, ''); } catch (e) { /* skip */ }
-    try { localStorage.removeItem(GAME_STORAGE_PREFIX + k); } catch (e) { /* skip */ }
-  }
-  await applyAllCustomLevelData();
-  await loadCustomTerrain();
-  devStatus('Cleared local overrides. Using shipped custom-levels.js layouts.');
-});
-devPanel.appendChild(exportCustomBtn);
-devPanel.appendChild(importCustomBtn);
-devPanel.appendChild(bakeCustomBtn);
-devPanel.appendChild(clearLocalCustomBtn);
-devPanel.appendChild(exportTextarea);
-
-const fireballSpeedSlider = document.getElementById('fireball-speed-slider');
-const fireballSpeedValue = document.getElementById('fireball-speed-value');
-if (DEV_TOOLS_ENABLED && fireballSpeedSlider && fireballSpeedValue) {
-  fireballSpeedSlider.addEventListener('input', () => {
-    fireballSpeedMult = parseFloat(fireballSpeedSlider.value);
-    fireballSpeedValue.textContent = fireballSpeedMult.toFixed(1);
-    devStatus('Flame speed set to ' + fireballSpeedMult.toFixed(1) + 'x world scroll.');
-  });
-}
-
-window.addEventListener('keydown', (e) => {
-  if (!DEV_TOOLS_ENABLED) return;
-  const num = parseInt(e.key, 10);
-  if (num >= 1 && num <= THEMES.length) {
-    devJumpToTheme(num - 1);
-  }
-});
-
-// ---- Zone 2 hand-drawn cave editor ----
-const editorCanvas = document.getElementById('editorCanvas');
-const editorCtx = editorCanvas.getContext('2d');
-const editorOverlay = document.getElementById('editor-overlay');
-const editorToggleBtn = document.getElementById('editor-toggle');
-const editorStatus = document.getElementById('editor-status');
-const editorToggleCustomBtn = document.getElementById('editor-toggle-custom');
-
-let editorMode = false;
-let editorTool = 'top';
-let editorPanX = 0;
-let editorDrawing = false;
-let editorLastLevelX = null;
-
-function resizeEditorCanvas() {
-  editorCanvas.width = editorCanvas.clientWidth;
-  editorCanvas.height = editorCanvas.clientHeight;
-}
-
-function editorPlayTopBottom() {
-  // mirrors the real game's proportions, using the editor canvas's own height
-  const margin = editorCanvas.height * 0.08;
-  return { top: margin, bottom: editorCanvas.height - margin };
-}
-
-function openEditor() {
-  editorMode = true;
-  editorOverlay.classList.add('active');
-  resizeEditorCanvas();
-  updateEditorToggleCustomLabel();
-  requestAnimationFrame(drawEditorLoop);
-}
-
-function closeEditor() {
-  editorMode = false;
-  editorOverlay.classList.remove('active');
-}
-
-function updateEditorToggleCustomLabel() {
-  editorToggleCustomBtn.textContent = 'Using: ' + (useCustomTerrain ? 'Custom' : 'Procedural');
-}
-
-editorToggleBtn.addEventListener('click', openEditor);
-document.getElementById('editor-close').addEventListener('click', closeEditor);
-
-document.getElementById('tool-top').addEventListener('click', () => {
-  editorTool = 'top';
-  document.getElementById('tool-top').classList.add('tool-active');
-  document.getElementById('tool-bottom').classList.remove('tool-active');
-});
-document.getElementById('tool-bottom').addEventListener('click', () => {
-  editorTool = 'bottom';
-  document.getElementById('tool-bottom').classList.add('tool-active');
-  document.getElementById('tool-top').classList.remove('tool-active');
-});
-
-document.getElementById('editor-clear').addEventListener('click', () => {
-  customTerrainZone2 = defaultCustomTerrain();
-  editorStatus.textContent = 'Reset to flat.';
-});
-
-document.getElementById('editor-save').addEventListener('click', async () => {
-  editorStatus.textContent = 'Saving...';
-  const ok = await saveCustomTerrain();
-  editorStatus.textContent = ok ? 'Saved!' : 'Save failed (kept in memory only).';
-  updateEditorToggleCustomLabel();
-});
-
-document.getElementById('editor-toggle-custom').addEventListener('click', () => {
-  useCustomTerrain = !useCustomTerrain;
-  updateEditorToggleCustomLabel();
-  editorStatus.textContent = useCustomTerrain ? 'Custom level active in-game.' : 'Procedural pattern active in-game.';
-});
-
-document.getElementById('editor-test').addEventListener('click', () => {
-  closeEditor();
-  devJumpToTheme(3);
-});
-
-function editorScreenToLevel(clientX, clientY) {
-  const rect = editorCanvas.getBoundingClientRect();
-  const px = clientX - rect.left;
-  const py = clientY - rect.top;
-  const levelX = ((px + editorPanX) % EDITOR_LEVEL_LENGTH + EDITOR_LEVEL_LENGTH) % EDITOR_LEVEL_LENGTH;
-  const { top, bottom } = editorPlayTopBottom();
-  const frac = Math.max(0, Math.min(1, (py - top) / (bottom - top)));
-  return { levelX, frac };
-}
-
-function applyEditorPoint(levelX, frac, fromLevelX) {
-  const n = customTerrainZone2.length;
-  const idx = Math.round(levelX / EDITOR_SAMPLE_SPACING) % n;
-
-  function setOne(i, f) {
-    const point = customTerrainZone2[i];
-    if (editorTool === 'top') {
-      point.topFrac = Math.min(f, point.bottomFrac - EDITOR_MIN_GAP_FRAC);
-      point.topFrac = Math.max(0, point.topFrac);
-    } else {
-      point.bottomFrac = Math.max(f, point.topFrac + EDITOR_MIN_GAP_FRAC);
-      point.bottomFrac = Math.min(1, point.bottomFrac);
-    }
-  }
-
-  if (fromLevelX === null || fromLevelX === undefined) {
-    setOne(idx, frac);
-    return;
-  }
-  // interpolate across fast drags so the stroke has no gaps
-  let a = Math.round(fromLevelX / EDITOR_SAMPLE_SPACING);
-  let b = idx;
-  const steps = Math.min(40, Math.abs(b - a) + 1);
-  for (let s = 0; s <= steps; s++) {
-    const t = steps === 0 ? 0 : s / steps;
-    const i = Math.round((a + (b - a) * t)) % n;
-    setOne(((i % n) + n) % n, frac);
-  }
-}
-
-function editorPointerDown(clientX, clientY) {
-  editorDrawing = true;
-  const { levelX, frac } = editorScreenToLevel(clientX, clientY);
-  applyEditorPoint(levelX, frac, null);
-  editorLastLevelX = levelX;
-}
-function editorPointerMove(clientX, clientY) {
-  if (!editorDrawing) return;
-  const { levelX, frac } = editorScreenToLevel(clientX, clientY);
-  applyEditorPoint(levelX, frac, editorLastLevelX);
-  editorLastLevelX = levelX;
-}
-function editorPointerUp() {
-  editorDrawing = false;
-  editorLastLevelX = null;
-}
-
-editorCanvas.addEventListener('mousedown', (e) => editorPointerDown(e.clientX, e.clientY));
-editorCanvas.addEventListener('mousemove', (e) => editorPointerMove(e.clientX, e.clientY));
-window.addEventListener('mouseup', editorPointerUp);
-editorCanvas.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  const t = e.touches[0];
-  editorPointerDown(t.clientX, t.clientY);
-}, { passive: false });
-editorCanvas.addEventListener('touchmove', (e) => {
-  e.preventDefault();
-  const t = e.touches[0];
-  editorPointerMove(t.clientX, t.clientY);
-}, { passive: false });
-editorCanvas.addEventListener('touchend', editorPointerUp);
-
-editorCanvas.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  editorPanX = Math.max(0, Math.min(EDITOR_LEVEL_LENGTH - editorCanvas.width, editorPanX + e.deltaY + e.deltaX));
-}, { passive: false });
-
-function drawEditor() {
-  const w = editorCanvas.width, h = editorCanvas.height;
-  editorCtx.clearRect(0, 0, w, h);
-  editorCtx.fillStyle = '#000d05';
-  editorCtx.fillRect(0, 0, w, h);
-
-  const { top, bottom } = editorPlayTopBottom();
-
-  // vertical rulers every 200 level-space px
-  editorCtx.strokeStyle = 'rgba(255,204,51,0.15)';
-  editorCtx.fillStyle = 'rgba(255,204,51,0.4)';
-  editorCtx.font = '10px Courier New';
-  editorCtx.lineWidth = 1;
-  const firstMark = Math.floor(editorPanX / 200) * 200;
-  for (let lx = firstMark; lx < editorPanX + w + 200; lx += 200) {
-    const sx = lx - editorPanX;
-    editorCtx.beginPath();
-    editorCtx.moveTo(sx, 0);
-    editorCtx.lineTo(sx, h);
-    editorCtx.stroke();
-    editorCtx.fillText(String(Math.round(((lx % EDITOR_LEVEL_LENGTH) + EDITOR_LEVEL_LENGTH) % EDITOR_LEVEL_LENGTH)), sx + 3, 12);
-  }
-
-  // loop point marker
-  const loopSx = EDITOR_LEVEL_LENGTH - editorPanX;
-  if (loopSx > -50 && loopSx < w + 50) {
-    editorCtx.strokeStyle = '#ff2079';
-    editorCtx.setLineDash([6, 6]);
-    editorCtx.beginPath();
-    editorCtx.moveTo(loopSx, 0);
-    editorCtx.lineTo(loopSx, h);
-    editorCtx.stroke();
-    editorCtx.setLineDash([]);
-    editorCtx.fillStyle = '#ff2079';
-    editorCtx.fillText('LOOP END', loopSx + 4, h - 6);
-  }
-
-  // draw top/bottom shapes across visible window
-  const n = customTerrainZone2.length;
-  editorCtx.fillStyle = 'rgba(255,204,51,0.5)';
-  editorCtx.beginPath();
-  editorCtx.moveTo(0, top - 4);
-  for (let sx = 0; sx <= w; sx += 4) {
-    const levelX = ((sx + editorPanX) % EDITOR_LEVEL_LENGTH + EDITOR_LEVEL_LENGTH) % EDITOR_LEVEL_LENGTH;
-    const s = sampleCustomTerrainAt(levelX);
-    editorCtx.lineTo(sx, top + s.topFrac * (bottom - top));
-  }
-  editorCtx.lineTo(w, top - 4);
-  editorCtx.closePath();
-  editorCtx.fill();
-
-  editorCtx.fillStyle = 'rgba(255,51,0,0.5)';
-  editorCtx.beginPath();
-  editorCtx.moveTo(0, bottom + 4);
-  for (let sx = 0; sx <= w; sx += 4) {
-    const levelX = ((sx + editorPanX) % EDITOR_LEVEL_LENGTH + EDITOR_LEVEL_LENGTH) % EDITOR_LEVEL_LENGTH;
-    const s = sampleCustomTerrainAt(levelX);
-    editorCtx.lineTo(sx, top + s.bottomFrac * (bottom - top));
-  }
-  editorCtx.lineTo(w, bottom + 4);
-  editorCtx.closePath();
-  editorCtx.fill();
-
-  editorCtx.fillStyle = 'rgba(255,255,255,0.5)';
-  editorCtx.font = '11px Courier New';
-  editorCtx.fillText('TOP WALL', 8, top + 14);
-  editorCtx.fillText('BOTTOM WALL', 8, bottom - 6);
-}
-
-function sampleCustomTerrainAt(levelX) {
-  // like sampleCustomTerrain() but safe to call before a game is active
-  const n = customTerrainZone2.length;
-  const idxF = (levelX / EDITOR_SAMPLE_SPACING) % (n - 1);
-  const i0 = Math.floor(idxF);
-  const i1 = (i0 + 1) % n;
-  const t = idxF - i0;
-  const a = customTerrainZone2[i0], b = customTerrainZone2[i1];
-  return {
-    topFrac: a.topFrac + (b.topFrac - a.topFrac) * t,
-    bottomFrac: a.bottomFrac + (b.bottomFrac - a.bottomFrac) * t
-  };
-}
-
-function drawEditorLoop() {
-  if (!editorMode) return;
-  drawEditor();
-  requestAnimationFrame(drawEditorLoop);
-}
-
-window.addEventListener('resize', () => {
-  if (editorMode) resizeEditorCanvas();
-});
-
-// ---- Zone preview: simulate a full 1000-distance span for any zone,
-// re-using the exact same generation functions as live gameplay, then
-// render it all on one wide static map so problem spots can be spotted
-// without playing through
-const previewCanvas = document.getElementById('previewCanvas');
-const previewCtx = previewCanvas.getContext('2d');
-const previewOverlay = document.getElementById('preview-overlay');
-const previewStatus = document.getElementById('preview-status');
-
-function captureSimState() {
-  return {
-    gates, patternIndex, lastSpawnX, fireballSpawnCounter,
-    terrainSegments, terrainSegmentsSinceEntry, terrainLevelX,
-    terrainWaypointTarget, terrainWaypointSegLeft, terrainWaypointSegTotal, terrainWaypointGapTarget, terrainWaypointIslandTarget, terrainWaypointIslandFrom,
-    terrainWaypointNosePower, terrainWaypointTaperShare, terrainWaypointTaperCap,
-    terrainWaypointIslandShape, terrainWaypointIslandLabel, terrainWaypointIslandBias,
-    themeIndex, distance, frame, ship: { x: ship.x, y: ship.y, vy: ship.vy, rotation: ship.rotation }
-  };
-}
-
-function restoreSimState(s) {
-  gates = s.gates; patternIndex = s.patternIndex; lastSpawnX = s.lastSpawnX;
-  fireballSpawnCounter = s.fireballSpawnCounter;
-  terrainSegments = s.terrainSegments; terrainSegmentsSinceEntry = s.terrainSegmentsSinceEntry;
-  terrainLevelX = s.terrainLevelX;
-  terrainWaypointTarget = s.terrainWaypointTarget; terrainWaypointSegLeft = s.terrainWaypointSegLeft;
-  terrainWaypointSegTotal = s.terrainWaypointSegTotal || 1;
-  terrainWaypointGapTarget = s.terrainWaypointGapTarget; terrainWaypointIslandTarget = s.terrainWaypointIslandTarget;
-  terrainWaypointIslandFrom = s.terrainWaypointIslandFrom || 0;
-  terrainWaypointNosePower = s.terrainWaypointNosePower || 1;
-  terrainWaypointTaperShare = s.terrainWaypointTaperShare || 0.32;
-  terrainWaypointTaperCap = s.terrainWaypointTaperCap || 5;
-  terrainWaypointIslandShape = s.terrainWaypointIslandShape || '';
-  terrainWaypointIslandLabel = s.terrainWaypointIslandLabel || '';
-  terrainWaypointIslandBias = s.terrainWaypointIslandBias || 0;
-  themeIndex = s.themeIndex; distance = s.distance; frame = s.frame;
-  ship.x = s.ship.x; ship.y = s.ship.y; ship.vy = s.ship.vy; ship.rotation = s.ship.rotation;
-}
-
-function simulateZonePreview(themeIdx, targetDistance) {
-  const saved = captureSimState();
-
-  themeIndex = themeIdx;
-  distance = 0;
-  frame = 0;
-  gates = [];
-  patternIndex = 0;
-  lastSpawnX = 0;
-  fireballSpawnCounter = 0;
-  terrainSegmentsSinceEntry = 0;
-  terrainLevelX = 0;
-  terrainWaypointTarget = null;
-  terrainWaypointSegLeft = 0;
-  terrainWaypointSegTotal = 1;
-  terrainWaypointIslandFrom = 0;
-  terrainWaypointNosePower = 1;
-  terrainWaypointTaperShare = 0.32;
-  terrainWaypointTaperCap = 5;
-  terrainWaypointIslandShape = '';
-  terrainWaypointIslandLabel = '';
-  terrainWaypointIslandBias = 0;
-  terrainMeanderIndex = 0;
-  ship.x = 0;
-  ship.y = (PLAY_TOP + PLAY_BOTTOM) / 2;
-
-  const th = THEMES[themeIdx];
-  const targetPx = targetDistance * 10;
-  const result = { themeIndex: themeIdx, obstacles: [], terrainSegments: null };
-
-  if (th.obstacleShape === 'terrain') {
-    initTerrain();
-    let guard = 0;
-    while (terrainSegments[terrainSegments.length - 1].x < targetPx && guard < 5000) {
-      addTerrainSegment();
-      distance = terrainSegments[terrainSegments.length - 1].x / 10;
-      guard++;
-    }
-    result.terrainSegments = terrainSegments.map(s => ({ ...s }));
-  } else if (th.obstacleShape === 'fireball') {
-    // timer-based spawner, not position-based -- step it like the real update loop
-    let x = 0;
-    let counter = 0;
-    let guard = 0;
-    while (x < targetPx && guard < 5000) {
-      counter++;
-      const interval = Math.max(50, (th.fireballIntervalBase || 100) - distance * 0.01);
-      if (counter >= interval) {
-        spawnFireball();
-        const last = gates[gates.length - 1];
-        last.previewX = x;
-        counter = 0;
-      }
-      x += 4;
-      distance = x / 10;
-      guard++;
-    }
-    result.obstacles = gates.map(g => ({ ...g, x: g.previewX !== undefined ? g.previewX : g.x }));
-  } else if (th.obstacleShape === 'none') {
-    // event-based zone -- place each hand-placed event directly at its
-    // trigger-distance position rather than stepping through a
-    // spacing/timer loop
-    const playHeight = PLAY_BOTTOM - PLAY_TOP;
-    const margin = 15;
-    if (th.blackHoleEvents) for (const [idx, event] of th.blackHoleEvents.entries()) {
-      gates.push({
-        type: 'blackhole',
-        x: event.triggerDistance * 10,
-        y: PLAY_TOP + margin + event.yFrac * Math.max(1, playHeight - margin * 2),
-        coreR: event.coreR,
-        reachR: event.reachR,
-        rotSeed: 0,
-        passed: false,
-        previewX: event.triggerDistance * 10,
-        _eventIdx: idx
-      });
-    }
-    if (th.lensingZoneEvents) {
-      for (const [idx, event] of th.lensingZoneEvents.entries()) {
-        gates.push({
-          type: 'lensingzone',
-          x: event.triggerDistance * 10,
-          y: PLAY_TOP + margin + event.yFrac * Math.max(1, playHeight - margin * 2),
-          coreR: event.coreR,
-          zoneRadius: event.zoneRadius,
-          rotSeed: 0,
-          passed: false,
-          previewX: event.triggerDistance * 10,
-          _lensIdx: idx
-        });
-      }
-    }
-    if (th.supernovaEvents) {
-      for (const [idx, event] of th.supernovaEvents.entries()) {
-        gates.push({
-          type: 'supernova',
-          x: event.triggerDistance * 10,
-          y: PLAY_TOP + margin + event.yFrac * Math.max(1, playHeight - margin * 2),
-          planetR: event.planetR,
-          dormantFrames: event.dormantFrames,
-          warningFrames: event.warningFrames,
-          detonated: false,
-          rotSeed: 0,
-          passed: false,
-          previewX: event.triggerDistance * 10,
-          _novaIdx: idx
-        });
-      }
-    }
-    if (th.turretEvents) {
-      for (const [idx, event] of th.turretEvents.entries()) {
-        const y = event.anchor === 'top' ? PLAY_TOP + event.mountOffset : PLAY_BOTTOM - event.mountOffset;
-        gates.push({
-          type: 'turret',
-          x: event.triggerDistance * 10,
-          y: y,
-          anchor: event.anchor,
-          fireAngleDeg: event.fireAngleDeg || 0,
-          numShots: event.numShots,
-          fireInterval: event.fireInterval,
-          rotSeed: 0,
-          passed: false,
-          previewX: event.triggerDistance * 10,
-          _turretIdx: idx
-        });
-      }
-    }
-    if (th.empEvents) {
-      for (const [idx, event] of th.empEvents.entries()) {
-        gates.push({
-          type: 'emp',
-          x: event.triggerDistance * 10,
-          anchor: event.anchor,
-          reachDepth: event.reachDepth,
-          chargeFrames: event.chargeFrames,
-          dischargeFrames: event.dischargeFrames,
-          spawnFrame: 0,
-          rotSeed: 0,
-          passed: false,
-          previewX: event.triggerDistance * 10,
-          _empIdx: idx
-        });
-      }
-    }
-    if (th.pulsingOrbEvents) {
-      const playHeight2 = PLAY_BOTTOM - PLAY_TOP;
-      for (const [idx, event] of th.pulsingOrbEvents.entries()) {
-        gates.push({
-          type: 'pulsingorb',
-          x: event.triggerDistance * 10,
-          y: PLAY_TOP + playHeight2 / 2,
-          minR: event.minR,
-          maxR: event.maxR,
-          period: event.period,
-          spawnFrame: 0,
-          rotSeed: 0,
-          passed: false,
-          previewX: event.triggerDistance * 10,
-          _orbIdx: idx
-        });
-      }
-    }
-    result.obstacles = gates.map(g => ({ ...g, x: g.previewX !== undefined ? g.previewX : g.x }));
-  } else {
-    // real gameplay's initial upfront spawn starts at ship.x + 420, not 0 --
-    // matching that offset here (ship.x is 0 in this preview simulation) is
-    // what makes bolt positions actually line up with event-based hazards
-    // like wind vortex, which are placed directly at triggerDistance*10
-    let x = 420;
-    let guard = 0;
-    while (x < targetPx && guard < 2000) {
-      const gateCountBefore = gates.length;
-      const gapAtSpawn = !th.obstacleShape ? currentGapSize() : null;
-      const entryIdxUsed = patternIndex % th.pattern.length;
-      const spacing = spawnGate(x);
-      for (let i = gateCountBefore; i < gates.length; i++) {
-        gates[i].previewGap = gapAtSpawn;
-        gates[i]._entryIdx = entryIdxUsed;
-        gates[i]._boltIdx = i - gateCountBefore;
-      }
-      x += spacing || 300;
-      distance = x / 10;
-      guard++;
-    }
-    result.obstacles = gates.map(g => ({ ...g }));
-  }
-
-  // secondary layer, independent of obstacleShape: wind vortex events run
-  // alongside whatever primary hazard the zone uses (matches how the real
-  // gameplay trigger check works -- it's never gated on obstacleShape)
-  if (th.windVortexEvents) {
-    const playHeightV = PLAY_BOTTOM - PLAY_TOP;
-    const marginV = 15;
-    th.windVortexEvents.forEach((event, idx) => {
-      result.obstacles.push({
-        type: 'windvortex',
-        x: event.triggerDistance * 10,
-        y: PLAY_TOP + marginV + event.yFrac * Math.max(1, playHeightV - marginV * 2),
-        reachR: event.reachR,
-        rotSeed: idx * 5.1,
-        passed: false,
-        previewX: event.triggerDistance * 10,
-        _vortexIdx: idx
-      });
-    });
-  }
-  if (th.cloudArcEvents) {
-    const playHeightA = PLAY_BOTTOM - PLAY_TOP;
-    const marginA = 20;
-    th.cloudArcEvents.forEach((event, idx) => {
-      const x1 = event.triggerDistance * 10;
-      const cycleLength = event.onFrames + event.offFrames;
-      const jitter = [];
-      for (let i = 0; i < 7; i++) jitter.push((i % 2 ? 0.7 : -0.7) * (0.4 + (i % 3) * 0.2));
-      result.obstacles.push({
-        type: 'cloudarc',
-        x: x1,
-        y: PLAY_TOP + marginA + event.y1Frac * Math.max(1, playHeightA - marginA * 2),
-        x2: x1 + event.spanPx,
-        y2: PLAY_TOP + marginA + event.y2Frac * Math.max(1, playHeightA - marginA * 2),
-        onFrames: event.onFrames,
-        offFrames: event.offFrames,
-        cycleLength,
-        phaseOffset: Math.round(event.phaseFrac * cycleLength),
-        jitter,
-        branchT: 0.42,
-        branchSide: idx % 2 ? -1 : 1,
-        branchLen: 52,
-        branchAngleJitter: 0.12,
-        passed: false,
-        previewX: x1,
-        _arcIdx: idx
-      });
-    });
-  }
-
-  restoreSimState(saved);
-  return result;
-}
-
-// Runs the REAL game engine -- reseedZoneObstacles() then the actual
-// per-frame update() loop -- to capture the exact obstacle set a real
-// playthrough would produce, rather than a second, separate approximation
-// of the spawn logic that can quietly drift out of sync with it. Ghost
-// mode plus an extended grace period keep the ship completely safe
-// throughout (frozen in place, no collisions, no forces) so nothing here
-// can end the run early; nothing about this affects the real game, since
-// all touched state is restored before returning.
-function captureFullZoneRun(themeIdx, targetDistance) {
-  const saved = captureSimState();
-  const savedGhost = ghostMode;
-  const savedGrace = devGracePeriodEndFrame;
-  const savedState = state;
-  const savedZoneStartDistance = zoneStartDistance;
-  const savedZoneStartFrame = zoneStartFrame;
-  const savedWarpActive = warpActive;
-  const savedPortalObject = portalObject;
-  const savedEventFlags = {
-    specialEventsSpawned, blackHoleEventsSpawned, windVortexEventsSpawned, cloudArcEventsSpawned, lightningStrikeEventsSpawned, lasergridEventsSpawned,
-    droneSwarmEventsSpawned, billboardEventsSpawned, searchlightEventsSpawned,
-    turretEventsSpawned, signalCorruptionEventsSpawned, empEventsSpawned,
-    echoTrailEventsSpawned, pulsingOrbEventsSpawned, boomerangEventsSpawned,
-    oncomingCometEventsSpawned, splitRockEventsSpawned, lensingZoneEventsSpawned, supernovaEventsSpawned,
-  };
-  // the update() loop this capture drives processes mini boss fight logic
-  // exactly like real gameplay -- without saving/restoring it, previewing
-  // this zone in the editor could advance or even complete the fight
-  // internally, leaking that progress into the player's actual game
-  const savedMiniBossState = {
-    miniBoss, miniBossCyclesCompleted, miniBossSpawnFrame, miniBossDefeated, miniBossDefeatFrame,
-    miniBossAttackState, miniBossAttackStateStartFrame, miniBossChargeHeights, miniBossChargeIndex,
-    miniBossChargeRound, miniBossFlameWallDriftDir, miniBossBarrageEmbers, miniBossBarrageWavesLaunched,
-    miniBossSqueezeTopY, miniBossSqueezeBottomY, miniBossBarragePhaseStartFrame, miniBossDeathPatches,
-    miniBossDeathAshParticles, miniBossEscapeRunActive, miniBossEscapeRunStartDistance, miniBossHadFirstFloat,
-    miniBossNextAttackSet, miniBossFloatBlendStartX, miniBossFloatBlendStartY, miniBossFloatBlendStartFrame,
-    miniBossWallRecedeStartFrame, miniBossWallCracks, coreWallPanels, coreWallSensors,
-  };
-
-  themeIndex = themeIdx;
-  distance = 0; frame = 0; zoneStartDistance = 0; zoneStartFrame = 0;
-  warpActive = false; portalObject = null; state = 'playing';
-  ship.x = 0; ship.y = (PLAY_TOP + PLAY_BOTTOM) / 2; ship.vy = 0; ship.rotation = 0;
-  ghostMode = true;
-  const savedThemeLevelReached = themeLevelReached;
-  // the real update loop auto-triggers a zone transition once distance
-  // crosses a THEME_DISTANCE boundary relative to themeLevelReached -- since
-  // this capture run's own distance climbs from 0 up toward targetDistance
-  // (often exactly one THEME_DISTANCE), that real transition could fire
-  // mid-capture and reset zoneStartDistance out from under the position math.
-  // pinning themeLevelReached far ahead keeps the check from ever tripping
-  themeLevelReached = 999999;
-
-  const th = THEMES[themeIdx];
-  const result = { themeIndex: themeIdx, obstacles: [], terrainSegments: null };
-
-  // maps each single-spawn event array to its spawned-flag array, the gate
-  // type it produces, and the tag field the editor's selection/drag code
-  // expects on each captured gate
-  const EVENT_TYPE_MAP = [
-    { flagsGetter: () => blackHoleEventsSpawned, gateType: 'blackhole', tag: '_eventIdx' },
-    { flagsGetter: () => windVortexEventsSpawned, gateType: 'windvortex', tag: '_vortexIdx' },
-    { flagsGetter: () => cloudArcEventsSpawned, gateType: 'cloudarc', tag: '_arcIdx' },
-    { flagsGetter: () => lightningStrikeEventsSpawned, gateType: 'stormchargebolttelegraph', tag: '_strikeIdx' },
-    { flagsGetter: () => lensingZoneEventsSpawned, gateType: 'lensingzone', tag: '_lensIdx' },
-    { flagsGetter: () => supernovaEventsSpawned, gateType: 'supernova', tag: '_novaIdx' },
-    { flagsGetter: () => turretEventsSpawned, gateType: 'turret', tag: '_turretIdx' },
-    { flagsGetter: () => empEventsSpawned, gateType: 'emp', tag: '_empIdx' },
-    { flagsGetter: () => pulsingOrbEventsSpawned, gateType: 'pulsingorb', tag: '_orbIdx' },
-  ];
-  const snapshotEventFlags = () => EVENT_TYPE_MAP.map(m => (m.flagsGetter() || []).slice());
-
-  if (th.obstacleShape === 'terrain') {
-    // terrain uses its own terrainSegments data structure, not gates, and
-    // isn't part of the position-mismatch issue this addresses -- keep the
-    // existing lightweight step-through for it
-    initTerrain();
-    let guard = 0;
-    while (terrainSegments[terrainSegments.length - 1].x < targetDistance * 10 && guard < 5000) {
-      addTerrainSegment();
-      distance = terrainSegments[terrainSegments.length - 1].x / 10;
-      guard++;
-    }
-    result.terrainSegments = terrainSegments.map(s => ({ ...s }));
-  } else {
-    devGracePeriodEndFrame = 999999999; // keep the ship's vertical physics frozen for the entire capture run
-    patternIndex = 0;
-    reseedZoneObstacles(ship.x + 420); // the exact same entry point a real zone transition uses
-
-    const capturedIds = new Set();
-    const capturedGates = [];
-    // computes each bolt's position directly from the pattern data and a
-    // known base spawn x, rather than searching the live `gates` array for
-    // it. A bolt with an extreme xJitter can scroll far enough off-screen
-    // to trigger the game's own despawn check within the very same frame
-    // it spawns in -- searching gates after the fact would silently miss
-    // it, and every later cycle-repetition of that same bolt along with
-    // it, making the preview quietly incomplete until something else
-    // (like an unrelated edit) happened to correct that bolt's position
-    // and "reveal" the previously-invisible instances.
-    const captureBoltsForEntry = (entryIdx, baseX, zp) => {
-      const entry = th.pattern[entryIdx];
-      if (!entry || !entry.bolts) return;
-      entry.bolts.forEach((b, bi) => {
-        const gx = baseX + b.xJitter;
-        const effectiveZoneProgress = zp + (gx - ship.x) / 10;
-        const playHeight = PLAY_BOTTOM - PLAY_TOP;
-        const margin = 28;
-        const heightPx = b.heightFrac * playHeight;
-        const cycleLength = b.onFrames + b.offFrames;
-        capturedGates.push({
-          type: 'lbolt',
-          x: effectiveZoneProgress * 10,
-          y: PLAY_TOP + margin + b.yFrac * Math.max(1, playHeight - margin * 2),
-          height: heightPx,
-          swingWidth: b.swingWidthPx,
-          shape: BOLT_SHAPES[b.shape],
-          onFrames: b.onFrames,
-          offFrames: b.offFrames,
-          cycleLength: cycleLength,
-          phaseOffset: Math.round(b.phaseFrac * cycleLength),
-          passed: false,
-          _entryIdx: entryIdx, _boltIdx: bi
-        });
-      });
-    };
-    const captureInitialPatternGates = (startX, toEntryRaw, zp) => {
-      let x = startX;
-      for (let ei = 0; ei < toEntryRaw; ei++) {
-        const entryIdx = ((ei % th.pattern.length) + th.pattern.length) % th.pattern.length;
-        if (ei > 0) x += th.pattern[entryIdx].spacing || GATE_SPACING;
-        captureBoltsForEntry(entryIdx, x, zp);
-      }
-    };
-    // captures any newly-appeared non-lbolt gate, tagging single-spawn event
-    // types using which specific flag index flipped true since flagsBefore
-    const captureOtherNewGates = (zp, flagsBefore) => {
-      const flagsAfter = snapshotEventFlags();
-      for (const g of gates) {
-        if (g.type === 'lbolt' || capturedIds.has(g)) continue;
-        capturedIds.add(g);
-        const effectiveZoneProgress = zp + (g.x - ship.x) / 10;
-        const captured = { ...g, x: effectiveZoneProgress * 10 };
-        if (g.x2 !== undefined) captured.x2 = g.x2 + (captured.x - g.x); // keep x2 consistent with the same shift applied to x
-        EVENT_TYPE_MAP.forEach((m, mi) => {
-          if (g.type !== m.gateType) return;
-          const before = flagsBefore[mi] || [];
-          const after = flagsAfter[mi] || [];
-          for (let i = 0; i < after.length; i++) {
-            if (after[i] && !before[i]) { captured[m.tag] = i; break; }
-          }
-        });
-        capturedGates.push(captured);
-      }
-    };
-
-    let prevPatternIndex = patternIndex; // after reseedZoneObstacles's initial 6-gate spawn
-    if (th.obstacleShape === 'lbolt') captureInitialPatternGates(ship.x + 420, prevPatternIndex, distance - zoneStartDistance);
-    captureOtherNewGates(distance - zoneStartDistance, EVENT_TYPE_MAP.map(() => []));
-
-    let guard = 0;
-    while ((distance - zoneStartDistance) < targetDistance && guard < 20000) {
-      const flagsBefore = snapshotEventFlags();
-      // belt-and-suspenders: pin the ship to a safe, centered position every
-      // frame, not just at setup. ghost mode and the extended grace period
-      // cover the normal death paths, but at least one Neon City mechanic
-      // was found to end the run anyway -- forcing position each frame
-      // guarantees nothing can push the ship into a boundary during capture
-      ship.y = (PLAY_TOP + PLAY_BOTTOM) / 2;
-      ship.vy = 0;
-      update();
-      if (state !== 'playing') state = 'playing'; // backstop in case something still ends the run
-      const zp = distance - zoneStartDistance;
-      if (th.obstacleShape === 'lbolt' && patternIndex > prevPatternIndex) {
-        // only one new entry can spawn per frame in the ongoing loop, so
-        // lastSpawnX (updated synchronously the instant it spawns) is
-        // exactly that entry's base position, regardless of whether the
-        // resulting gate object has already despawned by now
-        const entryIdx = ((patternIndex - 1) % th.pattern.length + th.pattern.length) % th.pattern.length;
-        captureBoltsForEntry(entryIdx, lastSpawnX, zp);
-        prevPatternIndex = patternIndex;
-      }
-      captureOtherNewGates(zp, flagsBefore);
-      guard++;
-    }
-    result.obstacles = capturedGates;
-  }
-
-  ghostMode = savedGhost;
-  themeLevelReached = savedThemeLevelReached;
-  devGracePeriodEndFrame = savedGrace;
-  state = savedState;
-  zoneStartDistance = savedZoneStartDistance;
-  zoneStartFrame = savedZoneStartFrame;
-  warpActive = savedWarpActive;
-  portalObject = savedPortalObject;
-  blackHoleEventsSpawned = savedEventFlags.blackHoleEventsSpawned;
-  specialEventsSpawned = savedEventFlags.specialEventsSpawned;
-  windVortexEventsSpawned = savedEventFlags.windVortexEventsSpawned;
-  cloudArcEventsSpawned = savedEventFlags.cloudArcEventsSpawned;
-  lightningStrikeEventsSpawned = savedEventFlags.lightningStrikeEventsSpawned;
-  lasergridEventsSpawned = savedEventFlags.lasergridEventsSpawned;
-  droneSwarmEventsSpawned = savedEventFlags.droneSwarmEventsSpawned;
-  billboardEventsSpawned = savedEventFlags.billboardEventsSpawned;
-  searchlightEventsSpawned = savedEventFlags.searchlightEventsSpawned;
-  turretEventsSpawned = savedEventFlags.turretEventsSpawned;
-  signalCorruptionEventsSpawned = savedEventFlags.signalCorruptionEventsSpawned;
-  empEventsSpawned = savedEventFlags.empEventsSpawned;
-  echoTrailEventsSpawned = savedEventFlags.echoTrailEventsSpawned;
-  pulsingOrbEventsSpawned = savedEventFlags.pulsingOrbEventsSpawned;
-  boomerangEventsSpawned = savedEventFlags.boomerangEventsSpawned;
-  oncomingCometEventsSpawned = savedEventFlags.oncomingCometEventsSpawned;
-  splitRockEventsSpawned = savedEventFlags.splitRockEventsSpawned;
-  lensingZoneEventsSpawned = savedEventFlags.lensingZoneEventsSpawned;
-  supernovaEventsSpawned = savedEventFlags.supernovaEventsSpawned;
-  miniBoss = savedMiniBossState.miniBoss;
-  miniBossCyclesCompleted = savedMiniBossState.miniBossCyclesCompleted;
-  miniBossSpawnFrame = savedMiniBossState.miniBossSpawnFrame;
-  miniBossDefeated = savedMiniBossState.miniBossDefeated;
-  miniBossDefeatFrame = savedMiniBossState.miniBossDefeatFrame;
-  miniBossAttackState = savedMiniBossState.miniBossAttackState;
-  miniBossAttackStateStartFrame = savedMiniBossState.miniBossAttackStateStartFrame;
-  miniBossChargeHeights = savedMiniBossState.miniBossChargeHeights;
-  miniBossChargeIndex = savedMiniBossState.miniBossChargeIndex;
-  miniBossChargeRound = savedMiniBossState.miniBossChargeRound;
-  miniBossFlameWallDriftDir = savedMiniBossState.miniBossFlameWallDriftDir;
-  miniBossBarrageEmbers = savedMiniBossState.miniBossBarrageEmbers;
-  miniBossBarrageWavesLaunched = savedMiniBossState.miniBossBarrageWavesLaunched;
-  miniBossSqueezeTopY = savedMiniBossState.miniBossSqueezeTopY;
-  miniBossSqueezeBottomY = savedMiniBossState.miniBossSqueezeBottomY;
-  miniBossBarragePhaseStartFrame = savedMiniBossState.miniBossBarragePhaseStartFrame;
-  miniBossDeathPatches = savedMiniBossState.miniBossDeathPatches;
-  miniBossDeathAshParticles = savedMiniBossState.miniBossDeathAshParticles;
-  miniBossEscapeRunActive = savedMiniBossState.miniBossEscapeRunActive;
-  miniBossEscapeRunStartDistance = savedMiniBossState.miniBossEscapeRunStartDistance;
-  miniBossHadFirstFloat = savedMiniBossState.miniBossHadFirstFloat;
-  miniBossNextAttackSet = savedMiniBossState.miniBossNextAttackSet;
-  miniBossFloatBlendStartX = savedMiniBossState.miniBossFloatBlendStartX;
-  miniBossFloatBlendStartY = savedMiniBossState.miniBossFloatBlendStartY;
-  miniBossFloatBlendStartFrame = savedMiniBossState.miniBossFloatBlendStartFrame;
-  miniBossWallRecedeStartFrame = savedMiniBossState.miniBossWallRecedeStartFrame;
-  miniBossWallCracks = savedMiniBossState.miniBossWallCracks;
-  coreWallPanels = savedMiniBossState.coreWallPanels;
-  coreWallSensors = savedMiniBossState.coreWallSensors;
-  restoreSimState(saved);
-
-  return result;
-}
-
-function resizePreviewCanvas(worldWidthPx) {
-  const wrap = document.getElementById('preview-canvas-wrap');
-  const savedScroll = wrap ? wrap.scrollLeft : null;
-  previewCanvas.width = Math.max(previewCanvas.parentElement.clientWidth, worldWidthPx * previewScale + 100);
-  previewCanvas.height = previewCanvas.parentElement.clientHeight || 500;
-  // setting canvas width/height can cause the browser to reset or clamp
-  // the scrollable wrapper's scroll position, even when the resulting
-  // canvas size is unchanged -- restore it so a re-render triggered from
-  // somewhere the user didn't directly interact with (like an auto-fix
-  // during save) never silently yanks their view away from what they were
-  // actually looking at
-  if (wrap && savedScroll !== null) wrap.scrollLeft = savedScroll;
-  return previewScale;
-}
-
-function drawZonePreview(data) {
-  const th = THEMES[data.themeIndex];
-  const targetPx = 10000;
-  const scale = resizePreviewCanvas(targetPx);
-  const w = previewCanvas.width, h = previewCanvas.height;
-  const topMargin = 30, botMargin = 30;
-  const pTop = topMargin, pBot = h - botMargin;
-  const pHeight = pBot - pTop;
-
-  previewCtx.fillStyle = th.skyMid || '#111';
-  previewCtx.fillRect(0, 0, w, h);
-  previewCtx.strokeStyle = 'rgba(255,255,255,0.15)';
-  previewCtx.lineWidth = 1;
-  previewCtx.strokeRect(0, pTop, w, pHeight);
-
-  previewCtx.fillStyle = 'rgba(255,255,255,0.4)';
-  previewCtx.font = '10px Courier New';
-  for (let d = 0; d <= 1000; d += 100) {
-    const sx = d * 10 * scale;
-    previewCtx.beginPath();
-    previewCtx.moveTo(sx, pTop);
-    previewCtx.lineTo(sx, pBot);
-    previewCtx.strokeStyle = d % 500 === 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)';
-    previewCtx.stroke();
-    previewCtx.fillText(String(d), sx + 3, pTop - 8);
-  }
-
-  const yToScreen = (y) => pTop + ((y - PLAY_TOP) / (PLAY_BOTTOM - PLAY_TOP)) * pHeight;
-
-  if (data.terrainSegments) {
-    previewCtx.fillStyle = 'rgba(255,204,51,0.55)';
-    previewCtx.beginPath();
-    data.terrainSegments.forEach((s, i) => {
-      const sx = s.x * scale;
-      const sy = yToScreen(s.topY);
-      if (i === 0) previewCtx.moveTo(sx, pTop); else previewCtx.lineTo(sx, sy);
-    });
-    for (let i = data.terrainSegments.length - 1; i >= 0; i--) {
-      previewCtx.lineTo(data.terrainSegments[i].x * scale, pTop);
-    }
-    previewCtx.closePath();
-    previewCtx.fill();
-
-    previewCtx.beginPath();
-    data.terrainSegments.forEach((s, i) => {
-      const sx = s.x * scale;
-      const sy = yToScreen(s.bottomY);
-      if (i === 0) previewCtx.moveTo(sx, sy); else previewCtx.lineTo(sx, sy);
-    });
-    for (let i = data.terrainSegments.length - 1; i >= 0; i--) {
-      previewCtx.lineTo(data.terrainSegments[i].x * scale, pBot);
-    }
-    previewCtx.closePath();
-    previewCtx.fill();
-
-    previewCtx.fillStyle = 'rgba(255,150,50,0.6)';
-    data.terrainSegments.forEach((s) => {
-      if (s.islandBottom - s.islandTop > 2) {
-        const sx = s.x * scale;
-        previewCtx.fillRect(sx, yToScreen(s.islandTop), 3, yToScreen(s.islandBottom) - yToScreen(s.islandTop));
-      }
-    });
-  }
-
-  // windvortex is a background force-field visual, not a foreground hazard --
-  // draw it first (behind) regardless of where it falls in the underlying
-  // obstacles array, so its semi-transparent overlay never washes out a
-  // bolt or other hazard that happens to sit on top of it
-  const sortedObstacles = [...data.obstacles].sort((a, b) => (a.type === 'windvortex' ? -1 : 0) - (b.type === 'windvortex' ? -1 : 0));
-  for (const g of sortedObstacles) {
-    const sx = g.x * scale;
-    if (g.type === 'gate') {
-      const gap = g.previewGap || 150;
-      const topSafe = g.baseCenter - g.amplitude - gap / 2;
-      const botSafe = g.baseCenter + g.amplitude + gap / 2;
-      previewCtx.fillStyle = 'rgba(15,240,252,0.4)';
-      previewCtx.fillRect(sx - 3, pTop, 6, yToScreen(topSafe) - pTop);
-      previewCtx.fillRect(sx - 3, yToScreen(botSafe), 6, pBot - yToScreen(botSafe));
-      previewCtx.fillStyle = 'rgba(15,240,252,0.15)';
-      previewCtx.fillRect(sx - 3, yToScreen(topSafe), 6, yToScreen(botSafe) - yToScreen(topSafe));
-    } else if (g.type === 'hbar') {
-      const top = g.baseCenter - g.amplitude - g.thickness / 2;
-      const bot = g.baseCenter + g.amplitude + g.thickness / 2;
-      previewCtx.fillStyle = 'rgba(0,255,157,0.35)';
-      previewCtx.fillRect(sx - g.width * scale / 2, yToScreen(top), Math.max(3, g.width * scale), yToScreen(bot) - yToScreen(top));
-    } else if (g.type === 'asteroid') {
-      previewCtx.fillStyle = 'rgba(200,150,100,0.6)';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, yToScreen(g.y), Math.max(2, g.r * scale), 0, Math.PI * 2);
-      previewCtx.fill();
-    } else if (g.type === 'splitrock') {
-      previewCtx.fillStyle = 'rgba(220,160,90,0.7)';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, yToScreen(g.y), Math.max(3, g.r * scale), 0, Math.PI * 2);
-      previewCtx.fill();
-    } else if (g.type === 'fireball') {
-      previewCtx.fillStyle = 'rgba(255,120,50,0.5)';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, yToScreen(g.startY), Math.max(2, g.r * scale), 0, Math.PI * 2);
-      previewCtx.fill();
-    } else if (g.type === 'barrier') {
-      const gTop = g.gapCenter - g.gapHeight / 2;
-      const gBot = g.gapCenter + g.gapHeight / 2;
-      previewCtx.fillStyle = 'rgba(255,245,157,0.4)';
-      previewCtx.fillRect(sx - 3, pTop, 6, yToScreen(gTop) - pTop);
-      previewCtx.fillRect(sx - 3, yToScreen(gBot), 6, pBot - yToScreen(gBot));
-    } else if (g.type === 'lbolt') {
-      // _entryIdx/_boltIdx identify which pattern entry this bolt came from,
-      // but that entry repeats every pattern cycle across the full preview
-      // length -- matching on those alone would highlight every repeated
-      // occurrence at once. g.x is unique per instance, so include it to
-      // select only the one actually clicked.
-      const isSelected = previewSelectedBolt && g._entryIdx === previewSelectedBolt._entryIdx && g._boltIdx === previewSelectedBolt._boltIdx && g.x === previewSelectedBolt.x;
-      const top = g.y - g.height / 2;
-      const bx = sx - Math.max(2, g.swingWidth * scale / 2);
-      const bw = Math.max(4, g.swingWidth * scale);
-      const by = yToScreen(top);
-      const bh = (g.height / (PLAY_BOTTOM - PLAY_TOP)) * pHeight;
-
-      // real gameplay renders an active bolt with a 16px glow (shadowBlur)
-      // around its silhouette -- without matching that here, a small bolt
-      // reads as much smaller in the editor than it will actually look once
-      // lit up and glowing in the real game
-      previewCtx.save();
-      previewCtx.shadowColor = th.accentA || '#fff59d';
-      previewCtx.shadowBlur = 16 * scale;
-
-      // g.shape is already the resolved polygon (array of [nx,ny] points) --
-      // draw the real silhouette so shape edits are actually visible here.
-      // use the same bright white-to-accent gradient as real gameplay's
-      // active-bolt render (not a flat fill) so it stays clearly visible
-      // even with other elements like a vortex's overlay nearby
-      if (isSelected) {
-        previewCtx.fillStyle = 'rgba(255,80,220,0.8)';
-      } else {
-        const boltGrad = previewCtx.createLinearGradient(sx, by, sx, by + bh);
-        boltGrad.addColorStop(0, '#ffffff');
-        boltGrad.addColorStop(0.5, th.accentA || '#fff59d');
-        boltGrad.addColorStop(1, th.accentB || '#5c6bc0');
-        previewCtx.fillStyle = boltGrad;
-      }
-      previewCtx.beginPath();
-      g.shape.forEach(([nx, ny], i) => {
-        const px = sx + nx * (g.swingWidth * scale) / 2;
-        const py = yToScreen(top + ny * g.height);
-        if (i === 0) previewCtx.moveTo(px, py); else previewCtx.lineTo(px, py);
-      });
-      previewCtx.closePath();
-      previewCtx.fill();
-      previewCtx.restore();
-
-      if (isSelected) {
-        previewCtx.strokeStyle = '#ff50dc';
-        previewCtx.lineWidth = 2;
-        previewCtx.strokeRect(bx, by, bw, bh);
-        // resize handle
-        previewCtx.fillStyle = '#ff50dc';
-        previewCtx.fillRect(bx + bw - 6, by + bh - 6, 10, 10);
-      }
-    } else if (g.type === 'blackhole') {
-      const isSelected = previewSelectedBlackHole && g._eventIdx === previewSelectedBlackHole._eventIdx;
-      const cy = yToScreen(g.y);
-      // use the vertical scale for both axes so these render as true
-      // circles -- the horizontal distance-compression scale is far too
-      // aggressive (flattens the whole 10000px zone into a small canvas)
-      // and would make a huge black hole look like a thin vertical sliver
-      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const rReach = g.reachR * vScale;
-      const rCore = g.coreR * vScale;
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.22)' : 'rgba(138,92,245,0.18)';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy, rReach, 0, Math.PI * 2);
-      previewCtx.fill();
-      previewCtx.strokeStyle = isSelected ? '#ff50dc' : 'rgba(138,92,245,0.5)';
-      previewCtx.lineWidth = isSelected ? 2 : 1;
-      previewCtx.stroke();
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.65)' : 'rgba(10,5,15,0.9)';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy, rCore, 0, Math.PI * 2);
-      previewCtx.fill();
-      previewCtx.strokeStyle = '#8a5cf5';
-      previewCtx.lineWidth = 1.5;
-      previewCtx.stroke();
-
-      if (isSelected) {
-        previewCtx.fillStyle = '#ff50dc';
-        previewCtx.fillRect(sx + rCore - 5, cy - 5, 10, 10);
-        previewCtx.fillStyle = '#c9a0ff';
-        previewCtx.fillRect(sx + rReach - 5, cy - 5, 10, 10);
-      }
-    } else if (g.type === 'windvortex') {
-      const isSelected = previewSelectedWindVortex && g._vortexIdx === previewSelectedWindVortex._vortexIdx;
-      const cy = yToScreen(g.y);
-      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const rReach = g.reachR * vScale;
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.22)' : 'rgba(92,107,192,0.18)';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy, rReach, 0, Math.PI * 2);
-      previewCtx.fill();
-      previewCtx.strokeStyle = isSelected ? '#ff50dc' : 'rgba(255,245,157,0.5)';
-      previewCtx.lineWidth = isSelected ? 2 : 1;
-      previewCtx.setLineDash(isSelected ? [] : [4, 4]);
-      previewCtx.stroke();
-      previewCtx.setLineDash([]);
-
-      // small spiral hint at center so it reads as "swirling" rather than a plain circle
-      previewCtx.strokeStyle = '#fff59d';
-      previewCtx.lineWidth = 1.5;
-      previewCtx.beginPath();
-      for (let s = 0; s <= 16; s++) {
-        const tt = s / 16;
-        const ang = tt * Math.PI * 3;
-        const r = tt * Math.min(rReach * 0.5, 14);
-        const px = sx + Math.cos(ang) * r, py = cy + Math.sin(ang) * r;
-        if (s === 0) previewCtx.moveTo(px, py); else previewCtx.lineTo(px, py);
-      }
-      previewCtx.stroke();
-
-      if (isSelected) {
-        previewCtx.fillStyle = '#c9a0ff';
-        previewCtx.fillRect(sx + rReach - 5, cy - 5, 10, 10);
-      }
-    } else if (g.type === 'cloudarc') {
-      const isSelected = previewSelectedCloudArc && g._arcIdx === previewSelectedCloudArc._arcIdx;
-      const cy1 = yToScreen(g.y);
-      const cy2 = yToScreen(g.y2);
-      const sx2 = g.x2 * scale;
-
-      previewCtx.strokeStyle = isSelected ? '#ff50dc' : 'rgba(255,245,157,0.55)';
-      previewCtx.lineWidth = isSelected ? 2.5 : 1.5;
-      previewCtx.setLineDash(isSelected ? [] : [5, 5]);
-      previewCtx.beginPath();
-      previewCtx.moveTo(sx, cy1);
-      previewCtx.lineTo(sx2, cy2);
-      previewCtx.stroke();
-      previewCtx.setLineDash([]);
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.5)' : 'rgba(146,161,209,0.5)';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy1, 8, 0, Math.PI * 2);
-      previewCtx.fill();
-      previewCtx.beginPath();
-      previewCtx.arc(sx2, cy2, 8, 0, Math.PI * 2);
-      previewCtx.fill();
-
-      if (isSelected) {
-        previewCtx.fillStyle = '#c9a0ff';
-        previewCtx.fillRect(sx2 - 5, cy2 - 5, 10, 10);
-      }
-    } else if (g.type === 'lensingzone') {
-      const isSelected = previewSelectedLensingZone && g._lensIdx === previewSelectedLensingZone._lensIdx;
-      const cy = yToScreen(g.y);
-      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const rZone = g.zoneRadius * vScale;
-      const rCore = g.coreR * vScale;
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.22)' : 'rgba(94,200,232,0.16)';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy, rZone, 0, Math.PI * 2);
-      previewCtx.fill();
-      previewCtx.strokeStyle = isSelected ? '#ff50dc' : 'rgba(94,200,232,0.5)';
-      previewCtx.lineWidth = isSelected ? 2 : 1;
-      previewCtx.stroke();
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.7)' : '#5ec8e8';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy, rCore, 0, Math.PI * 2);
-      previewCtx.fill();
-
-      if (isSelected) {
-        previewCtx.fillStyle = '#ff50dc';
-        previewCtx.fillRect(sx + rCore - 5, cy - 5, 10, 10);
-        previewCtx.fillStyle = '#9de3f5';
-        previewCtx.fillRect(sx + rZone - 5, cy - 5, 10, 10);
-      }
-    } else if (g.type === 'supernova') {
-      const isSelected = previewSelectedSupernova && g._novaIdx === previewSelectedSupernova._novaIdx;
-      const cy = yToScreen(g.y);
-      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const rPlanet = g.planetR * vScale;
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.7)' : '#c9683a';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy, rPlanet, 0, Math.PI * 2);
-      previewCtx.fill();
-      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#e8a84a';
-      previewCtx.lineWidth = isSelected ? 2 : 1.5;
-      previewCtx.stroke();
-
-      if (isSelected) {
-        previewCtx.fillStyle = '#ff50dc';
-        previewCtx.fillRect(sx + rPlanet - 5, cy - 5, 10, 10);
-      }
-    } else if (g.type === 'turret') {
-      const isSelected = previewSelectedTurret && g._turretIdx === previewSelectedTurret._turretIdx;
-      const cy = yToScreen(g.y);
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.8)' : '#c98aff';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy, 9, 0, Math.PI * 2);
-      previewCtx.fill();
-      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#8a5cf5';
-      previewCtx.lineWidth = isSelected ? 2 : 1.5;
-      previewCtx.stroke();
-
-      // barrel line showing the current firing angle
-      const angleRad = g.fireAngleDeg * Math.PI / 180;
-      const barrelLen = 26;
-      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#c98aff';
-      previewCtx.lineWidth = 3;
-      previewCtx.beginPath();
-      previewCtx.moveTo(sx, cy);
-      previewCtx.lineTo(sx - barrelLen * Math.cos(angleRad), cy + barrelLen * Math.sin(angleRad));
-      previewCtx.stroke();
-
-      if (isSelected) {
-        previewCtx.fillStyle = '#ff50dc';
-        previewCtx.fillRect(sx + 9 - 5, cy - 5, 10, 10);
-      }
-    } else if (g.type === 'emp') {
-      const isSelected = previewSelectedEmp && g._empIdx === previewSelectedEmp._empIdx;
-      const anchorCy = yToScreen(g.anchor === 'top' ? PLAY_TOP : PLAY_BOTTOM);
-      const reachVScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const reachCy = yToScreen(g.anchor === 'top' ? PLAY_TOP + g.reachDepth : PLAY_BOTTOM - g.reachDepth);
-
-      // reach indicator line
-      previewCtx.strokeStyle = isSelected ? 'rgba(255,80,220,0.6)' : 'rgba(200,138,255,0.4)';
-      previewCtx.lineWidth = 4;
-      previewCtx.beginPath();
-      previewCtx.moveTo(sx, anchorCy);
-      previewCtx.lineTo(sx, reachCy);
-      previewCtx.stroke();
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.8)' : '#c98aff';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, anchorCy, 8, 0, Math.PI * 2);
-      previewCtx.fill();
-      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#8a5cf5';
-      previewCtx.lineWidth = isSelected ? 2 : 1.5;
-      previewCtx.stroke();
-
-      if (isSelected) {
-        previewCtx.fillStyle = '#ff50dc';
-        previewCtx.fillRect(sx + 8 - 5, anchorCy - 5, 10, 10);
-      }
-    } else if (g.type === 'pulsingorb') {
-      const isSelected = previewSelectedOrb && g._orbIdx === previewSelectedOrb._orbIdx;
-      const cy = yToScreen(g.y);
-      const vScale = pHeight / (PLAY_BOTTOM - PLAY_TOP);
-      const midR = (g.minR + g.maxR) / 2 * vScale;
-      const maxRPreview = g.maxR * vScale;
-
-      // faint ring showing the maximum extent
-      previewCtx.strokeStyle = 'rgba(200,138,255,0.25)';
-      previewCtx.lineWidth = 1;
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy, maxRPreview, 0, Math.PI * 2);
-      previewCtx.stroke();
-
-      previewCtx.fillStyle = isSelected ? 'rgba(255,80,220,0.5)' : 'rgba(200,138,255,0.5)';
-      previewCtx.beginPath();
-      previewCtx.arc(sx, cy, midR, 0, Math.PI * 2);
-      previewCtx.fill();
-      previewCtx.strokeStyle = isSelected ? '#ff50dc' : '#8a5cf5';
-      previewCtx.lineWidth = isSelected ? 2 : 1.5;
-      previewCtx.stroke();
-
-      if (isSelected) {
-        previewCtx.fillStyle = '#ff50dc';
-        previewCtx.fillRect(sx + midR - 5, cy - 5, 10, 10);
-      }
-    }
-  }
-}
-
-let currentPreviewZone = 0;
-let previewMoveThrottleTs = 0;
-const PREVIEW_MOVE_THROTTLE_MS = 120; // roughly matches captureFullZoneRun's worst-case cost, so throttled calls don't queue up faster than they can complete
-let previewEditMode = false;
-let previewLastData = null;
-let previewScale = 0.75;
-let previewSelectedBolt = null;
-let previewSelectedBlackHole = null;
-let previewSelectedWindVortex = null;
-let previewSelectedCloudArc = null;
-let previewSelectedLensingZone = null;
-let previewSelectedSupernova = null;
-let previewSelectedTurret = null;
-let previewSelectedEmp = null;
-let previewSelectedOrb = null;
-let previewDragMode = null;
-let previewDragStart = null;
-
-// keep the original authored bolt patterns so "Reset to default" always works,
-// even after saving edits
-const DEFAULT_LBOLT_PATTERNS = {};
-THEMES.forEach((t, i) => {
-  if (t.obstacleShape === 'lbolt') DEFAULT_LBOLT_PATTERNS[i] = JSON.parse(JSON.stringify(t.pattern));
-});
-const DEFAULT_BLACKHOLE_EVENTS = {};
-THEMES.forEach((t, i) => {
-  if (t.blackHoleEvents) DEFAULT_BLACKHOLE_EVENTS[i] = JSON.parse(JSON.stringify(t.blackHoleEvents));
-});
-const DEFAULT_WINDVORTEX_EVENTS = {};
-THEMES.forEach((t, i) => {
-  if (t.windVortexEvents) DEFAULT_WINDVORTEX_EVENTS[i] = JSON.parse(JSON.stringify(t.windVortexEvents));
-});
-const DEFAULT_LENSINGZONE_EVENTS = {};
-THEMES.forEach((t, i) => {
-  if (t.lensingZoneEvents) DEFAULT_LENSINGZONE_EVENTS[i] = JSON.parse(JSON.stringify(t.lensingZoneEvents));
-});
-const DEFAULT_SUPERNOVA_EVENTS = {};
-THEMES.forEach((t, i) => {
-  if (t.supernovaEvents) DEFAULT_SUPERNOVA_EVENTS[i] = JSON.parse(JSON.stringify(t.supernovaEvents));
-});
-const DEFAULT_TURRET_EVENTS = {};
-THEMES.forEach((t, i) => {
-  if (t.turretEvents) DEFAULT_TURRET_EVENTS[i] = JSON.parse(JSON.stringify(t.turretEvents));
-});
-const DEFAULT_EMP_EVENTS = {};
-THEMES.forEach((t, i) => {
-  if (t.empEvents) DEFAULT_EMP_EVENTS[i] = JSON.parse(JSON.stringify(t.empEvents));
-});
-const DEFAULT_PULSING_ORB_EVENTS = {};
-THEMES.forEach((t, i) => {
-  if (t.pulsingOrbEvents) DEFAULT_PULSING_ORB_EVENTS[i] = JSON.parse(JSON.stringify(t.pulsingOrbEvents));
-});
 

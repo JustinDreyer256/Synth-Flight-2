@@ -1,3 +1,200 @@
+function endGame(mercyEligible, opts) {
+  if (state !== 'playing') return; // already dying/dead/not in a run
+  if (ghostMode) {
+    clampGhostShipToPlayfield();
+    return;
+  }
+  if (bossFinalChargeActive || bossExplosionActive || bossFullyDefeated) return; // victory is already secured -- wall collisions are normally unconditional instant death, but not during the boss's death sequence or the fly-off that follows
+  if (!opts || opts.playCollision !== false) sfxCollision();
+  stopLiftSound();
+  stopGlowDangerSound();
+  stopFireballBreathSound();
+  stopToxicHazardSounds();
+  stopDustStormSound();
+  stopMeteorStreakSound();
+  stopStormSkiesHazardSounds();
+  stopMovingDoorSound();
+  stopBlackHoleSound();
+  stopMoltenCoreIdleSound();
+  stopMoltenFlameWallSound();
+  stopMoltenSqueezeSound();
+  stopMoltenDeathAshSound();
+  stopCoreBulkheadHoldSound();
+  stopCoreOverload(0.03);
+  stopMegaManCharge(0.03);
+  if (!isPracticeRun) {
+    totalDeaths++;
+    const zoneName = currentTheme().name;
+    deathsByZone[zoneName] = (deathsByZone[zoneName] || 0) + 1;
+    lifetimeDeathsByZone[themeIndex] = (lifetimeDeathsByZone[themeIndex] || 0) + 1;
+    savePlayerProfile();
+  }
+  lastDeathDistance = Math.max(0, Math.floor(distance - zoneStartDistance));
+  lives--;
+  diedInCurrentZone = true;
+  if (lives > 0) {
+    respawnInZone();
+    // note: the post-respawn protection window itself is granted when the
+    // player actually resumes play (see startPress), not here -- using
+    // real time now means granting it at this exact moment could waste
+    // most or all of it while they're still looking at the "Life Lost"
+    // screen. Only remember whether this specific death is even eligible:
+    // a hazard death (forgiven or not) can grant it, but a wall death
+    // never can, regardless of difficulty or what state the ship was in
+    // right before hitting the wall.
+    pendingRespawnMercyEligible = !!mercyEligible;
+    restartBossFileBgm();
+  } else if (continuesRemaining > 0) {
+    state = 'continue-prompt';
+    restartBossFileBgm();
+  } else if (isPracticeRun) {
+    endPracticeRun();
+  } else {
+    state = 'gameover';
+    sfxGameOver();
+    const distInt = Math.floor(maxDistanceReached);
+    if (distInt > best) {
+      best = distInt;
+      savePlayerProfile();
+      sfxNewBest();
+    }
+  }
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.substring(0, 2), 16),
+    g: parseInt(h.substring(2, 4), 16),
+    b: parseInt(h.substring(4, 6), 16)
+  };
+}
+
+function lerpColor(hexA, hexB, t) {
+  const a = hexToRgb(hexA), b = hexToRgb(hexB);
+  const r = Math.round(a.r + (b.r - a.r) * t);
+  const g = Math.round(a.g + (b.g - a.g) * t);
+  const bl = Math.round(a.b + (b.b - a.b) * t);
+  return `rgb(${r},${g},${bl})`;
+}
+
+// ---- Audio ----
+// SFX: SNES / Mega Man X -- round triangle+sine blips, echo, punchy hits.
+// BGM: slow space pads (not SNES stage themes).
+// No sample files. AudioContext is unlocked on the first pointer/key gesture.
+let audioCtx = null;
+let masterGain = null;
+let sfxGain = null;
+let bgmGain = null;
+let delayInput = null;
+let audioUnlocked = false;
+
+const AUDIO_SETTINGS_STORAGE_KEY = 'synthFlight2AudioSettings';
+const DEFAULT_SFX_VOLUME = 0.64;
+const DEFAULT_BGM_VOLUME = 0.26;
+function clampAudioVolume(value, fallback) {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!isFinite(n)) return fallback;
+  return Math.max(0, Math.min(1, n));
+}
+function audioVolumePercent(value) {
+  return Math.round(clampAudioVolume(value, 0) * 100);
+}
+function loadAudioSettings() {
+  try {
+    const raw = localStorage.getItem(AUDIO_SETTINGS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        sfxEnabled: typeof parsed.sfxEnabled === 'boolean' ? parsed.sfxEnabled : true,
+        bgmEnabled: typeof parsed.bgmEnabled === 'boolean' ? parsed.bgmEnabled : true,
+        sfxVolume: clampAudioVolume(parsed.sfxVolume, DEFAULT_SFX_VOLUME),
+        bgmVolume: clampAudioVolume(parsed.bgmVolume, DEFAULT_BGM_VOLUME),
+        chargeTelegraph: typeof parsed.chargeTelegraph === 'string' && parsed.chargeTelegraph !== 'xCharge'
+          ? parsed.chargeTelegraph
+          : 'static',
+        glowDanger: typeof parsed.glowDanger === 'string' ? parsed.glowDanger : 'siren',
+        lifeLost: typeof parsed.lifeLost === 'string' ? parsed.lifeLost : 'lifeChip',
+        respawn: typeof parsed.respawn === 'string' ? parsed.respawn : 'systemsOn',
+      };
+    }
+  } catch (e) { /* corrupted/missing data -- fall through to defaults */ }
+  return { sfxEnabled: true, bgmEnabled: true, sfxVolume: DEFAULT_SFX_VOLUME, bgmVolume: DEFAULT_BGM_VOLUME, chargeTelegraph: 'static', glowDanger: 'siren', lifeLost: 'lifeChip', respawn: 'systemsOn' };
+}
+function saveAudioSettings() {
+  try {
+    localStorage.setItem(AUDIO_SETTINGS_STORAGE_KEY, JSON.stringify({
+      sfxEnabled: audioSettings.sfxEnabled,
+      bgmEnabled: audioSettings.bgmEnabled,
+      sfxVolume: audioSettings.sfxVolume,
+      bgmVolume: audioSettings.bgmVolume,
+      chargeTelegraph: audioSettings.chargeTelegraph,
+      glowDanger: audioSettings.glowDanger,
+      lifeLost: audioSettings.lifeLost,
+      respawn: audioSettings.respawn,
+    }));
+  } catch (e) { /* storage unavailable -- fail silently, never crash the game over a preference */ }
+  if (!durableWriteLock) queueDurableSave();
+}
+const __loadedAudioSettings = loadAudioSettings();
+
+const audioSettings = {
+  masterVolume: 1.0,
+  sfxVolume: __loadedAudioSettings.sfxVolume,
+  bgmVolume: __loadedAudioSettings.bgmVolume,
+  muted: false,
+  sfxEnabled: __loadedAudioSettings.sfxEnabled,
+  bgmEnabled: __loadedAudioSettings.bgmEnabled,
+  chargeTelegraph: __loadedAudioSettings.chargeTelegraph,
+  glowDanger: __loadedAudioSettings.glowDanger || 'siren',
+  lifeLost: __loadedAudioSettings.lifeLost || 'lifeChip',
+  respawn: __loadedAudioSettings.respawn || 'systemsOn',
+};
+
+// recomputes the live gain node values from current settings -- called on
+// init and whenever a Settings-screen toggle changes
+function applyAudioSettings() {
+  if (bgmHtmlAudio) {
+    bgmHtmlAudio.volume = (!audioSettings.muted && audioSettings.bgmEnabled)
+      ? Math.max(0, Math.min(1, audioSettings.bgmVolume * 0.8))
+      : 0;
+  }
+  if (!audioCtx) return;
+  masterGain.gain.value = audioSettings.muted ? 0 : audioSettings.masterVolume;
+  sfxGain.gain.value = audioSettings.sfxEnabled ? audioSettings.sfxVolume : 0;
+  bgmGain.gain.value = audioSettings.bgmEnabled ? audioSettings.bgmVolume : 0;
+}
+
+function normalizeSaveId(raw) {
+  const id = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return id.length >= 6 && id.length <= 16 ? id : '';
+}
+function generateSaveId() {
+  let id = '';
+  const cryptoObj = typeof crypto !== 'undefined' ? crypto : null;
+  for (let i = 0; i < 8; i++) {
+    let n = 0;
+    if (cryptoObj && cryptoObj.getRandomValues) {
+      const buf = new Uint8Array(1);
+      cryptoObj.getRandomValues(buf);
+      n = buf[0] % SAVE_ID_ALPHABET.length;
+    } else {
+      n = Math.floor(Math.random() * SAVE_ID_ALPHABET.length);
+    }
+    id += SAVE_ID_ALPHABET[n];
+  }
+  return id;
+}
+function readSaveIdCookie() {
+  try {
+    const parts = String(document.cookie || '').split(';');
+    for (let i = 0; i < parts.length; i++) {
+      const piece = parts[i].trim();
+      if (piece.indexOf(SAVE_ID_COOKIE + '=') === 0) return normalizeSaveId(piece.slice(SAVE_ID_COOKIE.length + 1));
+    }
+  } catch (e) { /* cookies blocked */ }
+  return '';
+}
 function persistSaveId(id) {
   playerSaveId = normalizeSaveId(id) || playerSaveId || generateSaveId();
   try { localStorage.setItem(SAVE_ID_STORAGE_KEY, playerSaveId); } catch (e) { /* storage blocked */ }
@@ -68,10 +265,10 @@ function mergeDurableSaves(blobs) {
     return Array.from(set);
   };
   const maxArr = (key) => {
-    const out = new Array(13).fill(0);
+    const out = new Array(15).fill(0);
     profiles.forEach((p) => {
       const arr = p[key] || [];
-      for (let i = 0; i < 13; i++) out[i] = Math.max(out[i], arr[i] || 0);
+      for (let i = 0; i < 14; i++) out[i] = Math.max(out[i], arr[i] || 0);
     });
     return out;
   };
@@ -554,6 +751,9 @@ const HAZARD_FAMILY = {
   signalcorruption: 'electric', emp: 'electric', pulsingorb: 'plasma', boomerang: 'whoosh',
   echotrail: 'echo', lensingzone: 'gravity', supernova: 'nova', supernovadebris: 'nova',
   wreckage: 'rock', lasergrid: 'laser', asteroid: 'rock', splitrock: 'rock', fireball: 'fire',
+  kelp: 'whoosh', current: 'whoosh', wedge: 'plasma', neonbar: 'laser',
+  marquee: 'rock', courier: 'whoosh', bloom: 'plasma', coil: 'electric', headlamp: 'whoosh',
+  jelly: 'whoosh', sponge: 'rock', school: 'whoosh', urchin: 'rock',
   toxicpool: 'drip', geyser: 'fire', movingdoor: 'metal', sparkhub: 'electric',
   sparkprojectile: 'electric', accesskey: 'key', specialdoor: 'metal', shootingstar: 'whoosh',
   aciddrip: 'drip', terrain: 'rock',
@@ -3005,220 +3205,5 @@ function updateMovingDoorMix(prox, slide) {
   n.motorFilt.frequency.setTargetAtTime(340 + prox * 140 + slide * 80, t, 0.1);
   n.motorGain.gain.setTargetAtTime((0.025 + prox * 0.05) * motion, t, 0.08);
   n.beaconGain.gain.setTargetAtTime(0.006 + prox * 0.018, t, 0.12);
-}
-
-function movingDoorProximity() {
-  let best = 0;
-  let slide = 0.5;
-  for (const g of gates) {
-    if (!g || g.type !== 'movingdoor') continue;
-    const dx = g.x - ship.x;
-    const reach = 500;
-    const adx = Math.abs(dx);
-    if (adx >= reach) continue;
-    const behind = dx < -36 ? Math.max(0, 1 + (dx + 36) / 200) : 1;
-    const prox = Math.pow(1 - adx / reach, 0.6) * behind;
-    if (prox > best) {
-      best = prox;
-      slide = Math.abs(Math.cos((frame - g.spawnFrame) * g.freq + g.phase));
-    }
-  }
-  return { prox: best, slide };
-}
-
-function syncMovingDoorSound() {
-  if (previewLoopId === 'hzDoorProx') return;
-  if (ghostMode || (state !== 'playing' && state !== 'paused')) {
-    stopMovingDoorSound();
-    return;
-  }
-  const { prox, slide } = movingDoorProximity();
-  if (prox < 0.03) {
-    stopMovingDoorSound();
-    return;
-  }
-  if (!movingDoorNodes && prox < 0.06) return;
-  startMovingDoorSound();
-  updateMovingDoorMix(prox, slide);
-}
-
-let blackHoleNodes = null;
-
-function startBlackHoleSound() {
-  if (!audioUnlocked || !audioCtx || audioSettings.muted || !sfxGain || blackHoleNodes) return;
-  const now = audioCtx.currentTime;
-  const out = audioCtx.createGain();
-  out.gain.setValueAtTime(0.0001, now);
-  out.connect(sfxGain);
-
-  // Mid whoom — laptop speakers cannot hear the old 32Hz sub.
-  const voidNoise = createGlowDangerNoise();
-  const voidFilt = audioCtx.createBiquadFilter();
-  voidFilt.type = 'lowpass';
-  voidFilt.frequency.value = 280;
-  voidFilt.Q.value = 0.7;
-  const voidGain = audioCtx.createGain();
-  voidGain.gain.value = 0.12;
-  voidNoise.connect(voidFilt);
-  voidFilt.connect(voidGain);
-  voidGain.connect(out);
-
-  const suck = createGlowDangerNoise();
-  const suckFilt = audioCtx.createBiquadFilter();
-  suckFilt.type = 'bandpass';
-  suckFilt.frequency.value = 520;
-  suckFilt.Q.value = 1.1;
-  const suckGain = audioCtx.createGain();
-  suckGain.gain.value = 0.08;
-  suck.connect(suckFilt);
-  suckFilt.connect(suckGain);
-  suckGain.connect(out);
-
-  const woom = audioCtx.createOscillator();
-  woom.type = 'sine';
-  woom.frequency.value = 78;
-  const woomGain = audioCtx.createGain();
-  woomGain.gain.value = 0.1;
-  woom.connect(woomGain);
-  woomGain.connect(out);
-
-  const drone = audioCtx.createOscillator();
-  drone.type = 'triangle';
-  drone.frequency.value = 118;
-  const droneFilt = audioCtx.createBiquadFilter();
-  droneFilt.type = 'lowpass';
-  droneFilt.frequency.value = 480;
-  const droneGain = audioCtx.createGain();
-  droneGain.gain.value = 0.055;
-  drone.connect(droneFilt);
-  droneFilt.connect(droneGain);
-  droneGain.connect(out);
-
-  const ring = audioCtx.createOscillator();
-  ring.type = 'sine';
-  ring.frequency.value = 311;
-  const ringFilt = audioCtx.createBiquadFilter();
-  ringFilt.type = 'bandpass';
-  ringFilt.frequency.value = 311;
-  ringFilt.Q.value = 4.5;
-  const ringGain = audioCtx.createGain();
-  ringGain.gain.value = 0.018;
-  ring.connect(ringFilt);
-  ringFilt.connect(ringGain);
-  ringGain.connect(out);
-
-  const swirl = audioCtx.createOscillator();
-  swirl.type = 'sine';
-  swirl.frequency.value = 0.28;
-  const swirlDepth = audioCtx.createGain();
-  swirlDepth.gain.value = 90;
-  swirl.connect(swirlDepth);
-  swirlDepth.connect(suckFilt.frequency);
-
-  const tug = audioCtx.createOscillator();
-  tug.type = 'sine';
-  tug.frequency.value = 0.4;
-  const tugDepth = audioCtx.createGain();
-  tugDepth.gain.value = 10;
-  tug.connect(tugDepth);
-  tugDepth.connect(drone.frequency);
-
-  voidNoise.start(now);
-  suck.start(now);
-  woom.start(now);
-  drone.start(now);
-  ring.start(now);
-  swirl.start(now);
-  tug.start(now);
-  blackHoleNodes = {
-    out, voidFilt, voidGain, suckFilt, suckGain, woom, woomGain,
-    drone, droneFilt, droneGain, ring, ringFilt, ringGain,
-    swirl, swirlDepth, tug, tugDepth,
-    sources: [voidNoise, suck, woom, drone, ring, swirl, tug]
-  };
-}
-
-function stopBlackHoleSound() {
-  fadeStopLoopNodes(blackHoleNodes);
-  blackHoleNodes = null;
-}
-
-function updateBlackHoleMix(prox, pull) {
-  if (!blackHoleNodes || !audioCtx) return;
-  const t = audioCtx.currentTime;
-  const n = blackHoleNodes;
-  const depth = Math.max(prox, pull * 0.9);
-  n.out.gain.setTargetAtTime(0.08 + depth * 0.28, t, 0.08);
-  n.voidFilt.frequency.setTargetAtTime(200 + depth * 140, t, 0.1);
-  n.voidGain.gain.setTargetAtTime(0.1 + depth * 0.12, t, 0.1);
-  n.suckFilt.frequency.setTargetAtTime(620 - pull * 220, t, 0.08);
-  n.suckGain.gain.setTargetAtTime(0.05 + pull * 0.1, t, 0.1);
-  n.woom.frequency.setTargetAtTime(92 - pull * 22, t, 0.1);
-  n.woomGain.gain.setTargetAtTime(0.07 + depth * 0.08, t, 0.1);
-  n.drone.frequency.setTargetAtTime(132 - pull * 36, t, 0.1);
-  n.droneFilt.frequency.setTargetAtTime(420 - pull * 80, t, 0.1);
-  n.droneGain.gain.setTargetAtTime(0.04 + depth * 0.055, t, 0.1);
-  n.ring.frequency.setTargetAtTime(330 - pull * 70, t, 0.12);
-  n.ringFilt.frequency.setTargetAtTime(330 - pull * 70, t, 0.12);
-  n.ringGain.gain.setTargetAtTime(0.012 + prox * 0.02, t, 0.12);
-  n.swirl.frequency.setTargetAtTime(0.2 + pull * 0.5, t, 0.14);
-  n.swirlDepth.gain.setTargetAtTime(60 + depth * 80, t, 0.14);
-  n.tug.frequency.setTargetAtTime(0.28 + pull * 0.45, t, 0.14);
-  n.tugDepth.gain.setTargetAtTime(6 + pull * 12, t, 0.12);
-}
-
-function blackHoleProximity() {
-  let best = 0;
-  let pull = 0;
-  for (const g of gates) {
-    if (!g || g.type !== 'blackhole') continue;
-    const dist = Math.hypot(g.x - ship.x, g.y - ship.y);
-    const core = g.coreR || 80;
-    const well = g.reachR || core * 1.5;
-    // Hear the hole itself, not only the thin gravity shell around huge cores.
-    const hearR = Math.max(well, core + 260) * 1.5;
-    if (dist >= hearR) continue;
-    const prox = Math.pow(1 - dist / hearR, 0.4);
-    if (prox > best) {
-      best = prox;
-      pull = dist < well ? 1 - dist / well : Math.max(0, 1 - (dist - well) / Math.max(40, hearR - well));
-    }
-  }
-  return { prox: best, pull };
-}
-
-function syncBlackHoleSound() {
-  if (previewLoopId === 'hzBlackHole') return;
-  if (ghostMode || (state !== 'playing' && state !== 'paused')) {
-    stopBlackHoleSound();
-    return;
-  }
-  const { prox, pull } = blackHoleProximity();
-  if (prox < 0.02) {
-    stopBlackHoleSound();
-    return;
-  }
-  if (!blackHoleNodes && prox < 0.035) return;
-  startBlackHoleSound();
-  updateBlackHoleMix(prox, pull);
-}
-
-function playPendulumSwoosh() {
-  if (!audioUnlocked || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  playNoiseBurst({ duration: 0.22, filterFreq: 280, filterEnd: 1600, filterType: 'bandpass', filterQ: 0.7, volume: 0.26, delaySend: 0.1, when: t0 });
-  playNoiseBurst({ duration: 0.16, filterFreq: 900, filterEnd: 220, filterType: 'lowpass', filterQ: 0.6, volume: 0.16, when: t0 + 0.04 });
-  playSynth({ type: 'sine', freq: 140, freqEnd: 70, duration: 0.2, attack: 0.02, decay: 0.06, sustain: 0.4, release: 0.08, volume: 0.12, filterFreq: 400, delaySend: 0, when: t0 });
-  playSynth({ type: 'triangle', freq: 420, freqEnd: 180, duration: 0.14, attack: 0.01, decay: 0.04, sustain: 0.3, release: 0.06, volume: 0.07, filterFreq: 1400, delaySend: 0.12, when: t0 + 0.02 });
-}
-
-function playBoltZapImpact() {
-  if (!audioUnlocked || !audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  playElectricCrackles({ count: 8, spacing: 0.01, volume: 0.32, when: t0 });
-  playNoiseBurst({ duration: 0.12, filterFreq: 2400, filterEnd: 500, filterType: 'bandpass', filterQ: 1.4, volume: 0.28, when: t0 });
-  playNoiseBurst({ duration: 0.08, filterFreq: 5200, filterType: 'highpass', volume: 0.2, when: t0 });
-  playSynth({ type: 'sawtooth', freq: 2400, freqEnd: 80, duration: 0.12, attack: 0.001, decay: 0.03, sustain: 0.2, release: 0.05, volume: 0.16, filterType: 'highpass', filterFreq: 600, delaySend: 0.1, when: t0 });
-  playSynth({ type: 'sine', freq: 110, freqEnd: 42, duration: 0.14, attack: 0.001, decay: 0.04, sustain: 0.28, release: 0.06, volume: 0.22, filterFreq: 280, delaySend: 0, when: t0 });
 }
 

@@ -256,6 +256,115 @@ function diamondForkWaypoints(pad, gap, forkExtra, wpExtra) {
 // ---- Themes ----
 const THEMES = [
   {
+    name: 'COPPER MIDNIGHT',
+    skyTop: '#07101c', skyMid: '#1a3048', skyBottom: '#5a3018',
+    accentA: '#ff9a3c', accentB: '#d8ff6a',
+    barTop: '#1a2430', barBottom: '#070c12',
+    bgStyle: 'copper',
+    gravityMult: 1, liftMult: 1,
+    pulseGap: false, obstacleShape: 'copper', scrollMult: 1,
+    // One machine at a time. Signs, the chain, the lamp, then lights that rush the ship.
+    pattern: [
+      { spacing: 640, marquees: [{ anchor: 'floor', width: 280, height: 150 }] },
+      { spacing: 560, marquees: [{ anchor: 'ceiling', width: 260, height: 140 }] },
+      { spacing: 580, marquees: [{ anchor: 'floor', width: 300, heightFrac: 0.6 }] },
+      { spacing: 640, couriers: [{ gap: 3 }] },
+      { spacing: 560, marquees: [{ anchor: 'floor', width: 260, heightFrac: 0.6 }] },
+      { spacing: 660, blooms: [{ minR: 70, maxR: 280, freq: 0.02, phase: 0.4 }] },
+      { spacing: 560, marquees: [{ anchor: 'ceiling', width: 280, height: 160 }] },
+      { spacing: 640, couriers: [{ gap: 1 }] },
+      { spacing: 680, headlamps: [{ yFrac: 0.46 }] },
+      { spacing: 560, marquees: [{ anchor: 'floor', width: 300, height: 170 }] },
+      { spacing: 640, couriers: [{ gap: 5 }] },
+      { spacing: 660, blooms: [{ minR: 80, maxR: 300, freq: 0.018, phase: 1.2 }] },
+      { spacing: 560, marquees: [{ anchor: 'ceiling', width: 240, height: 150 }] },
+      { spacing: 720, headlamps: [{ yFrac: 0.30 }, { yFrac: 0.70 }] },
+      { spacing: 600, couriers: [{ gap: 3 }] },
+      { spacing: 560, marquees: [{ anchor: 'floor', width: 280, height: 180 }] },
+      { spacing: 640, blooms: [{ minR: 70, maxR: 260, freq: 0.022, phase: 0.2 }] },
+      { spacing: 600, couriers: [{ gap: 2 }] }
+    ]
+  },
+  {
+    name: 'KELP TRENCH',
+    skyTop: '#0c4a40', skyMid: '#06343a', skyBottom: '#02080c',
+    accentA: '#b8ffe6', accentB: '#3dcea0',
+    barTop: '#063028', barBottom: '#010608',
+    bgStyle: 'kelp',
+    ampMult: 1, freqMult: 1,
+    gravityMult: 1, liftMult: 1,
+    pulseGap: false, obstacleShape: 'kelp', scrollMult: 1,
+    // The Storm Skies whirlpool. Inside the spin, the water shoves you up and down in turns.
+    windVortexEvents: [
+      { triggerDistance: 180, yFrac: 0.42, reachR: 190 },
+      { triggerDistance: 460, yFrac: 0.62, reachR: 200 },
+      { triggerDistance: 720, yFrac: 0.38, reachR: 180 }
+    ],
+    // Bigger bodies, closer together, so the trench stays full.
+    // A top kelp and a sponge cluster can share a beat. The gap between them is the lane.
+    pattern: [
+      { spacing: 420, kelp: [
+        { anchor: 'top', lengthFrac: 0.40, sway: 44, freq: 0.016, phase: 0.3, thick: 30 }
+      ], sponge: [150, 200, 170, 190, 140] },
+      { spacing: 430, jelly: { yFrac: 0.38, bob: 38, tent: 150, bell: 40, freq: 0.022, phase: 0.4 } },
+      { spacing: 420, kelp: [
+        { anchor: 'bottom', lengthFrac: 0.50, sway: 40, freq: 0.015, phase: 1.1, thick: 30 }
+      ]},
+      { spacing: 400, urchin: { yFrac: 0.62, core: 28, spine: 76, freq: 0.018, phase: 0.2 } },
+      { spacing: 500, school: { yFrac: 0.78, width: 460, height: 170, swim: 1.8 } },
+      { spacing: 430, kelp: [
+        { anchor: 'top', lengthFrac: 0.42, sway: 40, freq: 0.016, phase: 0.8, thick: 30 }
+      ], sponge: [160, 190, 150, 210] },
+      { spacing: 450, kelp: [
+        { anchor: 'top', lengthFrac: 0.40, sway: 34, freq: 0.016, phase: 1.0, thick: 28 },
+        { anchor: 'bottom', lengthFrac: 0.32, sway: 34, freq: 0.016, phase: 1.0 + Math.PI, thick: 28, xJitter: 20 }
+      ]},
+      { spacing: 460, sponge: [130, 180, 150, 160] },
+      { spacing: 430, jelly: { yFrac: 0.50, bob: 36, tent: 140, bell: 38, freq: 0.02, phase: 1.7 } },
+      { spacing: 440, kelp: [
+        { anchor: 'top', lengthFrac: 0.54, sway: 42, freq: 0.015, phase: 2.2, thick: 32 }
+      ]},
+      { spacing: 520, school: { yFrac: 0.16, width: 440, height: 160, swim: 1.8 } },
+      { spacing: 430, sponge: [170, 220, 190, 240, 160] },
+      { spacing: 420, urchin: { yFrac: 0.30, core: 26, spine: 72, freq: 0.02, phase: 1.1 } },
+      { spacing: 430, kelp: [
+        { anchor: 'bottom', lengthFrac: 0.46, sway: 38, freq: 0.015, phase: 0.6, thick: 30 }
+      ]},
+      { spacing: 430, jelly: { yFrac: 0.42, bob: 44, tent: 146, bell: 38, freq: 0.02, phase: 0.9 } },
+      { spacing: 450, kelp: [
+        { anchor: 'top', lengthFrac: 0.38, sway: 46, freq: 0.014, phase: 1.6, thick: 28 },
+        { anchor: 'bottom', lengthFrac: 0.30, sway: 40, freq: 0.014, phase: 1.6 + Math.PI, thick: 26, xJitter: 30 }
+      ]},
+      { spacing: 430, kelp: [
+        { anchor: 'top', lengthFrac: 0.36, sway: 40, freq: 0.016, phase: 2.4, thick: 28 }
+      ], sponge: [180, 230, 160, 200, 170] },
+      { spacing: 520, school: { yFrac: 0.18, width: 420, height: 150, swim: 1.7 } },
+      { spacing: 430, kelp: [
+        { anchor: 'bottom', lengthFrac: 0.48, sway: 36, freq: 0.015, phase: 0.4, thick: 30 }
+      ]},
+      { spacing: 410, urchin: { yFrac: 0.58, core: 28, spine: 74, freq: 0.017, phase: 2.1 } },
+      { spacing: 430, jelly: { yFrac: 0.36, bob: 40, tent: 136, bell: 36, freq: 0.022, phase: 2.6 } },
+      { spacing: 520, school: { yFrac: 0.76, width: 450, height: 160, swim: 1.7 } },
+      { spacing: 440, kelp: [
+        { anchor: 'top', lengthFrac: 0.40, sway: 38, freq: 0.016, phase: 0.2, thick: 30 }
+      ], sponge: [150, 200, 180, 220] },
+      { spacing: 460, kelp: [
+        { anchor: 'top', lengthFrac: 0.36, sway: 32, freq: 0.017, phase: 1.3, thick: 26 },
+        { anchor: 'bottom', lengthFrac: 0.30, sway: 32, freq: 0.017, phase: 1.3 + Math.PI, thick: 26, xJitter: 18 }
+      ]},
+      { spacing: 430, sponge: [160, 210, 180, 240, 150] },
+      { spacing: 430, jelly: { yFrac: 0.46, bob: 36, tent: 140, bell: 36, freq: 0.02, phase: 0.6 } },
+      { spacing: 440, kelp: [
+        { anchor: 'bottom', lengthFrac: 0.44, sway: 36, freq: 0.015, phase: 1.8, thick: 28 }
+      ]},
+      { spacing: 500, school: { yFrac: 0.12, width: 460, height: 130, swim: 1.7 } },
+      { spacing: 420, urchin: { yFrac: 0.46, core: 26, spine: 70, freq: 0.018, phase: 0.8 } },
+      { spacing: 430, kelp: [
+        { anchor: 'top', lengthFrac: 0.42, sway: 36, freq: 0.016, phase: 2.8, thick: 30 }
+      ], sponge: [150, 190, 170, 210] }
+    ]
+  },
+  {
     name: 'GLACIER',
     skyTop: '#07131c', skyMid: '#1a4a62', skyBottom: '#c5dbe8',
     accentA: '#f4fbff', accentB: '#79d6ff',
@@ -267,7 +376,8 @@ const THEMES = [
     gapFractionStart: 0.48, gapConstant: true,
     terrainSpacing: 42,
     iceChunks: true,
-    // The live route is buildGlacierCourse(). These points are only a fallback.
+    // The live route is glacierBeatAt(): open to 350, cave to 650, open to the portal.
+    // These points are only a fallback.
     pattern: [
       { centerFrac: 0.28 },
       { centerFrac: 0.16 },
@@ -291,101 +401,81 @@ const THEMES = [
       { spacing: 520, chunks: [{ xJitter: -36, yFrac: 0.28, rFrac: 0.5 }, { xJitter: 48, yFrac: 0.74, rFrac: 0.3 }] },
       { spacing: 440, chunks: [{ xJitter: 18, yFrac: 0.62, rFrac: 0.45 }] },
       { spacing: 560, chunks: [{ xJitter: 0, yFrac: 0.36, rFrac: 0.25 }] }
+    ],
+    // First open sky. Slabs, then a giant ice landmass rooted to the floor or ceiling.
+    iceFloePattern: [
+      { spacing: 420, floes: [
+        { yFrac: 0.24, width: 200, thickness: 34 },
+        { yFrac: 0.76, width: 170, thickness: 30, xJitter: 80 }
+      ]},
+      { spacing: 500, spires: [{ anchor: 'bottom', heightFrac: 0.64, width: 240 }] },
+      { spacing: 400, floes: [{ yFrac: 0.50, width: 230, thickness: 32 }] },
+      { spacing: 520, spires: [{ anchor: 'top', heightFrac: 0.58, width: 280 }] },
+      { spacing: 400, floes: [
+        { yFrac: 0.32, width: 160, thickness: 28, xJitter: -50 },
+        { yFrac: 0.70, width: 190, thickness: 34, xJitter: 70 }
+      ]},
+      { spacing: 480, spires: [{ anchor: 'bottom', heightFrac: 0.52, width: 210 }] }
+    ],
+    // Gusts only. Snowballs come from glacierSnowSchedule so each one
+    // has its own distance, height, fall speed, and angle.
+    // The empty spacings keep these gusts where they were.
+    iceBergPattern: [
+      { spacing: 840 },
+      { spacing: 220 },
+      { spacing: 860, gusts: [{ yFrac: 0.32, width: 260, height: 140, push: 1 }] },
+      { spacing: 400, gusts: [{ yFrac: 0.60, width: 260, height: 140, push: -1 }] }
     ]
   },
   {
-    name: 'GRAVITY WELL',
-    skyTop: '#071428', skyMid: '#0c3340', skyBottom: '#05101c',
-    accentA: '#3dffc8', accentB: '#6ec8ff',
-    wellAccent: '#e85cff',
-    barTop: '#123848', barBottom: '#071018',
-    bgStyle: 'matrix',
-    ampMult: 0.15, freqMult: 1.6,
-    gravityMult: 1.40, liftMult: 0.8,
-    pulseGap: false, obstacleShape: 'hbar',
-    // each entry is one cluster of short horizontal bars. yFrac/ampFrac are fractions of
-    // play height; freq/phase drive the same oscillation math as Zone 1's gates.
-    // Bars never span the full width, so there's always open sky above and/or below each one.
-    pattern: [
-      { spacing: 360, bars: [
-        { yFrac: 0.14, ampFrac: 0.070, freq: 0.014, phase: 0.0, xOffsetPx: -55, widthPx: 110, thicknessPx: 18 },
-        { yFrac: 0.50, ampFrac: 0.085, freq: 0.009, phase: 2.1, xOffsetPx: 40, widthPx: 130, thicknessPx: 18 },
-        { yFrac: 0.86, ampFrac: 0.060, freq: 0.017, phase: 4.2, xOffsetPx: -20, widthPx: 100, thicknessPx: 18 }
-      ]},
-      { spacing: 380, bars: [
-        { yFrac: 0.22, ampFrac: 0.090, freq: 0.011, phase: 0.8, xOffsetPx: 50, widthPx: 140, thicknessPx: 20 },
-        { yFrac: 0.80, ampFrac: 0.075, freq: 0.016, phase: 3.4, xOffsetPx: -45, widthPx: 110, thicknessPx: 18 }
-      ]},
-      { spacing: 350, bars: [
-        { yFrac: 0.12, ampFrac: 0.065, freq: 0.013, phase: 1.4, xOffsetPx: 25, widthPx: 100, thicknessPx: 16 },
-        { yFrac: 0.48, ampFrac: 0.080, freq: 0.008, phase: 3.0, xOffsetPx: -50, widthPx: 120, thicknessPx: 18 },
-        { yFrac: 0.88, ampFrac: 0.070, freq: 0.015, phase: 5.1, xOffsetPx: 35, widthPx: 110, thicknessPx: 18 }
-      ]},
-      { spacing: 390, bars: [
-        { yFrac: 0.20, ampFrac: 0.085, freq: 0.010, phase: 1.8, xOffsetPx: -40, widthPx: 130, thicknessPx: 20 },
-        { yFrac: 0.78, ampFrac: 0.090, freq: 0.014, phase: 4.6, xOffsetPx: 55, widthPx: 130, thicknessPx: 20 }
-      ]},
-      { spacing: 370, bars: [
-        { yFrac: 0.16, ampFrac: 0.060, freq: 0.012, phase: 2.7, xOffsetPx: 60, widthPx: 100, thicknessPx: 16 },
-        { yFrac: 0.50, ampFrac: 0.075, freq: 0.016, phase: 0.4, xOffsetPx: -30, widthPx: 120, thicknessPx: 18 },
-        { yFrac: 0.84, ampFrac: 0.055, freq: 0.011, phase: 3.9, xOffsetPx: 15, widthPx: 100, thicknessPx: 16 }
-      ]},
-      { spacing: 340, bars: [
-        { yFrac: 0.26, ampFrac: 0.095, freq: 0.009, phase: 1.2, xOffsetPx: -50, widthPx: 140, thicknessPx: 20 },
-        { yFrac: 0.84, ampFrac: 0.070, freq: 0.018, phase: 4.8, xOffsetPx: 45, widthPx: 110, thicknessPx: 18 }
-      ]}
-    ],
-    // secondary layer: a spinning gravity swirl (visual retint of the
-    // original dust tornado). same size, path, and hitbox -- it only
-    // looks like a well instead of sand
-    extraStormPattern: [
-      { baseYFrac: 0.35, r: 55, interval: 480 },
-      { baseYFrac: 0.65, r: 50, interval: 520 }
-    ]
+    // Same sky as Glacier. The fight copies the Molten Core setup:
+    // a giant body on the right, a cycle of attacks, then a short escape.
+    name: 'WHITEOUT',
+    skyTop: '#07131c', skyMid: '#1a4a62', skyBottom: '#c5dbe8',
+    accentA: '#f4fbff', accentB: '#79d6ff',
+    barTop: '#123246', barBottom: '#071018',
+    bgStyle: 'frozen',
+    gravityMult: 1.0, liftMult: 1.0,
+    obstacleShape: 'none',
+    isMiniBossZone: true,
+    miniBossVariant: 'snow',
+    pattern: [{ spacing: 100000 }]
   },
   {
-    name: 'DEEP SPACE',
-    skyTop: '#050014', skyMid: '#0a0026', skyBottom: '#000010',
-    accentA: '#ff8f3f', accentB: '#5aa9ff',
-    barTop: '#10082e', barBottom: '#050014',
-    bgStyle: 'stars',
-    ampMult: 1.5, freqMult: 0.6,
-    gravityMult: 0.55, liftMult: 1.15,
-    pulseGap: false, obstacleShape: 'asteroid',
-    // each entry is one cluster: xJitter offsets each rock from the cluster's spawn x,
-    // yFrac/rFrac are fractions (0-1) mapped to actual position/radius
+    name: 'SOLAR CHROME',
+    skyTop: '#f08b78', skyMid: '#ffb15a', skyBottom: '#ffe7a8',
+    accentA: '#fffef8', accentB: '#ffd15a',
+    barTop: '#c45a3a', barBottom: '#7a3018',
+    bgStyle: 'chrome',
+    gravityMult: 1, liftMult: 1,
+    pulseGap: false, obstacleShape: 'chrome', scrollMult: 1.5,
+    // Floor wedges are flown over. Ceiling wedges are flown under. The hit is the triangle.
     pattern: [
-      { spacing: 340, asteroids: [{ xJitter: -90, yFrac: 0.16, rFrac: 0.5 }, { xJitter: 70, yFrac: 0.72, rFrac: 0.65 }] },
-      { spacing: 360, asteroids: [{ xJitter: 85, yFrac: 0.12, rFrac: 0.7 }, { xJitter: -40, yFrac: 0.50, rFrac: 0.5 }, { xJitter: -110, yFrac: 0.88, rFrac: 0.45 }] },
-      { spacing: 330, asteroids: [{ xJitter: -75, yFrac: 0.14, rFrac: 0.45 }, { xJitter: 95, yFrac: 0.50, rFrac: 0.55 }, { xJitter: 10, yFrac: 0.86, rFrac: 0.7 }] },
-      { spacing: 380, asteroids: [{ xJitter: 60, yFrac: 0.22, rFrac: 0.6 }, { xJitter: -100, yFrac: 0.78, rFrac: 0.5 }, { xJitter: 20, yFrac: 0.48, rFrac: 0.4 }] }
-    ],
-    // secondary: shooting stars that fly in a straight diagonal line (no
-    // arc/curve) from a start height to a different end height, at varied
-    // spots and paces. life is always long enough that the diagonal motion
-    // continues until the star has genuinely scrolled off-screen (rather
-    // than finishing early and popping out mid-flight) -- speed variety
-    // comes from how much vertical distance each covers, not from
-    // finishing its motion at different times. Rendered as a pure comet
-    // streak with no discrete star shape, the bright head leading and the
-    // tail trailing behind in the direction it came from
-    extraShootingStarPattern: [
-      { startYFrac: 0.9, endYFrac: 0.35, lifeFrames: 480, radiusPx: 9, interval: 280 },
-      { startYFrac: 0.1, endYFrac: 0.65, lifeFrames: 450, radiusPx: 8, interval: 260 },
-      { startYFrac: 0.5, endYFrac: 0.15, lifeFrames: 520, radiusPx: 10, interval: 310 },
-      { startYFrac: 0.25, endYFrac: 0.75, lifeFrames: 460, radiusPx: 7, interval: 250 },
-      { startYFrac: 0.7, endYFrac: 0.9, lifeFrames: 540, radiusPx: 8, interval: 300 }
-    ],
-    // comets that enter from the left and fly right, against the scroll,
-    // so they cross the ship much faster than the usual streaks
-    oncomingCometEvents: [
-      { triggerDistance: 280, startYFrac: 0.72, endYFrac: 0.40, radiusPx: 9, vx: 1.9 },
-      { triggerDistance: 680, startYFrac: 0.24, endYFrac: 0.58, radiusPx: 8, vx: 2.0 }
-    ],
-    splitRockEvents: [
-      { triggerDistance: 180, yFrac: 0.28, r: 28, splitAtPx: 480, telegraphFrames: 96 },
-      { triggerDistance: 400, yFrac: 0.40, r: 30, splitAtPx: 480, telegraphFrames: 96 },
-      { triggerDistance: 760, yFrac: 0.60, r: 28, splitAtPx: 480, telegraphFrames: 96 }
+      { spacing: 560, wedges: [{ anchor: 'floor', width: 220, height: 190 }] },
+      { spacing: 520, wedges: [{ anchor: 'ceiling', width: 240, height: 180 }] },
+      { spacing: 540, wedges: [{ anchor: 'floor', width: 260, height: 250, lean: 36 }] },
+      { spacing: 500, wedges: [{ anchor: 'ceiling', width: 250, height: 230, lean: -40 }] },
+      { spacing: 620, wedges: [
+        { anchor: 'floor', width: 200, height: 200 },
+        { anchor: 'ceiling', width: 190, height: 180, xJitter: 70 }
+      ]},
+      { spacing: 540, wedges: [{ anchor: 'floor', width: 280, height: 280 }] },
+      { spacing: 520, wedges: [{ anchor: 'ceiling', width: 270, height: 250 }] },
+      { spacing: 560, wedges: [{ anchor: 'floor', width: 240, height: 220, lean: -48 }] },
+      { spacing: 540, wedges: [{ anchor: 'ceiling', width: 230, height: 210, lean: 44 }] },
+      { spacing: 640, wedges: [
+        { anchor: 'floor', width: 210, height: 230 },
+        { anchor: 'ceiling', width: 200, height: 200, xJitter: -60 }
+      ]},
+      { spacing: 560, wedges: [{ anchor: 'floor', width: 300, height: 300 }] },
+      { spacing: 540, wedges: [{ anchor: 'ceiling', width: 280, height: 270 }] },
+      { spacing: 600, wedges: [{ anchor: 'floor', width: 240, height: 210, lean: 28 }] },
+      { spacing: 560, wedges: [{ anchor: 'ceiling', width: 260, height: 240, lean: -32 }] },
+      { spacing: 680, wedges: [
+        { anchor: 'ceiling', width: 180, height: 170 },
+        { anchor: 'floor', width: 190, height: 190, xJitter: 90 }
+      ]},
+      { spacing: 560, wedges: [{ anchor: 'floor', width: 250, height: 240 }] }
     ]
   },
   {
@@ -1113,8 +1203,8 @@ function zonePreviewCameraWorldX(themeIdx) {
   // Storm Skies: sit the ship in the gap between the small-bolt cluster
   // and a tall bolt so the still shows floating bolts without covering
   // the dart.
-  if (themeIdx === 3) return 1550;
-  if (themeIdx === 5) return 1100;
+  if (themeIdx === 5) return 1550;
+  if (themeIdx === 7) return 1100;
   return 300;
 }
 
@@ -1301,7 +1391,7 @@ function generateAndStoreZoneStill(themeIdx) {
       return { ...g, x: toScreenX(worldX), x2: g.x2 != null ? toScreenX(g.x2) : g.x2 };
     });
     const theme = THEMES[themeIdx];
-    if (themeIdx === 5) {
+    if (themeIdx === 7) {
       const visBolts = gates.filter((g) => g.type === 'lbolt' && g.x > 40 && g.x < W - 40);
       visBolts.forEach((g) => {
         g.phaseOffset = 0;
@@ -1348,7 +1438,8 @@ function generateAndStoreZoneStill(themeIdx) {
       drawBossArenaVignette(theme, boss);
     }
     if (theme.isMiniBossZone && miniBoss && theme.miniBossVariant !== 'core') {
-      drawBossArenaObsidianWall(theme, miniBoss);
+    if (theme.miniBossVariant === 'snow') drawSnowArenaWall(theme, miniBoss);
+    else drawBossArenaObsidianWall(theme, miniBoss);
     }
     drawShip(theme);
     url = cropPlayfieldToJpeg(off, 0.78);
@@ -1404,11 +1495,11 @@ function generateAndStoreZoneStill(themeIdx) {
 }
 function normalizePlayerProfile(parsed) {
   if (!parsed || typeof parsed !== 'object') {
-    return { best: 0, extraDifficultyUnlocked: false, unlockedZones: [0], completedZones: [], deathlessZones: [], beatenDifficulties: [], totalDistanceTraveled: 0, lifetimeDeathsByZone: new Array(13).fill(0), zoneCompletionCounts: new Array(13).fill(0), achievedRanks: [], shipTrail: 'classic', shipSkin: 'classic' };
+    return { best: 0, extraDifficultyUnlocked: false, unlockedZones: [0], completedZones: [], deathlessZones: [], beatenDifficulties: [], totalDistanceTraveled: 0, lifetimeDeathsByZone: new Array(15).fill(0), zoneCompletionCounts: new Array(15).fill(0), achievedRanks: [], shipTrail: 'classic', shipSkin: 'classic' };
   }
   const pad13 = (arr) => {
-    const out = Array.isArray(arr) ? arr.slice(0, 13) : [];
-    while (out.length < 13) out.push(0);
+    const out = Array.isArray(arr) ? arr.slice(0, 15) : [];
+    while (out.length < 15) out.push(0);
     return out.map((n) => (typeof n === 'number' && n > 0 ? n : 0));
   };
   return {
@@ -1451,8 +1542,8 @@ function resetPlayerProfile() {
   deathlessZones = new Set();
   beatenDifficulties = new Set();
   totalDistanceTraveled = 0;
-  lifetimeDeathsByZone = new Array(13).fill(0);
-  zoneCompletionCounts = new Array(13).fill(0);
+  lifetimeDeathsByZone = new Array(15).fill(0);
+  zoneCompletionCounts = new Array(15).fill(0);
   achievedRanks = new Set();
   shipTrailStyle = 'classic';
   shipSkinStyle = 'classic';
@@ -1719,6 +1810,495 @@ const MINI_BOSS_SQUEEZE_MAX_GAP = 490; // gap when fully open -- widened from 48
 const MINI_BOSS_SQUEEZE_PERIOD = 400; // frames per full open-close-open cycle (6.7s) -- deliberately not a multiple of the wave interval (145) or sway period (360), so the walls drift in and out of phase with the barrage rather than repeating a fixed combined pattern
 const MINI_BOSS_SQUEEZE_WALL_THICKNESS = 16; // visual thickness of each wall bar
 
+// Whiteout, the glacier boss. Same fight shape as Molten Core
+// through the attack cycle, then a death burst and a fly-off.
+// There is no escape run.
+let snowIcicles = [];
+let snowRollers = [];
+let snowAttackStep = 0;
+let snowIcicleSpawned = 0;
+let snowRollerSpawned = 0;
+let snowFeintStage = 'high';
+let snowFeintTimer = 0;
+let snowFeintFromY = 0;
+let snowBossSquash = 0;
+const SNOW_BOSS_FLOAT_FIRST = 180;
+const SNOW_BOSS_FLOAT_NEXT = 80;
+const SNOW_BOSS_ARC_SPEED = 6.2;
+const SNOW_BOSS_ICICLE_VX = -2.4;
+const SNOW_BOSS_ICICLE_FALL = 3.1;
+// Stuck to the ceiling or the floor, then they come loose one at a time.
+const SNOW_BOSS_ICICLES = [
+  { top: true, len: 0.50, lead: 250, x: 520 },
+  { top: false, len: 0.46, lead: 250, x: 860 },
+  { top: true, len: 0.58, lead: 230, x: 1200 },
+  { top: false, len: 0.42, lead: 270, x: 1540 },
+  { top: true, len: 0.40, lead: 240, x: 1880 },
+  // Lets go late, so it is still on the floor and the ship climbs over it.
+  { top: false, len: 0.54, lead: 48, x: 2460 }
+];
+// Second pass: shorter spikes, packed closer. The 4th and 7th hang back an extra beat.
+const SNOW_BOSS_ICICLES_SMALL = [
+  { top: true, len: 0.16, lead: 170, x: 460 },
+  { top: false, len: 0.15, lead: 140, x: 680 },
+  { top: true, len: 0.14, lead: 220, x: 900 },
+  { top: false, len: 0.18, lead: 160, x: 1340 },
+  { top: true, len: 0.17, lead: 190, x: 1560 },
+  { top: false, len: 0.14, lead: 240, x: 1780 },
+  { top: true, len: 0.15, lead: 150, x: 2220 },
+  { top: false, len: 0.16, lead: 200, x: 2440 },
+  { top: true, len: 0.13, lead: 260, x: 2660 },
+  { top: false, len: 0.17, lead: 130, x: 2880 }
+];
+const SNOW_BOSS_CRUMBLE_FRAMES = 100;
+const SNOW_BOSS_DEATH_BURST = 70;
+const SNOW_BOSS_DEATH_FRAMES = 210;
+let snowDeathBurst = false;
+// Final attack: snowballs from the boss, with icicles letting go between them.
+// Speeds vary, and none of them are fast.
+const SNOW_BOSS_MIX_BALL_R = 32;
+const SNOW_BOSS_MIX_BALLS = [
+  { at: 101, y: 185, vx: -2.15 },
+  { at: 526, y: 200, vx: -2.4 },
+  { at: 947, y: 515, vx: -1.9 },
+  { at: 1365, y: 190, vx: -2.3 },
+  { at: 1780, y: 510, vx: -2.05 },
+  { at: 2195, y: 200, vx: -2.45 },
+  { at: 2607, y: 520, vx: -1.95 },
+  { at: 2816, y: 185, vx: -2.2 }
+];
+const SNOW_BOSS_MIX_ICICLES = [
+  { top: true, len: 0.36, lead: 200, x: 1043 },
+  { top: false, len: 0.36, lead: 210, x: 2020 },
+  { top: true, len: 0.36, lead: 200, x: 2996 },
+  { top: false, len: 0.36, lead: 210, x: 3973 },
+  { top: true, len: 0.36, lead: 200, x: 4950 },
+  { top: false, len: 0.36, lead: 210, x: 5927 }
+];
+
+function snowMixBossY(elapsed) {
+  let fromY = miniBoss.baseY;
+  let fromT = 0;
+  for (let i = 0; i < SNOW_BOSS_MIX_BALLS.length; i++) {
+    const shot = SNOW_BOSS_MIX_BALLS[i];
+    if (elapsed <= shot.at) {
+      const t = (elapsed - fromT) / Math.max(1, shot.at - fromT);
+      const eased = t * t * (3 - 2 * t);
+      return fromY + (shot.y - fromY) * eased;
+    }
+    fromY = shot.y;
+    fromT = shot.at;
+  }
+  return fromY;
+}
+
+function snowBossArcY(progress, dip) {
+  const play = PLAY_BOTTOM - PLAY_TOP;
+  const amp = play * 0.28;
+  const center = PLAY_TOP + play * 0.5;
+  const lift = Math.sin(Math.max(0, Math.min(1, progress)) * Math.PI) * amp;
+  return dip ? center + lift : center - lift;
+}
+
+function snowBossBeginEase() {
+  miniBossFloatBlendStartX = miniBoss.x;
+  miniBossFloatBlendStartY = miniBoss.y;
+  miniBossFloatBlendStartFrame = frame;
+}
+
+function snowBossBlendT() {
+  const blendDuration = 30;
+  const blendElapsed = frame - miniBossFloatBlendStartFrame;
+  if (blendElapsed < 0 || blendElapsed >= blendDuration) return 1;
+  const t = blendElapsed / blendDuration;
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function snowBossPlace(targetX, targetY) {
+  const eased = snowBossBlendT();
+  if (eased < 1) {
+    miniBoss.x = miniBossFloatBlendStartX + (targetX - miniBossFloatBlendStartX) * eased;
+    miniBoss.y = miniBossFloatBlendStartY + (targetY - miniBossFloatBlendStartY) * eased;
+  } else {
+    miniBoss.x = targetX;
+    miniBoss.y = targetY;
+  }
+}
+
+function snowBossEaseY(targetY) {
+  const eased = snowBossBlendT();
+  if (eased < 1) {
+    miniBoss.y = miniBossFloatBlendStartY + (targetY - miniBossFloatBlendStartY) * eased;
+  } else {
+    miniBoss.y = targetY;
+  }
+}
+
+function snowBossHitsShip() {
+  const shipR = SHIP_W * 0.4;
+  if (Math.hypot(ship.x - miniBoss.x, ship.y - miniBoss.y) < shipR + miniBoss.r * 0.82) {
+    tryEndGame('snowboss');
+  }
+}
+
+function updateSnowFeintCharge() {
+  const span = (W + 220) - (-80);
+  const progress = (W + 220 - miniBoss.x) / span;
+  if (snowFeintStage === 'high') {
+    miniBoss.x -= SNOW_BOSS_ARC_SPEED;
+    miniBoss.y = snowBossArcY(progress, false);
+    snowBossSquash = 0;
+    if (progress >= 0.38) {
+      snowFeintStage = 'squash';
+      snowFeintTimer = 0;
+      snowFeintFromY = miniBoss.y;
+    }
+  } else if (snowFeintStage === 'squash') {
+    snowFeintTimer++;
+    miniBoss.x -= 2.2;
+    miniBoss.y = snowFeintFromY + Math.sin(snowFeintTimer * 1.5) * 3;
+    snowBossSquash = Math.min(1, snowFeintTimer / 8);
+    if (snowFeintTimer >= 22) {
+      snowFeintStage = 'dive';
+      snowFeintTimer = 0;
+      snowFeintFromY = miniBoss.y;
+    }
+  } else if (snowFeintStage === 'dive') {
+    snowFeintTimer++;
+    const t = Math.min(1, snowFeintTimer / 30);
+    const diveY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.74;
+    miniBoss.x -= SNOW_BOSS_ARC_SPEED;
+    miniBoss.y = snowFeintFromY + (diveY - snowFeintFromY) * (t * t);
+    snowBossSquash = 1 - t;
+    if (t >= 1) snowFeintStage = 'low';
+  } else {
+    miniBoss.x -= SNOW_BOSS_ARC_SPEED;
+    miniBoss.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.74;
+    snowBossSquash = 0;
+  }
+  snowBossHitsShip();
+  if (miniBoss.x < -80) {
+    snowBossBeginEase();
+    miniBossAttackState = 'arcRight';
+    miniBoss.x = -80;
+    snowBossSquash = 0;
+  }
+}
+
+function snowBossStepAsh() {
+  for (let i = miniBossDeathAshParticles.length - 1; i >= 0; i--) {
+    const p = miniBossDeathAshParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life++;
+    if (p.life >= p.maxLife) miniBossDeathAshParticles.splice(i, 1);
+  }
+}
+
+function updateSnowBoss() {
+  const stateElapsed = frame - miniBossAttackStateStartFrame;
+  if (miniBossAttackState === 'snowDying') {
+    const shake = stateElapsed < SNOW_BOSS_DEATH_BURST
+      ? Math.sin(stateElapsed * 1.7) * Math.min(11, stateElapsed * 0.22)
+      : 0;
+    snowBossPlace(miniBoss.restX, miniBoss.baseY);
+    miniBoss.x += shake;
+    miniBoss.y += Math.cos(stateElapsed * 1.3) * shake * 0.4;
+    if (stateElapsed < SNOW_BOSS_DEATH_BURST) {
+      snowBossSquash = 0.25 + 0.55 * Math.abs(Math.sin(stateElapsed * 0.55));
+      miniBoss.r = miniBoss.maxR * (1 + stateElapsed / SNOW_BOSS_DEATH_BURST * 0.12);
+    } else {
+      snowBossSquash = 0;
+      const u = Math.min(1, (stateElapsed - SNOW_BOSS_DEATH_BURST) / 90);
+      miniBoss.r = miniBoss.maxR * 1.12 * (1 - u);
+      if (!snowDeathBurst) {
+        snowDeathBurst = true;
+        for (let i = 0; i < 32; i++) {
+          const a = (i / 32) * Math.PI * 2;
+          const speed = 1.8 + (i % 5) * 0.85;
+          miniBossDeathAshParticles.push({
+            x: miniBoss.x, y: miniBoss.y,
+            vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+            size: 6 + (i % 4) * 3.5,
+            life: 0, maxLife: 80 + (i % 7) * 14
+          });
+        }
+      }
+      if (stateElapsed % 3 === 0) {
+        const a = Math.random() * Math.PI * 2;
+        miniBossDeathAshParticles.push({
+          x: miniBoss.x + Math.cos(a) * miniBoss.r,
+          y: miniBoss.y + Math.sin(a) * miniBoss.r,
+          vx: Math.cos(a) * 1.1, vy: Math.sin(a) * 1.1 - 0.3,
+          size: 2 + Math.random() * 2,
+          life: 0, maxLife: 50 + Math.random() * 40
+        });
+      }
+    }
+    snowBossStepAsh();
+    if (stateElapsed >= SNOW_BOSS_DEATH_FRAMES) {
+      miniBoss.r = 0;
+      snowBossSquash = 0;
+      miniBossDefeated = true;
+      miniBossDefeatFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'floating') {
+    const targetY = miniBoss.baseY + MINI_BOSS_FLOAT_AMPLITUDE * Math.sin((frame - miniBossSpawnFrame) * (2 * Math.PI / MINI_BOSS_FLOAT_PERIOD));
+    snowBossPlace(miniBoss.restX, targetY);
+    const floatDuration = snowAttackStep === 0 ? SNOW_BOSS_FLOAT_FIRST : SNOW_BOSS_FLOAT_NEXT;
+    if (stateElapsed >= floatDuration) {
+      snowBossBeginEase();
+      if (snowAttackStep === 0 || snowAttackStep === 3) miniBossAttackState = 'exiting';
+      else if (snowAttackStep === 1 || snowAttackStep === 4) miniBossAttackState = 'icicleWarn';
+      else if (snowAttackStep === 2) miniBossAttackState = 'gust';
+      else if (snowAttackStep === 5) {
+        snowRollers = [];
+        snowIcicles = [];
+        snowIcicleSpawned = 0;
+        snowRollerSpawned = 0;
+        snowBossSquash = 0;
+        miniBossAttackState = 'snowMix';
+      } else miniBossAttackState = 'crumbling';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'exiting') {
+    miniBoss.x += 7;
+    snowBossEaseY(miniBoss.baseY);
+    if (miniBoss.x > W + 220) {
+      miniBossAttackState = 'arcLeft';
+      miniBossAttackStateStartFrame = frame;
+      miniBoss.x = W + 220;
+      if (snowAttackStep === 3) {
+        snowFeintStage = 'high';
+        snowFeintTimer = 0;
+        snowBossSquash = 0;
+      }
+    }
+    return;
+  }
+  if (miniBossAttackState === 'arcLeft' || miniBossAttackState === 'arcRight') {
+    const goingRight = miniBossAttackState === 'arcRight';
+    if (snowAttackStep === 3 && !goingRight) {
+      updateSnowFeintCharge();
+      return;
+    }
+    miniBoss.x += goingRight ? SNOW_BOSS_ARC_SPEED : -SNOW_BOSS_ARC_SPEED;
+    const span = (W + 220) - (-80);
+    const progress = goingRight
+      ? (miniBoss.x - (-80)) / (miniBoss.restX - (-80))
+      : (W + 220 - miniBoss.x) / span;
+    snowBossEaseY(snowBossArcY(progress, snowAttackStep === 3 ? false : goingRight));
+    snowBossSquash = 0;
+    snowBossHitsShip();
+    if (!goingRight && miniBoss.x < -80) {
+      miniBossAttackState = 'arcRight';
+      miniBoss.x = -80;
+    } else if (goingRight && miniBoss.x >= miniBoss.restX) {
+      miniBossFloatBlendStartX = miniBoss.x;
+      miniBossFloatBlendStartY = miniBoss.y;
+      miniBossFloatBlendStartFrame = frame;
+      snowAttackStep = snowAttackStep === 3 ? 4 : 1;
+      miniBossAttackState = 'floating';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'icicleWarn') {
+    snowBossPlace(miniBoss.restX, miniBoss.baseY + Math.sin(stateElapsed * 0.4) * 10);
+    if (stateElapsed >= 50) {
+      snowIcicles = [];
+      snowIcicleSpawned = 0;
+      snowBossBeginEase();
+      miniBossAttackState = 'icicleFall';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'icicleFall') {
+    snowBossPlace(miniBoss.restX, miniBoss.baseY);
+    if (snowIcicleSpawned === 0) {
+      const play = PLAY_BOTTOM - PLAY_TOP;
+      const list = snowAttackStep === 4 ? SNOW_BOSS_ICICLES_SMALL : SNOW_BOSS_ICICLES;
+      for (const spec of list) {
+        const len = play * spec.len;
+        const fromTop = spec.top;
+        snowIcicles.push({
+          x: ship.x + spec.x,
+          fromTop,
+          loose: false,
+          lead: spec.lead,
+          len,
+          slim: snowAttackStep === 4,
+          base: fromTop ? PLAY_TOP : PLAY_BOTTOM,
+          tip: fromTop ? PLAY_TOP + len : PLAY_BOTTOM - len
+        });
+      }
+      snowIcicleSpawned = list.length;
+    }
+    const shipR = SHIP_W * 0.4;
+    const hitPad = snowAttackStep === 4 ? 8 : 12;
+    for (let i = snowIcicles.length - 1; i >= 0; i--) {
+      const ic = snowIcicles[i];
+      ic.x += SNOW_BOSS_ICICLE_VX;
+      if (!ic.loose && ic.x < ship.x + ic.lead) ic.loose = true;
+      if (ic.loose) {
+        const fall = ic.slim ? 2.6 : SNOW_BOSS_ICICLE_FALL;
+        const vy = ic.fromTop ? fall : -fall;
+        ic.base += vy;
+        ic.tip += vy;
+      }
+      const spanTop = Math.min(ic.base, ic.tip);
+      const spanBot = Math.max(ic.base, ic.tip);
+      const closestY = Math.max(spanTop, Math.min(ship.y, spanBot));
+      if (Math.hypot(ship.x - ic.x, ship.y - closestY) < shipR + hitPad) tryEndGame('snowboss');
+      const off = ic.x < -50 || ic.base > PLAY_BOTTOM + 40 || ic.base < PLAY_TOP - 40;
+      if (off) snowIcicles.splice(i, 1);
+    }
+    if (snowIcicleSpawned > 0 && snowIcicles.length === 0) {
+      snowAttackStep = snowAttackStep === 4 ? 5 : 2;
+      snowBossBeginEase();
+      miniBossAttackState = 'floating';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'gust') {
+    const play = PLAY_BOTTOM - PLAY_TOP;
+    const weaveAmp = play * 0.32;
+    const weaveY = miniBoss.baseY + Math.sin(stateElapsed * (2 * Math.PI / 320)) * weaveAmp;
+    snowBossPlace(miniBoss.restX, weaveY);
+    const launchAt = [70, 180, 290, 400, 510, 620, 730, 840];
+    if (snowRollerSpawned < launchAt.length && stateElapsed >= launchAt[snowRollerSpawned]) {
+      snowRollers.push({
+        x: miniBoss.x - miniBoss.r - 24,
+        y: miniBoss.y,
+        r: 42,
+        vx: -2.7
+      });
+      snowRollerSpawned++;
+    }
+    const shipR = SHIP_W * 0.4;
+    for (let i = snowRollers.length - 1; i >= 0; i--) {
+      const ball = snowRollers[i];
+      ball.x += ball.vx;
+      if (Math.hypot(ship.x - ball.x, ship.y - ball.y) < shipR + ball.r) tryEndGame('snowboss');
+      if (ball.x < -40) snowRollers.splice(i, 1);
+    }
+    if (snowRollerSpawned >= 8 && snowRollers.length === 0) {
+      snowAttackStep = 3;
+      snowBossBeginEase();
+      miniBossAttackState = 'floating';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'snowMix') {
+    snowBossPlace(miniBoss.restX, snowMixBossY(stateElapsed));
+    if (snowIcicleSpawned === 0) {
+      const play = PLAY_BOTTOM - PLAY_TOP;
+      for (const spec of SNOW_BOSS_MIX_ICICLES) {
+        const len = play * spec.len;
+        const fromTop = spec.top;
+        snowIcicles.push({
+          x: ship.x + spec.x,
+          fromTop,
+          loose: false,
+          lead: spec.lead,
+          len,
+          slim: false,
+          base: fromTop ? PLAY_TOP : PLAY_BOTTOM,
+          tip: fromTop ? PLAY_TOP + len : PLAY_BOTTOM - len
+        });
+      }
+      snowIcicleSpawned = SNOW_BOSS_MIX_ICICLES.length;
+    }
+    if (snowRollerSpawned < SNOW_BOSS_MIX_BALLS.length && stateElapsed >= SNOW_BOSS_MIX_BALLS[snowRollerSpawned].at) {
+      const shot = SNOW_BOSS_MIX_BALLS[snowRollerSpawned];
+      snowRollers.push({
+        x: miniBoss.x - miniBoss.r - 24,
+        y: shot.y,
+        r: SNOW_BOSS_MIX_BALL_R,
+        vx: shot.vx
+      });
+      snowRollerSpawned++;
+      snowBossSquash = 1;
+    }
+    if (snowBossSquash > 0) snowBossSquash = Math.max(0, snowBossSquash - 0.08);
+    const shipR = SHIP_W * 0.4;
+    for (let i = snowIcicles.length - 1; i >= 0; i--) {
+      const ic = snowIcicles[i];
+      ic.x += SNOW_BOSS_ICICLE_VX;
+      if (!ic.loose && ic.x < ship.x + ic.lead) ic.loose = true;
+      if (ic.loose) {
+        const vy = ic.fromTop ? SNOW_BOSS_ICICLE_FALL : -SNOW_BOSS_ICICLE_FALL;
+        ic.base += vy;
+        ic.tip += vy;
+      }
+      const spanTop = Math.min(ic.base, ic.tip);
+      const spanBot = Math.max(ic.base, ic.tip);
+      const closestY = Math.max(spanTop, Math.min(ship.y, spanBot));
+      if (Math.hypot(ship.x - ic.x, ship.y - closestY) < shipR + 12) tryEndGame('snowboss');
+      const off = ic.x < -50 || ic.base > PLAY_BOTTOM + 40 || ic.base < PLAY_TOP - 40;
+      if (off) snowIcicles.splice(i, 1);
+    }
+    for (let i = snowRollers.length - 1; i >= 0; i--) {
+      const ball = snowRollers[i];
+      ball.x += ball.vx;
+      if (Math.hypot(ship.x - ball.x, ship.y - ball.y) < shipR + ball.r) tryEndGame('snowboss');
+      if (ball.x < -40) snowRollers.splice(i, 1);
+    }
+    const mixDone = snowIcicleSpawned >= SNOW_BOSS_MIX_ICICLES.length
+      && snowRollerSpawned >= SNOW_BOSS_MIX_BALLS.length
+      && snowIcicles.length === 0
+      && snowRollers.length === 0;
+    if (mixDone) {
+      snowIcicles = [];
+      snowRollers = [];
+      snowBossSquash = 0;
+      snowDeathBurst = false;
+      snowBossBeginEase();
+      miniBossAttackState = 'snowDying';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'crumbling') {
+    snowBossPlace(miniBoss.restX, miniBoss.baseY);
+    const t = Math.min(1, stateElapsed / SNOW_BOSS_CRUMBLE_FRAMES);
+    miniBoss.r = miniBoss.maxR * (1 - t * 0.82);
+    if (stateElapsed % 4 === 0) {
+      miniBossDeathAshParticles.push({
+        x: miniBoss.x + (Math.random() - 0.5) * miniBoss.r * 2,
+        y: miniBoss.y + (Math.random() - 0.5) * miniBoss.r * 2,
+        vx: (Math.random() - 0.5) * 1.4,
+        vy: -0.4 - Math.random() * 0.8,
+        flutterPhase: Math.random() * 6,
+        flutterSpeed: 0.08,
+        size: 2 + Math.random() * 3,
+        rotation: 0,
+        rotSpeed: 0,
+        life: 0,
+        maxLife: 50 + Math.random() * 30
+      });
+    }
+    for (let i = miniBossDeathAshParticles.length - 1; i >= 0; i--) {
+      const p = miniBossDeathAshParticles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life++;
+      if (p.life >= p.maxLife) miniBossDeathAshParticles.splice(i, 1);
+    }
+    if (stateElapsed >= SNOW_BOSS_CRUMBLE_FRAMES) {
+      miniBossDefeated = true;
+      miniBossDefeatFrame = frame;
+    }
+  }
+}
+
 // ==================== REACTOR CORE (second mini boss) ====================
 // a stationary defense installation -- unlike the fire boss, it never
 // charges or leaves its resting position; every attack comes to the ship
@@ -1867,270 +2447,4 @@ let coreTeslaState = 'charging'; // 'charging' | 'cooldown' (bursts fire instant
 let coreTeslaStateStartFrame = 0;
 let coreTeslaProjectiles = []; // {x, y, vx, vy}
 let coreTeslaEmptySlot = 0; // first of two adjacent empty slots -- determined at charge start so it can be telegraphed, not revealed only when firing
-
-function pickCoreTeslaEmptySlot() {
-  // bias the safe gap toward wherever the ship currently is, so it's always
-  // reachable within the charge window regardless of starting position --
-  // pick randomly among slots near the ship's current height. leaves TWO
-  // adjacent slots empty (this and the next one) for a wider margin, since
-  // the ship can still get pulled away from the gap by the eye beam or
-  // orbit barrage during the charge window and need room to recover
-  const usableCount = CORE_TESLA_SLOT_FRACS.length - 1; // must leave room for the second empty slot after it
-  const slotDists = CORE_TESLA_SLOT_FRACS.slice(0, usableCount).map((frac, i) => {
-    const y = PLAY_TOP + frac * (PLAY_BOTTOM - PLAY_TOP);
-    return { i, dist: Math.abs(y - ship.y) };
-  });
-  slotDists.sort((a, b) => a.dist - b.dist);
-  const candidateSlots = slotDists.slice(0, 3);
-  return candidateSlots[Math.floor(Math.random() * candidateSlots.length)].i;
-}
-
-// death sequence: power-down instead of ashing-over -- panels go dark in
-// patches, then a final reactor implosion, fading cold rather than to ash
-const CORE_DEATH_DIM_DURATION = 40;
-const CORE_DEATH_DARKEN_DURATION = 150;
-const CORE_DEATH_COLLAPSE_DURATION = 90;
-const CORE_DEATH_PATCH_COUNT = 7;
-let coreDeathPatches = [];
-let coreDeathDebris = []; // {x, y, vx, vy, rotation, rotSpeed, size, life, maxLife}
-let coreBossDefeated = false;
-let coreBossDefeatFrame = 0;
-const CORE_BOSS_DEFEAT_PAUSE = 90;
-
-// circuit overload death -- the final sphere form's own death sequence,
-// distinct from the wall's power-down: instead of dimming and going dark,
-// the sphere builds up energy until it catastrophically overloads and
-// breaks apart, arcing with electricity as it comes undone
-const CORE_OVERLOAD_BUILDUP_DURATION = 100;
-const CORE_OVERLOAD_FLASH_DURATION = 15;
-const CORE_OVERLOAD_BREAKDOWN_DURATION = 110;
-let coreOverloadArcs = []; // {angle1, angle2, life, maxLife} -- brief electrical arcs across the surface during buildup
-
-const BOSS_ENTRANCE_DURATION = 150; // ~2.5s -- three-stage dramatic entrance before the fight begins
-const BOSS_ENTRANCE_CHARGE_END = 0.4;   // stage 1: charge-up glitch/static buildup, no orb visible
-const BOSS_ENTRANCE_ASSEMBLE_END = 0.85; // stage 2: fragments converge toward the center
-                                          // stage 3 (remaining 0.15): snap to full size + flash + shockwave + screen shake
-const BOSS_FLOAT_AMPLITUDE = 22;
-const BOSS_FLOAT_AMPLITUDE_PHASE3 = 160; // increased from 120 for more ring placement variety -- verified safe, 51px margin at the extreme
-const BOSS_FLOAT_PERIOD = 210; // slow, gentle bob -- ~3.5s per full cycle
-let bossTransitioning = false;
-let bossTransitionStartFrame = 0;
-let bossTransitionTargetPhase = 3;
-let bossWaitingForClear = false; // true once a phase transition's time threshold is reached but hazards are still on screen -- spawning pauses and elapsed freezes until the battlefield clears
-let bossWaitingForClearTargetPhase = 3;
-let bossWaitingForClearStartFrame = -1;
-const BOSS_HAZARD_TYPES = ['bossattack', 'bossragepulse', 'bossdrone', 'bossvolleytelegraph', 'bossdiagonalring'];
-const BOSS_PHASE5_TRANSITION_DURATION = 300; // ~5s -- extended for a bigger, more dramatic multi-stage spectacle
-const BOSS_PHASE_DURATION = 1500; // ~25s per phase, fixed duration -- easy to add more phases later
-const BOSS_NUM_PHASES = 5; // TEMPORARY -- currently 5, expand alongside bossDuration when adding more
-let bossTransitionEndFrame = -9999;
-const BOSS_TRANSITION_COMPLETE_FX_DURATION = 25; // brief flash/shockwave when the new form locks in
-let bossRagePulseTimer = 0;
-const BOSS_RAGE_PULSE_INTERVAL = 170; // ~2.8s between pulses
-const BOSS_RAGE_PULSE_SPEED = 5; // px/frame horizontal expansion rate
-// redesigned from a full expanding ring (which had an unbounded rate of
-// change right as its radius crossed the ship's horizontal distance --
-// the safe gap could swing from one side to the other faster than any
-// finite acceleration could track) to a horizontal-only expanding wall
-// at a fixed vertical band. safety is now trivial and constant no
-// matter how far the wall has traveled: the band's height never
-// changes, so the safe space above/below it never shrinks or moves
-const BOSS_RAGE_PULSE_THICKNESS = 80; // fixed vertical band height, leaves ~226px safe space each side
-const BOSS_RAGE_PULSE_MAX_R = 950; // despawn once expanded well past the play area
-// phase 4: two rings expanding horizontally like the phase-3 wall, but
-// each band's vertical center shifts linearly as it expands, at
-// opposite slopes -- creating a diagonal "X" look (like the reference
-// image) without any tan()-style blowup, since the relationship is
-// purely linear. verified safe before implementation: 326px minimum
-// safe gap across the full float range, far above the 33px minimum
-let bossDiagonalRingTimer = 0;
-const BOSS_DIAGONAL_RING_INTERVAL = 200;
-const BOSS_DIAGONAL_RING_SPEED = 5;
-const BOSS_DIAGONAL_RING_SLOPE = 0.5; // ~27deg
-const BOSS_DIAGONAL_RING_THICKNESS = 60;
-const BOSS_DIAGONAL_RING_MAX_R = 950;
-// phase 4: staggered double wall. reuses the bossragepulse type
-// entirely (no new collision/render code) -- just spawns two walls at
-// offset heights from a shared reference y, with the second staggered
-// in time. offset chosen small enough that once both walls are active
-// their bands merge into one continuous danger zone (no safe middle
-// gap that would trivially defeat the "commit to a side" challenge),
-// verified safe: even at the float range's extreme, whichever side
-// shrinks the other always has 300px+ of margin -- always exactly one
-// clearly-correct side, never both squeezed simultaneously
-let bossDoubleWallTimer = 0;
-const BOSS_DOUBLE_WALL_INTERVAL = 220;
-const BOSS_DOUBLE_WALL_OFFSET = 40;
-const BOSS_DOUBLE_WALL_STAGGER = 45; // ~0.75s between wall A and wall B
-// phase 4: summoned drone formation. reuses zone 10's proven
-// security-drone formation pattern and rendering wholesale (a new
-// 'bossdrone' type, since boss-zone hazards move via explicit vx
-// rather than the generic world-scroll multiplier zone 10 uses).
-// verified safe before implementation: the formation's one deliberate
-// gap is 114px wide after accounting for both drone and ship radii,
-// far above the 33px minimum -- clustered drones on either side leave
-// no ambiguity about where the real passage is
-let bossDroneFormationTimer = 0;
-const BOSS_DRONE_FORMATION_INTERVAL = 120; // more frequent, was 260
-const BOSS_DRONE_SPEED = 6; // faster, was 3.5
-const BOSS_DRONE_R = 13;
-// phase 4 exclusive: homing signal fragment. gently steers toward the
-// ship's y, but its drift is CLAMPED to within BOSS_HOMING_MAX_DRIFT of
-// its own spawn height -- it can never leave that band no matter how
-// long it homes. this makes the safety guarantee independent of
-// whether the player successfully "outruns" it: verified a 120px
-// guaranteed-safe zone always exists outside the band, regardless of
-// homing behavior, far above the 33px minimum this session uses.
-// (an earlier unbounded-homing version was rejected after simulation
-// showed it could asymptotically converge to zero separation against
-// a boundary-pinned ship given enough time)
-let bossHomingFragmentTimer = 0;
-const BOSS_HOMING_FRAGMENT_INTERVAL = 450;
-const BOSS_HOMING_FRAGMENT_VX = -3;
-const BOSS_HOMING_FRAGMENT_R = 15;
-const BOSS_HOMING_MAX_DRIFT = 150; // widened from 100 -- verified still safe (71px guaranteed margin) across the ship's full possible range
-const BOSS_HOMING_MAX_VY = 2.4; // reduced from 3.0 for gentler pursuit, still comfortably below the ship's own 5px/frame max
-const BOSS_HOMING_TURN_RATE = 0.04; // reduced from 0.06 -- smoother, less sharp direction changes
-
-// phase 5 exclusive: charge beam laser. locks onto the ship's position
-// at telegraph start (not continuously tracking, matching the proven
-// volley pattern), gives a long generous warning, then fires a
-// full-width lethal beam that lingers. verified safe: with the
-// locked position at dead-center (worst case), realistic
-// acceleration-limited ship physics needs only 18 frames to clear the
-// band -- the 120-frame telegraph gives a 102-frame buffer
-let bossChargeBeamTimer = 0;
-let bossChargeBeamNextGap = 150; // re-rolled randomly after each shot
-let bossChargeBeamCount = 0; // tracks which beam shot within phase 5 (1st, 2nd, ...) -- shots 4+ are double thickness
-
-// the climactic ending: after shot 8 completes, the boss resumes
-// normal movement for a beat, then charges one final time -- but this
-// charge never fires, it just keeps building until it detonates in a
-// full-screen explosion cinematic, after which the ship is shown
-// flying alone and victory triggers directly (bypassing the normal
-// bossTimer countdown, which is frozen throughout this whole sequence)
-let bossFinalChargeActive = false;
-let bossFinalChargeStartFrame = -1;
-let bossExplosionActive = false;
-let bossExplosionStartFrame = -1;
-let bossFullyDefeated = false; // once true, the boss is permanently gone -- no rendering at all, for the downtime/fly-off/victory screen
-const BOSS_FINAL_CHARGE_DELAY = 380; // resumed-movement beat before the final charge begins
-const BOSS_FINAL_CHARGE_DURATION = 420; // longer than even the super beam's telegraph -- the ultimate build-up
-const BOSS_EXPLOSION_DURATION = 240; // full cinematic: burst, white-out, hold, fade to reveal the ship
-
-// after the explosion, a quiet Mega Man-style beat before the ship
-// flies off screen to the right, then the victory screen appears
-let postBossDowntimeActive = false;
-let postBossDowntimeStartFrame = -1;
-let shipFlyOffActive = false;
-let shipFlyOffStartFrame = -1;
-const POST_BOSS_DOWNTIME_DURATION = 120; // ~2s quiet beat
-const SHIP_FLYOFF_ACCEL = 0.15; // gentle ramp-up rather than an instant dash
-let bossBeamHoldBlendStartFrame = -9999; // frame the beam sequence ended, used to smoothly blend boss.y back onto its normal float rather than snapping
-const BOSS_BEAM_HOLD_BLEND_DURATION = 60;
-const BOSS_CHARGE_BEAM_MIN_GAP = 90; // 1.5s
-const BOSS_CHARGE_BEAM_MAX_GAP = 300; // 5s
-
-// phase 5 secondary hazard: ember knockback. small particles drift
-// from the boss and, on contact, give the ship a brief involuntary
-// velocity nudge -- non-lethal, no tryEndGame() call at all. disabled
-// entirely once the super beam (shot 8) is active, since that phase
-// should be the beam alone
-let bossEmberTimer = 0;
-const BOSS_EMBER_INTERVAL = 110;
-const BOSS_EMBER_SPEED = 2.8;
-const BOSS_EMBER_R = 5;
-const BOSS_EMBER_KNOCKBACK = 5; // strengthened -- now matches the ship's own max speed for a genuinely noticeable jolt
-
-// phase 5 tertiary hazard: thick ash cloud. a large, slow-drifting
-// zone that -- like the black hole's pull -- smoothly reduces lift
-// and increases gravity based on proximity to its center while the
-// ship is inside. non-lethal, no tryEndGame() call. gated off
-// entirely once the super beam (shot 8) is active, same as embers
-let bossAshCloudTimer = 0;
-const BOSS_ASH_CLOUD_INTERVAL = 260;
-const BOSS_ASH_CLOUD_SPEED = 1.6;
-const BOSS_ASH_CLOUD_R = 100;
-const BOSS_ASH_CLOUD_LIFT_REDUCTION = 0.55;
-const BOSS_ASH_CLOUD_GRAVITY_INCREASE = 0.82;
-const BOSS_CHARGE_BEAM_TELEGRAPH_DURATION = 120;
-const BOSS_SUPER_BEAM_TELEGRAPH_DURATION = 320; // extended further -- a long, unmistakable charge-up for the climactic 7th shot
-const BOSS_CHARGE_BEAM_FIRE_DURATION = 90;
-const BOSS_SUPER_BEAM_FIRE_DURATION = 150; // 1 second longer than the standard beam's fire duration
-const BOSS_CHARGE_BEAM_THICKNESS = 80;
-const BOSS_DRONE_FORMATION_YFRACS = [0.1, 0.25, 0.4, 0.75, 0.9];
-let bossDoubleWallPendingFrame = -1; // -1 = no second wall pending
-const BOSS_TRANSITION_DURATION = 180; // ~3s -- boss visibly "strains" to transform, frozen and silent
-let gates = [];
-let lastSpawnX = 0;
-let fireballSpawnCounter = 0;
-let extraFireballCounter = 0;
-let extraFireballPatternIndex = 0;
-let iceChunkPatternIndex = 0;
-let iceChunkSpawnX = 0;
-let extraToxicCounter = 0;
-let extraToxicPatternIndex = 0;
-let extraGeyserCounter = 0;
-let extraGeyserPatternIndex = 0;
-let extraMovingDoorCounter = 0;
-let extraMovingDoorPatternIndex = 0;
-let specialEventsSpawned = [false, false, false];
-let blackHoleEventsSpawned = [false, false, false, false];
-let windVortexEventsSpawned = [false, false, false];
-let cloudArcEventsSpawned = [false, false, false];
-let lightningStrikeEventsSpawned = [false, false, false];
-let lasergridEventsSpawned = [false, false];
-let droneSwarmEventsSpawned = [false, false, false, false];
-let billboardEventsSpawned = [false, false];
-let searchlightEventsSpawned = [false, false];
-let turretEventsSpawned = [false, false];
-let signalCorruptionEventsSpawned = [false, false];
-let empEventsSpawned = [false, false];
-let echoTrailEventsSpawned = [false, false];
-let pulsingOrbEventsSpawned = [false, false];
-let boomerangEventsSpawned = [false, false];
-let oncomingCometEventsSpawned = [false, false];
-let splitRockEventsSpawned = [false, false, false];
-let extraStormCounter = 0;
-let extraStormPatternIndex = 0;
-let extraOrbiterCounter = 0;
-let extraOrbiterPatternIndex = 0;
-let extraArcPlanetCounter = 0;
-let extraArcPlanetPatternIndex = 0;
-let lensingZoneEventsSpawned = [false, false, false];
-let supernovaEventsSpawned = [false, false];
-let specialDoorUnlocked = [false, false, false];
-let extraHubCounter = 0;
-let extraHubPatternIndex = 0;
-let extraStarCounter = 0;
-let extraStarPatternIndex = 0;
-let terrainSegments = [];
-let terrainSegmentsSinceEntry = 0;
-let patternIndex = 0;
-let terrainWaypointTarget = null;
-let terrainWaypointSegLeft = 0;
-let terrainWaypointSegTotal = 1;
-let terrainWaypointGapTarget = null;
-let terrainWaypointIslandTarget = 0;
-let terrainWaypointIslandFrom = 0;
-let terrainWaypointNosePower = 1;
-let terrainWaypointTaperShare = 0.32;
-let terrainWaypointTaperCap = 5;
-let terrainWaypointIslandShape = '';
-let terrainWaypointIslandLabel = '';
-let terrainWaypointIslandBias = 0;
-let terrainMeanderIndex = 0;
-
-let themeIndex = 0;
-let themeLevelReached = 0;
-let warpActive = false;
-let warpTimer = 0;
-let portalObject = null;
-let ghostMode = false;
-let bossGridFadeEnabled = true; // toggle: does the background grid fade out during the boss color transition?
-let bossAshGrayVariant = true; // toggle: gray is now the default -- red kept available for comparison
-let devGracePeriodEndFrame = -1; // freezes ship physics (no gravity/lift) after a dev-panel zone jump or phase skip, for a fixed window regardless of input -- prevents the ship falling into a boundary while the dev panel is being navigated, and naturally expires rather than freezing forever
-const DEV_GRACE_PERIOD_DURATION = 600; // 10s at 60fps -- generous time to navigate the dev panel
-const WARP_LANDING_GRACE_PERIOD = 60; // 1s -- brief safety window right as a new zone begins. Gravity/lift physics run continuously during the warp tunnel itself (a purely visual effect a player isn't expected to actively fly through), which can leave the ship sitting close to the boundary by the time the new zone is actually visible; this gives a beat to see and react rather than dying before the player's first real frame in the zone
-let fireballSpeedMult = 1.6; // lowered from the initial 2.4 per feedback -- live-tunable via dev panel
 

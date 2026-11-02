@@ -256,6 +256,115 @@ function diamondForkWaypoints(pad, gap, forkExtra, wpExtra) {
 // ---- Themes ----
 const THEMES = [
   {
+    name: 'COPPER MIDNIGHT',
+    skyTop: '#07101c', skyMid: '#1a3048', skyBottom: '#5a3018',
+    accentA: '#ff9a3c', accentB: '#d8ff6a',
+    barTop: '#1a2430', barBottom: '#070c12',
+    bgStyle: 'copper',
+    gravityMult: 1, liftMult: 1,
+    pulseGap: false, obstacleShape: 'copper', scrollMult: 1,
+    // One machine at a time. Signs, the chain, the lamp, then lights that rush the ship.
+    pattern: [
+      { spacing: 640, marquees: [{ anchor: 'floor', width: 280, height: 150 }] },
+      { spacing: 560, marquees: [{ anchor: 'ceiling', width: 260, height: 140 }] },
+      { spacing: 580, marquees: [{ anchor: 'floor', width: 300, heightFrac: 0.6 }] },
+      { spacing: 640, couriers: [{ gap: 3 }] },
+      { spacing: 560, marquees: [{ anchor: 'floor', width: 260, heightFrac: 0.6 }] },
+      { spacing: 660, blooms: [{ minR: 70, maxR: 280, freq: 0.02, phase: 0.4 }] },
+      { spacing: 560, marquees: [{ anchor: 'ceiling', width: 280, height: 160 }] },
+      { spacing: 640, couriers: [{ gap: 1 }] },
+      { spacing: 680, headlamps: [{ yFrac: 0.46 }] },
+      { spacing: 560, marquees: [{ anchor: 'floor', width: 300, height: 170 }] },
+      { spacing: 640, couriers: [{ gap: 5 }] },
+      { spacing: 660, blooms: [{ minR: 80, maxR: 300, freq: 0.018, phase: 1.2 }] },
+      { spacing: 560, marquees: [{ anchor: 'ceiling', width: 240, height: 150 }] },
+      { spacing: 720, headlamps: [{ yFrac: 0.30 }, { yFrac: 0.70 }] },
+      { spacing: 600, couriers: [{ gap: 3 }] },
+      { spacing: 560, marquees: [{ anchor: 'floor', width: 280, height: 180 }] },
+      { spacing: 640, blooms: [{ minR: 70, maxR: 260, freq: 0.022, phase: 0.2 }] },
+      { spacing: 600, couriers: [{ gap: 2 }] }
+    ]
+  },
+  {
+    name: 'KELP TRENCH',
+    skyTop: '#0c4a40', skyMid: '#06343a', skyBottom: '#02080c',
+    accentA: '#b8ffe6', accentB: '#3dcea0',
+    barTop: '#063028', barBottom: '#010608',
+    bgStyle: 'kelp',
+    ampMult: 1, freqMult: 1,
+    gravityMult: 1, liftMult: 1,
+    pulseGap: false, obstacleShape: 'kelp', scrollMult: 1,
+    // The Storm Skies whirlpool. Inside the spin, the water shoves you up and down in turns.
+    windVortexEvents: [
+      { triggerDistance: 180, yFrac: 0.42, reachR: 190 },
+      { triggerDistance: 460, yFrac: 0.62, reachR: 200 },
+      { triggerDistance: 720, yFrac: 0.38, reachR: 180 }
+    ],
+    // Bigger bodies, closer together, so the trench stays full.
+    // A top kelp and a sponge cluster can share a beat. The gap between them is the lane.
+    pattern: [
+      { spacing: 420, kelp: [
+        { anchor: 'top', lengthFrac: 0.40, sway: 44, freq: 0.016, phase: 0.3, thick: 30 }
+      ], sponge: [150, 200, 170, 190, 140] },
+      { spacing: 430, jelly: { yFrac: 0.38, bob: 38, tent: 150, bell: 40, freq: 0.022, phase: 0.4 } },
+      { spacing: 420, kelp: [
+        { anchor: 'bottom', lengthFrac: 0.50, sway: 40, freq: 0.015, phase: 1.1, thick: 30 }
+      ]},
+      { spacing: 400, urchin: { yFrac: 0.62, core: 28, spine: 76, freq: 0.018, phase: 0.2 } },
+      { spacing: 500, school: { yFrac: 0.78, width: 460, height: 170, swim: 1.8 } },
+      { spacing: 430, kelp: [
+        { anchor: 'top', lengthFrac: 0.42, sway: 40, freq: 0.016, phase: 0.8, thick: 30 }
+      ], sponge: [160, 190, 150, 210] },
+      { spacing: 450, kelp: [
+        { anchor: 'top', lengthFrac: 0.40, sway: 34, freq: 0.016, phase: 1.0, thick: 28 },
+        { anchor: 'bottom', lengthFrac: 0.32, sway: 34, freq: 0.016, phase: 1.0 + Math.PI, thick: 28, xJitter: 20 }
+      ]},
+      { spacing: 460, sponge: [130, 180, 150, 160] },
+      { spacing: 430, jelly: { yFrac: 0.50, bob: 36, tent: 140, bell: 38, freq: 0.02, phase: 1.7 } },
+      { spacing: 440, kelp: [
+        { anchor: 'top', lengthFrac: 0.54, sway: 42, freq: 0.015, phase: 2.2, thick: 32 }
+      ]},
+      { spacing: 520, school: { yFrac: 0.16, width: 440, height: 160, swim: 1.8 } },
+      { spacing: 430, sponge: [170, 220, 190, 240, 160] },
+      { spacing: 420, urchin: { yFrac: 0.30, core: 26, spine: 72, freq: 0.02, phase: 1.1 } },
+      { spacing: 430, kelp: [
+        { anchor: 'bottom', lengthFrac: 0.46, sway: 38, freq: 0.015, phase: 0.6, thick: 30 }
+      ]},
+      { spacing: 430, jelly: { yFrac: 0.42, bob: 44, tent: 146, bell: 38, freq: 0.02, phase: 0.9 } },
+      { spacing: 450, kelp: [
+        { anchor: 'top', lengthFrac: 0.38, sway: 46, freq: 0.014, phase: 1.6, thick: 28 },
+        { anchor: 'bottom', lengthFrac: 0.30, sway: 40, freq: 0.014, phase: 1.6 + Math.PI, thick: 26, xJitter: 30 }
+      ]},
+      { spacing: 430, kelp: [
+        { anchor: 'top', lengthFrac: 0.36, sway: 40, freq: 0.016, phase: 2.4, thick: 28 }
+      ], sponge: [180, 230, 160, 200, 170] },
+      { spacing: 520, school: { yFrac: 0.18, width: 420, height: 150, swim: 1.7 } },
+      { spacing: 430, kelp: [
+        { anchor: 'bottom', lengthFrac: 0.48, sway: 36, freq: 0.015, phase: 0.4, thick: 30 }
+      ]},
+      { spacing: 410, urchin: { yFrac: 0.58, core: 28, spine: 74, freq: 0.017, phase: 2.1 } },
+      { spacing: 430, jelly: { yFrac: 0.36, bob: 40, tent: 136, bell: 36, freq: 0.022, phase: 2.6 } },
+      { spacing: 520, school: { yFrac: 0.76, width: 450, height: 160, swim: 1.7 } },
+      { spacing: 440, kelp: [
+        { anchor: 'top', lengthFrac: 0.40, sway: 38, freq: 0.016, phase: 0.2, thick: 30 }
+      ], sponge: [150, 200, 180, 220] },
+      { spacing: 460, kelp: [
+        { anchor: 'top', lengthFrac: 0.36, sway: 32, freq: 0.017, phase: 1.3, thick: 26 },
+        { anchor: 'bottom', lengthFrac: 0.30, sway: 32, freq: 0.017, phase: 1.3 + Math.PI, thick: 26, xJitter: 18 }
+      ]},
+      { spacing: 430, sponge: [160, 210, 180, 240, 150] },
+      { spacing: 430, jelly: { yFrac: 0.46, bob: 36, tent: 140, bell: 36, freq: 0.02, phase: 0.6 } },
+      { spacing: 440, kelp: [
+        { anchor: 'bottom', lengthFrac: 0.44, sway: 36, freq: 0.015, phase: 1.8, thick: 28 }
+      ]},
+      { spacing: 500, school: { yFrac: 0.12, width: 460, height: 130, swim: 1.7 } },
+      { spacing: 420, urchin: { yFrac: 0.46, core: 26, spine: 70, freq: 0.018, phase: 0.8 } },
+      { spacing: 430, kelp: [
+        { anchor: 'top', lengthFrac: 0.42, sway: 36, freq: 0.016, phase: 2.8, thick: 30 }
+      ], sponge: [150, 190, 170, 210] }
+    ]
+  },
+  {
     name: 'GLACIER',
     skyTop: '#07131c', skyMid: '#1a4a62', skyBottom: '#c5dbe8',
     accentA: '#f4fbff', accentB: '#79d6ff',
@@ -267,7 +376,8 @@ const THEMES = [
     gapFractionStart: 0.48, gapConstant: true,
     terrainSpacing: 42,
     iceChunks: true,
-    // The live route is buildGlacierCourse(). These points are only a fallback.
+    // The live route is glacierBeatAt(): open to 350, cave to 650, open to the portal.
+    // These points are only a fallback.
     pattern: [
       { centerFrac: 0.28 },
       { centerFrac: 0.16 },
@@ -291,101 +401,81 @@ const THEMES = [
       { spacing: 520, chunks: [{ xJitter: -36, yFrac: 0.28, rFrac: 0.5 }, { xJitter: 48, yFrac: 0.74, rFrac: 0.3 }] },
       { spacing: 440, chunks: [{ xJitter: 18, yFrac: 0.62, rFrac: 0.45 }] },
       { spacing: 560, chunks: [{ xJitter: 0, yFrac: 0.36, rFrac: 0.25 }] }
+    ],
+    // First open sky. Slabs, then a giant ice landmass rooted to the floor or ceiling.
+    iceFloePattern: [
+      { spacing: 420, floes: [
+        { yFrac: 0.24, width: 200, thickness: 34 },
+        { yFrac: 0.76, width: 170, thickness: 30, xJitter: 80 }
+      ]},
+      { spacing: 500, spires: [{ anchor: 'bottom', heightFrac: 0.64, width: 240 }] },
+      { spacing: 400, floes: [{ yFrac: 0.50, width: 230, thickness: 32 }] },
+      { spacing: 520, spires: [{ anchor: 'top', heightFrac: 0.58, width: 280 }] },
+      { spacing: 400, floes: [
+        { yFrac: 0.32, width: 160, thickness: 28, xJitter: -50 },
+        { yFrac: 0.70, width: 190, thickness: 34, xJitter: 70 }
+      ]},
+      { spacing: 480, spires: [{ anchor: 'bottom', heightFrac: 0.52, width: 210 }] }
+    ],
+    // Gusts only. Snowballs come from glacierSnowSchedule so each one
+    // has its own distance, height, fall speed, and angle.
+    // The empty spacings keep these gusts where they were.
+    iceBergPattern: [
+      { spacing: 840 },
+      { spacing: 220 },
+      { spacing: 860, gusts: [{ yFrac: 0.32, width: 260, height: 140, push: 1 }] },
+      { spacing: 400, gusts: [{ yFrac: 0.60, width: 260, height: 140, push: -1 }] }
     ]
   },
   {
-    name: 'GRAVITY WELL',
-    skyTop: '#071428', skyMid: '#0c3340', skyBottom: '#05101c',
-    accentA: '#3dffc8', accentB: '#6ec8ff',
-    wellAccent: '#e85cff',
-    barTop: '#123848', barBottom: '#071018',
-    bgStyle: 'matrix',
-    ampMult: 0.15, freqMult: 1.6,
-    gravityMult: 1.40, liftMult: 0.8,
-    pulseGap: false, obstacleShape: 'hbar',
-    // each entry is one cluster of short horizontal bars. yFrac/ampFrac are fractions of
-    // play height; freq/phase drive the same oscillation math as Zone 1's gates.
-    // Bars never span the full width, so there's always open sky above and/or below each one.
-    pattern: [
-      { spacing: 360, bars: [
-        { yFrac: 0.14, ampFrac: 0.070, freq: 0.014, phase: 0.0, xOffsetPx: -55, widthPx: 110, thicknessPx: 18 },
-        { yFrac: 0.50, ampFrac: 0.085, freq: 0.009, phase: 2.1, xOffsetPx: 40, widthPx: 130, thicknessPx: 18 },
-        { yFrac: 0.86, ampFrac: 0.060, freq: 0.017, phase: 4.2, xOffsetPx: -20, widthPx: 100, thicknessPx: 18 }
-      ]},
-      { spacing: 380, bars: [
-        { yFrac: 0.22, ampFrac: 0.090, freq: 0.011, phase: 0.8, xOffsetPx: 50, widthPx: 140, thicknessPx: 20 },
-        { yFrac: 0.80, ampFrac: 0.075, freq: 0.016, phase: 3.4, xOffsetPx: -45, widthPx: 110, thicknessPx: 18 }
-      ]},
-      { spacing: 350, bars: [
-        { yFrac: 0.12, ampFrac: 0.065, freq: 0.013, phase: 1.4, xOffsetPx: 25, widthPx: 100, thicknessPx: 16 },
-        { yFrac: 0.48, ampFrac: 0.080, freq: 0.008, phase: 3.0, xOffsetPx: -50, widthPx: 120, thicknessPx: 18 },
-        { yFrac: 0.88, ampFrac: 0.070, freq: 0.015, phase: 5.1, xOffsetPx: 35, widthPx: 110, thicknessPx: 18 }
-      ]},
-      { spacing: 390, bars: [
-        { yFrac: 0.20, ampFrac: 0.085, freq: 0.010, phase: 1.8, xOffsetPx: -40, widthPx: 130, thicknessPx: 20 },
-        { yFrac: 0.78, ampFrac: 0.090, freq: 0.014, phase: 4.6, xOffsetPx: 55, widthPx: 130, thicknessPx: 20 }
-      ]},
-      { spacing: 370, bars: [
-        { yFrac: 0.16, ampFrac: 0.060, freq: 0.012, phase: 2.7, xOffsetPx: 60, widthPx: 100, thicknessPx: 16 },
-        { yFrac: 0.50, ampFrac: 0.075, freq: 0.016, phase: 0.4, xOffsetPx: -30, widthPx: 120, thicknessPx: 18 },
-        { yFrac: 0.84, ampFrac: 0.055, freq: 0.011, phase: 3.9, xOffsetPx: 15, widthPx: 100, thicknessPx: 16 }
-      ]},
-      { spacing: 340, bars: [
-        { yFrac: 0.26, ampFrac: 0.095, freq: 0.009, phase: 1.2, xOffsetPx: -50, widthPx: 140, thicknessPx: 20 },
-        { yFrac: 0.84, ampFrac: 0.070, freq: 0.018, phase: 4.8, xOffsetPx: 45, widthPx: 110, thicknessPx: 18 }
-      ]}
-    ],
-    // secondary layer: a spinning gravity swirl (visual retint of the
-    // original dust tornado). same size, path, and hitbox -- it only
-    // looks like a well instead of sand
-    extraStormPattern: [
-      { baseYFrac: 0.35, r: 55, interval: 480 },
-      { baseYFrac: 0.65, r: 50, interval: 520 }
-    ]
+    // Same sky as Glacier. The fight copies the Molten Core setup:
+    // a giant body on the right, a cycle of attacks, then a short escape.
+    name: 'WHITEOUT',
+    skyTop: '#07131c', skyMid: '#1a4a62', skyBottom: '#c5dbe8',
+    accentA: '#f4fbff', accentB: '#79d6ff',
+    barTop: '#123246', barBottom: '#071018',
+    bgStyle: 'frozen',
+    gravityMult: 1.0, liftMult: 1.0,
+    obstacleShape: 'none',
+    isMiniBossZone: true,
+    miniBossVariant: 'snow',
+    pattern: [{ spacing: 100000 }]
   },
   {
-    name: 'DEEP SPACE',
-    skyTop: '#050014', skyMid: '#0a0026', skyBottom: '#000010',
-    accentA: '#ff8f3f', accentB: '#5aa9ff',
-    barTop: '#10082e', barBottom: '#050014',
-    bgStyle: 'stars',
-    ampMult: 1.5, freqMult: 0.6,
-    gravityMult: 0.55, liftMult: 1.15,
-    pulseGap: false, obstacleShape: 'asteroid',
-    // each entry is one cluster: xJitter offsets each rock from the cluster's spawn x,
-    // yFrac/rFrac are fractions (0-1) mapped to actual position/radius
+    name: 'SOLAR CHROME',
+    skyTop: '#f08b78', skyMid: '#ffb15a', skyBottom: '#ffe7a8',
+    accentA: '#fffef8', accentB: '#ffd15a',
+    barTop: '#c45a3a', barBottom: '#7a3018',
+    bgStyle: 'chrome',
+    gravityMult: 1, liftMult: 1,
+    pulseGap: false, obstacleShape: 'chrome', scrollMult: 1.5,
+    // Floor wedges are flown over. Ceiling wedges are flown under. The hit is the triangle.
     pattern: [
-      { spacing: 340, asteroids: [{ xJitter: -90, yFrac: 0.16, rFrac: 0.5 }, { xJitter: 70, yFrac: 0.72, rFrac: 0.65 }] },
-      { spacing: 360, asteroids: [{ xJitter: 85, yFrac: 0.12, rFrac: 0.7 }, { xJitter: -40, yFrac: 0.50, rFrac: 0.5 }, { xJitter: -110, yFrac: 0.88, rFrac: 0.45 }] },
-      { spacing: 330, asteroids: [{ xJitter: -75, yFrac: 0.14, rFrac: 0.45 }, { xJitter: 95, yFrac: 0.50, rFrac: 0.55 }, { xJitter: 10, yFrac: 0.86, rFrac: 0.7 }] },
-      { spacing: 380, asteroids: [{ xJitter: 60, yFrac: 0.22, rFrac: 0.6 }, { xJitter: -100, yFrac: 0.78, rFrac: 0.5 }, { xJitter: 20, yFrac: 0.48, rFrac: 0.4 }] }
-    ],
-    // secondary: shooting stars that fly in a straight diagonal line (no
-    // arc/curve) from a start height to a different end height, at varied
-    // spots and paces. life is always long enough that the diagonal motion
-    // continues until the star has genuinely scrolled off-screen (rather
-    // than finishing early and popping out mid-flight) -- speed variety
-    // comes from how much vertical distance each covers, not from
-    // finishing its motion at different times. Rendered as a pure comet
-    // streak with no discrete star shape, the bright head leading and the
-    // tail trailing behind in the direction it came from
-    extraShootingStarPattern: [
-      { startYFrac: 0.9, endYFrac: 0.35, lifeFrames: 480, radiusPx: 9, interval: 280 },
-      { startYFrac: 0.1, endYFrac: 0.65, lifeFrames: 450, radiusPx: 8, interval: 260 },
-      { startYFrac: 0.5, endYFrac: 0.15, lifeFrames: 520, radiusPx: 10, interval: 310 },
-      { startYFrac: 0.25, endYFrac: 0.75, lifeFrames: 460, radiusPx: 7, interval: 250 },
-      { startYFrac: 0.7, endYFrac: 0.9, lifeFrames: 540, radiusPx: 8, interval: 300 }
-    ],
-    // comets that enter from the left and fly right, against the scroll,
-    // so they cross the ship much faster than the usual streaks
-    oncomingCometEvents: [
-      { triggerDistance: 280, startYFrac: 0.72, endYFrac: 0.40, radiusPx: 9, vx: 1.9 },
-      { triggerDistance: 680, startYFrac: 0.24, endYFrac: 0.58, radiusPx: 8, vx: 2.0 }
-    ],
-    splitRockEvents: [
-      { triggerDistance: 180, yFrac: 0.28, r: 28, splitAtPx: 480, telegraphFrames: 96 },
-      { triggerDistance: 400, yFrac: 0.40, r: 30, splitAtPx: 480, telegraphFrames: 96 },
-      { triggerDistance: 760, yFrac: 0.60, r: 28, splitAtPx: 480, telegraphFrames: 96 }
+      { spacing: 560, wedges: [{ anchor: 'floor', width: 220, height: 190 }] },
+      { spacing: 520, wedges: [{ anchor: 'ceiling', width: 240, height: 180 }] },
+      { spacing: 540, wedges: [{ anchor: 'floor', width: 260, height: 250, lean: 36 }] },
+      { spacing: 500, wedges: [{ anchor: 'ceiling', width: 250, height: 230, lean: -40 }] },
+      { spacing: 620, wedges: [
+        { anchor: 'floor', width: 200, height: 200 },
+        { anchor: 'ceiling', width: 190, height: 180, xJitter: 70 }
+      ]},
+      { spacing: 540, wedges: [{ anchor: 'floor', width: 280, height: 280 }] },
+      { spacing: 520, wedges: [{ anchor: 'ceiling', width: 270, height: 250 }] },
+      { spacing: 560, wedges: [{ anchor: 'floor', width: 240, height: 220, lean: -48 }] },
+      { spacing: 540, wedges: [{ anchor: 'ceiling', width: 230, height: 210, lean: 44 }] },
+      { spacing: 640, wedges: [
+        { anchor: 'floor', width: 210, height: 230 },
+        { anchor: 'ceiling', width: 200, height: 200, xJitter: -60 }
+      ]},
+      { spacing: 560, wedges: [{ anchor: 'floor', width: 300, height: 300 }] },
+      { spacing: 540, wedges: [{ anchor: 'ceiling', width: 280, height: 270 }] },
+      { spacing: 600, wedges: [{ anchor: 'floor', width: 240, height: 210, lean: 28 }] },
+      { spacing: 560, wedges: [{ anchor: 'ceiling', width: 260, height: 240, lean: -32 }] },
+      { spacing: 680, wedges: [
+        { anchor: 'ceiling', width: 180, height: 170 },
+        { anchor: 'floor', width: 190, height: 190, xJitter: 90 }
+      ]},
+      { spacing: 560, wedges: [{ anchor: 'floor', width: 250, height: 240 }] }
     ]
   },
   {
@@ -1113,8 +1203,8 @@ function zonePreviewCameraWorldX(themeIdx) {
   // Storm Skies: sit the ship in the gap between the small-bolt cluster
   // and a tall bolt so the still shows floating bolts without covering
   // the dart.
-  if (themeIdx === 3) return 1550;
-  if (themeIdx === 5) return 1100;
+  if (themeIdx === 5) return 1550;
+  if (themeIdx === 7) return 1100;
   return 300;
 }
 
@@ -1301,7 +1391,7 @@ function generateAndStoreZoneStill(themeIdx) {
       return { ...g, x: toScreenX(worldX), x2: g.x2 != null ? toScreenX(g.x2) : g.x2 };
     });
     const theme = THEMES[themeIdx];
-    if (themeIdx === 5) {
+    if (themeIdx === 7) {
       const visBolts = gates.filter((g) => g.type === 'lbolt' && g.x > 40 && g.x < W - 40);
       visBolts.forEach((g) => {
         g.phaseOffset = 0;
@@ -1348,7 +1438,8 @@ function generateAndStoreZoneStill(themeIdx) {
       drawBossArenaVignette(theme, boss);
     }
     if (theme.isMiniBossZone && miniBoss && theme.miniBossVariant !== 'core') {
-      drawBossArenaObsidianWall(theme, miniBoss);
+    if (theme.miniBossVariant === 'snow') drawSnowArenaWall(theme, miniBoss);
+    else drawBossArenaObsidianWall(theme, miniBoss);
     }
     drawShip(theme);
     url = cropPlayfieldToJpeg(off, 0.78);
@@ -1404,11 +1495,11 @@ function generateAndStoreZoneStill(themeIdx) {
 }
 function normalizePlayerProfile(parsed) {
   if (!parsed || typeof parsed !== 'object') {
-    return { best: 0, extraDifficultyUnlocked: false, unlockedZones: [0], completedZones: [], deathlessZones: [], beatenDifficulties: [], totalDistanceTraveled: 0, lifetimeDeathsByZone: new Array(13).fill(0), zoneCompletionCounts: new Array(13).fill(0), achievedRanks: [], shipTrail: 'classic', shipSkin: 'classic' };
+    return { best: 0, extraDifficultyUnlocked: false, unlockedZones: [0], completedZones: [], deathlessZones: [], beatenDifficulties: [], totalDistanceTraveled: 0, lifetimeDeathsByZone: new Array(15).fill(0), zoneCompletionCounts: new Array(15).fill(0), achievedRanks: [], shipTrail: 'classic', shipSkin: 'classic' };
   }
   const pad13 = (arr) => {
-    const out = Array.isArray(arr) ? arr.slice(0, 13) : [];
-    while (out.length < 13) out.push(0);
+    const out = Array.isArray(arr) ? arr.slice(0, 15) : [];
+    while (out.length < 15) out.push(0);
     return out.map((n) => (typeof n === 'number' && n > 0 ? n : 0));
   };
   return {
@@ -1451,8 +1542,8 @@ function resetPlayerProfile() {
   deathlessZones = new Set();
   beatenDifficulties = new Set();
   totalDistanceTraveled = 0;
-  lifetimeDeathsByZone = new Array(13).fill(0);
-  zoneCompletionCounts = new Array(13).fill(0);
+  lifetimeDeathsByZone = new Array(15).fill(0);
+  zoneCompletionCounts = new Array(15).fill(0);
   achievedRanks = new Set();
   shipTrailStyle = 'classic';
   shipSkinStyle = 'classic';
@@ -1718,6 +1809,495 @@ const MINI_BOSS_SQUEEZE_MIN_GAP = 430; // gap at tightest closure -- widened fro
 const MINI_BOSS_SQUEEZE_MAX_GAP = 490; // gap when fully open -- widened from 480, keeps a 21px margin from the boundary-death threshold even at maximum openness
 const MINI_BOSS_SQUEEZE_PERIOD = 400; // frames per full open-close-open cycle (6.7s) -- deliberately not a multiple of the wave interval (145) or sway period (360), so the walls drift in and out of phase with the barrage rather than repeating a fixed combined pattern
 const MINI_BOSS_SQUEEZE_WALL_THICKNESS = 16; // visual thickness of each wall bar
+
+// Whiteout, the glacier boss. Same fight shape as Molten Core
+// through the attack cycle, then a death burst and a fly-off.
+// There is no escape run.
+let snowIcicles = [];
+let snowRollers = [];
+let snowAttackStep = 0;
+let snowIcicleSpawned = 0;
+let snowRollerSpawned = 0;
+let snowFeintStage = 'high';
+let snowFeintTimer = 0;
+let snowFeintFromY = 0;
+let snowBossSquash = 0;
+const SNOW_BOSS_FLOAT_FIRST = 180;
+const SNOW_BOSS_FLOAT_NEXT = 80;
+const SNOW_BOSS_ARC_SPEED = 6.2;
+const SNOW_BOSS_ICICLE_VX = -2.4;
+const SNOW_BOSS_ICICLE_FALL = 3.1;
+// Stuck to the ceiling or the floor, then they come loose one at a time.
+const SNOW_BOSS_ICICLES = [
+  { top: true, len: 0.50, lead: 250, x: 520 },
+  { top: false, len: 0.46, lead: 250, x: 860 },
+  { top: true, len: 0.58, lead: 230, x: 1200 },
+  { top: false, len: 0.42, lead: 270, x: 1540 },
+  { top: true, len: 0.40, lead: 240, x: 1880 },
+  // Lets go late, so it is still on the floor and the ship climbs over it.
+  { top: false, len: 0.54, lead: 48, x: 2460 }
+];
+// Second pass: shorter spikes, packed closer. The 4th and 7th hang back an extra beat.
+const SNOW_BOSS_ICICLES_SMALL = [
+  { top: true, len: 0.16, lead: 170, x: 460 },
+  { top: false, len: 0.15, lead: 140, x: 680 },
+  { top: true, len: 0.14, lead: 220, x: 900 },
+  { top: false, len: 0.18, lead: 160, x: 1340 },
+  { top: true, len: 0.17, lead: 190, x: 1560 },
+  { top: false, len: 0.14, lead: 240, x: 1780 },
+  { top: true, len: 0.15, lead: 150, x: 2220 },
+  { top: false, len: 0.16, lead: 200, x: 2440 },
+  { top: true, len: 0.13, lead: 260, x: 2660 },
+  { top: false, len: 0.17, lead: 130, x: 2880 }
+];
+const SNOW_BOSS_CRUMBLE_FRAMES = 100;
+const SNOW_BOSS_DEATH_BURST = 70;
+const SNOW_BOSS_DEATH_FRAMES = 210;
+let snowDeathBurst = false;
+// Final attack: snowballs from the boss, with icicles letting go between them.
+// Speeds vary, and none of them are fast.
+const SNOW_BOSS_MIX_BALL_R = 32;
+const SNOW_BOSS_MIX_BALLS = [
+  { at: 101, y: 185, vx: -2.15 },
+  { at: 526, y: 200, vx: -2.4 },
+  { at: 947, y: 515, vx: -1.9 },
+  { at: 1365, y: 190, vx: -2.3 },
+  { at: 1780, y: 510, vx: -2.05 },
+  { at: 2195, y: 200, vx: -2.45 },
+  { at: 2607, y: 520, vx: -1.95 },
+  { at: 2816, y: 185, vx: -2.2 }
+];
+const SNOW_BOSS_MIX_ICICLES = [
+  { top: true, len: 0.36, lead: 200, x: 1043 },
+  { top: false, len: 0.36, lead: 210, x: 2020 },
+  { top: true, len: 0.36, lead: 200, x: 2996 },
+  { top: false, len: 0.36, lead: 210, x: 3973 },
+  { top: true, len: 0.36, lead: 200, x: 4950 },
+  { top: false, len: 0.36, lead: 210, x: 5927 }
+];
+
+function snowMixBossY(elapsed) {
+  let fromY = miniBoss.baseY;
+  let fromT = 0;
+  for (let i = 0; i < SNOW_BOSS_MIX_BALLS.length; i++) {
+    const shot = SNOW_BOSS_MIX_BALLS[i];
+    if (elapsed <= shot.at) {
+      const t = (elapsed - fromT) / Math.max(1, shot.at - fromT);
+      const eased = t * t * (3 - 2 * t);
+      return fromY + (shot.y - fromY) * eased;
+    }
+    fromY = shot.y;
+    fromT = shot.at;
+  }
+  return fromY;
+}
+
+function snowBossArcY(progress, dip) {
+  const play = PLAY_BOTTOM - PLAY_TOP;
+  const amp = play * 0.28;
+  const center = PLAY_TOP + play * 0.5;
+  const lift = Math.sin(Math.max(0, Math.min(1, progress)) * Math.PI) * amp;
+  return dip ? center + lift : center - lift;
+}
+
+function snowBossBeginEase() {
+  miniBossFloatBlendStartX = miniBoss.x;
+  miniBossFloatBlendStartY = miniBoss.y;
+  miniBossFloatBlendStartFrame = frame;
+}
+
+function snowBossBlendT() {
+  const blendDuration = 30;
+  const blendElapsed = frame - miniBossFloatBlendStartFrame;
+  if (blendElapsed < 0 || blendElapsed >= blendDuration) return 1;
+  const t = blendElapsed / blendDuration;
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function snowBossPlace(targetX, targetY) {
+  const eased = snowBossBlendT();
+  if (eased < 1) {
+    miniBoss.x = miniBossFloatBlendStartX + (targetX - miniBossFloatBlendStartX) * eased;
+    miniBoss.y = miniBossFloatBlendStartY + (targetY - miniBossFloatBlendStartY) * eased;
+  } else {
+    miniBoss.x = targetX;
+    miniBoss.y = targetY;
+  }
+}
+
+function snowBossEaseY(targetY) {
+  const eased = snowBossBlendT();
+  if (eased < 1) {
+    miniBoss.y = miniBossFloatBlendStartY + (targetY - miniBossFloatBlendStartY) * eased;
+  } else {
+    miniBoss.y = targetY;
+  }
+}
+
+function snowBossHitsShip() {
+  const shipR = SHIP_W * 0.4;
+  if (Math.hypot(ship.x - miniBoss.x, ship.y - miniBoss.y) < shipR + miniBoss.r * 0.82) {
+    tryEndGame('snowboss');
+  }
+}
+
+function updateSnowFeintCharge() {
+  const span = (W + 220) - (-80);
+  const progress = (W + 220 - miniBoss.x) / span;
+  if (snowFeintStage === 'high') {
+    miniBoss.x -= SNOW_BOSS_ARC_SPEED;
+    miniBoss.y = snowBossArcY(progress, false);
+    snowBossSquash = 0;
+    if (progress >= 0.38) {
+      snowFeintStage = 'squash';
+      snowFeintTimer = 0;
+      snowFeintFromY = miniBoss.y;
+    }
+  } else if (snowFeintStage === 'squash') {
+    snowFeintTimer++;
+    miniBoss.x -= 2.2;
+    miniBoss.y = snowFeintFromY + Math.sin(snowFeintTimer * 1.5) * 3;
+    snowBossSquash = Math.min(1, snowFeintTimer / 8);
+    if (snowFeintTimer >= 22) {
+      snowFeintStage = 'dive';
+      snowFeintTimer = 0;
+      snowFeintFromY = miniBoss.y;
+    }
+  } else if (snowFeintStage === 'dive') {
+    snowFeintTimer++;
+    const t = Math.min(1, snowFeintTimer / 30);
+    const diveY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.74;
+    miniBoss.x -= SNOW_BOSS_ARC_SPEED;
+    miniBoss.y = snowFeintFromY + (diveY - snowFeintFromY) * (t * t);
+    snowBossSquash = 1 - t;
+    if (t >= 1) snowFeintStage = 'low';
+  } else {
+    miniBoss.x -= SNOW_BOSS_ARC_SPEED;
+    miniBoss.y = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.74;
+    snowBossSquash = 0;
+  }
+  snowBossHitsShip();
+  if (miniBoss.x < -80) {
+    snowBossBeginEase();
+    miniBossAttackState = 'arcRight';
+    miniBoss.x = -80;
+    snowBossSquash = 0;
+  }
+}
+
+function snowBossStepAsh() {
+  for (let i = miniBossDeathAshParticles.length - 1; i >= 0; i--) {
+    const p = miniBossDeathAshParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life++;
+    if (p.life >= p.maxLife) miniBossDeathAshParticles.splice(i, 1);
+  }
+}
+
+function updateSnowBoss() {
+  const stateElapsed = frame - miniBossAttackStateStartFrame;
+  if (miniBossAttackState === 'snowDying') {
+    const shake = stateElapsed < SNOW_BOSS_DEATH_BURST
+      ? Math.sin(stateElapsed * 1.7) * Math.min(11, stateElapsed * 0.22)
+      : 0;
+    snowBossPlace(miniBoss.restX, miniBoss.baseY);
+    miniBoss.x += shake;
+    miniBoss.y += Math.cos(stateElapsed * 1.3) * shake * 0.4;
+    if (stateElapsed < SNOW_BOSS_DEATH_BURST) {
+      snowBossSquash = 0.25 + 0.55 * Math.abs(Math.sin(stateElapsed * 0.55));
+      miniBoss.r = miniBoss.maxR * (1 + stateElapsed / SNOW_BOSS_DEATH_BURST * 0.12);
+    } else {
+      snowBossSquash = 0;
+      const u = Math.min(1, (stateElapsed - SNOW_BOSS_DEATH_BURST) / 90);
+      miniBoss.r = miniBoss.maxR * 1.12 * (1 - u);
+      if (!snowDeathBurst) {
+        snowDeathBurst = true;
+        for (let i = 0; i < 32; i++) {
+          const a = (i / 32) * Math.PI * 2;
+          const speed = 1.8 + (i % 5) * 0.85;
+          miniBossDeathAshParticles.push({
+            x: miniBoss.x, y: miniBoss.y,
+            vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+            size: 6 + (i % 4) * 3.5,
+            life: 0, maxLife: 80 + (i % 7) * 14
+          });
+        }
+      }
+      if (stateElapsed % 3 === 0) {
+        const a = Math.random() * Math.PI * 2;
+        miniBossDeathAshParticles.push({
+          x: miniBoss.x + Math.cos(a) * miniBoss.r,
+          y: miniBoss.y + Math.sin(a) * miniBoss.r,
+          vx: Math.cos(a) * 1.1, vy: Math.sin(a) * 1.1 - 0.3,
+          size: 2 + Math.random() * 2,
+          life: 0, maxLife: 50 + Math.random() * 40
+        });
+      }
+    }
+    snowBossStepAsh();
+    if (stateElapsed >= SNOW_BOSS_DEATH_FRAMES) {
+      miniBoss.r = 0;
+      snowBossSquash = 0;
+      miniBossDefeated = true;
+      miniBossDefeatFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'floating') {
+    const targetY = miniBoss.baseY + MINI_BOSS_FLOAT_AMPLITUDE * Math.sin((frame - miniBossSpawnFrame) * (2 * Math.PI / MINI_BOSS_FLOAT_PERIOD));
+    snowBossPlace(miniBoss.restX, targetY);
+    const floatDuration = snowAttackStep === 0 ? SNOW_BOSS_FLOAT_FIRST : SNOW_BOSS_FLOAT_NEXT;
+    if (stateElapsed >= floatDuration) {
+      snowBossBeginEase();
+      if (snowAttackStep === 0 || snowAttackStep === 3) miniBossAttackState = 'exiting';
+      else if (snowAttackStep === 1 || snowAttackStep === 4) miniBossAttackState = 'icicleWarn';
+      else if (snowAttackStep === 2) miniBossAttackState = 'gust';
+      else if (snowAttackStep === 5) {
+        snowRollers = [];
+        snowIcicles = [];
+        snowIcicleSpawned = 0;
+        snowRollerSpawned = 0;
+        snowBossSquash = 0;
+        miniBossAttackState = 'snowMix';
+      } else miniBossAttackState = 'crumbling';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'exiting') {
+    miniBoss.x += 7;
+    snowBossEaseY(miniBoss.baseY);
+    if (miniBoss.x > W + 220) {
+      miniBossAttackState = 'arcLeft';
+      miniBossAttackStateStartFrame = frame;
+      miniBoss.x = W + 220;
+      if (snowAttackStep === 3) {
+        snowFeintStage = 'high';
+        snowFeintTimer = 0;
+        snowBossSquash = 0;
+      }
+    }
+    return;
+  }
+  if (miniBossAttackState === 'arcLeft' || miniBossAttackState === 'arcRight') {
+    const goingRight = miniBossAttackState === 'arcRight';
+    if (snowAttackStep === 3 && !goingRight) {
+      updateSnowFeintCharge();
+      return;
+    }
+    miniBoss.x += goingRight ? SNOW_BOSS_ARC_SPEED : -SNOW_BOSS_ARC_SPEED;
+    const span = (W + 220) - (-80);
+    const progress = goingRight
+      ? (miniBoss.x - (-80)) / (miniBoss.restX - (-80))
+      : (W + 220 - miniBoss.x) / span;
+    snowBossEaseY(snowBossArcY(progress, snowAttackStep === 3 ? false : goingRight));
+    snowBossSquash = 0;
+    snowBossHitsShip();
+    if (!goingRight && miniBoss.x < -80) {
+      miniBossAttackState = 'arcRight';
+      miniBoss.x = -80;
+    } else if (goingRight && miniBoss.x >= miniBoss.restX) {
+      miniBossFloatBlendStartX = miniBoss.x;
+      miniBossFloatBlendStartY = miniBoss.y;
+      miniBossFloatBlendStartFrame = frame;
+      snowAttackStep = snowAttackStep === 3 ? 4 : 1;
+      miniBossAttackState = 'floating';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'icicleWarn') {
+    snowBossPlace(miniBoss.restX, miniBoss.baseY + Math.sin(stateElapsed * 0.4) * 10);
+    if (stateElapsed >= 50) {
+      snowIcicles = [];
+      snowIcicleSpawned = 0;
+      snowBossBeginEase();
+      miniBossAttackState = 'icicleFall';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'icicleFall') {
+    snowBossPlace(miniBoss.restX, miniBoss.baseY);
+    if (snowIcicleSpawned === 0) {
+      const play = PLAY_BOTTOM - PLAY_TOP;
+      const list = snowAttackStep === 4 ? SNOW_BOSS_ICICLES_SMALL : SNOW_BOSS_ICICLES;
+      for (const spec of list) {
+        const len = play * spec.len;
+        const fromTop = spec.top;
+        snowIcicles.push({
+          x: ship.x + spec.x,
+          fromTop,
+          loose: false,
+          lead: spec.lead,
+          len,
+          slim: snowAttackStep === 4,
+          base: fromTop ? PLAY_TOP : PLAY_BOTTOM,
+          tip: fromTop ? PLAY_TOP + len : PLAY_BOTTOM - len
+        });
+      }
+      snowIcicleSpawned = list.length;
+    }
+    const shipR = SHIP_W * 0.4;
+    const hitPad = snowAttackStep === 4 ? 8 : 12;
+    for (let i = snowIcicles.length - 1; i >= 0; i--) {
+      const ic = snowIcicles[i];
+      ic.x += SNOW_BOSS_ICICLE_VX;
+      if (!ic.loose && ic.x < ship.x + ic.lead) ic.loose = true;
+      if (ic.loose) {
+        const fall = ic.slim ? 2.6 : SNOW_BOSS_ICICLE_FALL;
+        const vy = ic.fromTop ? fall : -fall;
+        ic.base += vy;
+        ic.tip += vy;
+      }
+      const spanTop = Math.min(ic.base, ic.tip);
+      const spanBot = Math.max(ic.base, ic.tip);
+      const closestY = Math.max(spanTop, Math.min(ship.y, spanBot));
+      if (Math.hypot(ship.x - ic.x, ship.y - closestY) < shipR + hitPad) tryEndGame('snowboss');
+      const off = ic.x < -50 || ic.base > PLAY_BOTTOM + 40 || ic.base < PLAY_TOP - 40;
+      if (off) snowIcicles.splice(i, 1);
+    }
+    if (snowIcicleSpawned > 0 && snowIcicles.length === 0) {
+      snowAttackStep = snowAttackStep === 4 ? 5 : 2;
+      snowBossBeginEase();
+      miniBossAttackState = 'floating';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'gust') {
+    const play = PLAY_BOTTOM - PLAY_TOP;
+    const weaveAmp = play * 0.32;
+    const weaveY = miniBoss.baseY + Math.sin(stateElapsed * (2 * Math.PI / 320)) * weaveAmp;
+    snowBossPlace(miniBoss.restX, weaveY);
+    const launchAt = [70, 180, 290, 400, 510, 620, 730, 840];
+    if (snowRollerSpawned < launchAt.length && stateElapsed >= launchAt[snowRollerSpawned]) {
+      snowRollers.push({
+        x: miniBoss.x - miniBoss.r - 24,
+        y: miniBoss.y,
+        r: 42,
+        vx: -2.7
+      });
+      snowRollerSpawned++;
+    }
+    const shipR = SHIP_W * 0.4;
+    for (let i = snowRollers.length - 1; i >= 0; i--) {
+      const ball = snowRollers[i];
+      ball.x += ball.vx;
+      if (Math.hypot(ship.x - ball.x, ship.y - ball.y) < shipR + ball.r) tryEndGame('snowboss');
+      if (ball.x < -40) snowRollers.splice(i, 1);
+    }
+    if (snowRollerSpawned >= 8 && snowRollers.length === 0) {
+      snowAttackStep = 3;
+      snowBossBeginEase();
+      miniBossAttackState = 'floating';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'snowMix') {
+    snowBossPlace(miniBoss.restX, snowMixBossY(stateElapsed));
+    if (snowIcicleSpawned === 0) {
+      const play = PLAY_BOTTOM - PLAY_TOP;
+      for (const spec of SNOW_BOSS_MIX_ICICLES) {
+        const len = play * spec.len;
+        const fromTop = spec.top;
+        snowIcicles.push({
+          x: ship.x + spec.x,
+          fromTop,
+          loose: false,
+          lead: spec.lead,
+          len,
+          slim: false,
+          base: fromTop ? PLAY_TOP : PLAY_BOTTOM,
+          tip: fromTop ? PLAY_TOP + len : PLAY_BOTTOM - len
+        });
+      }
+      snowIcicleSpawned = SNOW_BOSS_MIX_ICICLES.length;
+    }
+    if (snowRollerSpawned < SNOW_BOSS_MIX_BALLS.length && stateElapsed >= SNOW_BOSS_MIX_BALLS[snowRollerSpawned].at) {
+      const shot = SNOW_BOSS_MIX_BALLS[snowRollerSpawned];
+      snowRollers.push({
+        x: miniBoss.x - miniBoss.r - 24,
+        y: shot.y,
+        r: SNOW_BOSS_MIX_BALL_R,
+        vx: shot.vx
+      });
+      snowRollerSpawned++;
+      snowBossSquash = 1;
+    }
+    if (snowBossSquash > 0) snowBossSquash = Math.max(0, snowBossSquash - 0.08);
+    const shipR = SHIP_W * 0.4;
+    for (let i = snowIcicles.length - 1; i >= 0; i--) {
+      const ic = snowIcicles[i];
+      ic.x += SNOW_BOSS_ICICLE_VX;
+      if (!ic.loose && ic.x < ship.x + ic.lead) ic.loose = true;
+      if (ic.loose) {
+        const vy = ic.fromTop ? SNOW_BOSS_ICICLE_FALL : -SNOW_BOSS_ICICLE_FALL;
+        ic.base += vy;
+        ic.tip += vy;
+      }
+      const spanTop = Math.min(ic.base, ic.tip);
+      const spanBot = Math.max(ic.base, ic.tip);
+      const closestY = Math.max(spanTop, Math.min(ship.y, spanBot));
+      if (Math.hypot(ship.x - ic.x, ship.y - closestY) < shipR + 12) tryEndGame('snowboss');
+      const off = ic.x < -50 || ic.base > PLAY_BOTTOM + 40 || ic.base < PLAY_TOP - 40;
+      if (off) snowIcicles.splice(i, 1);
+    }
+    for (let i = snowRollers.length - 1; i >= 0; i--) {
+      const ball = snowRollers[i];
+      ball.x += ball.vx;
+      if (Math.hypot(ship.x - ball.x, ship.y - ball.y) < shipR + ball.r) tryEndGame('snowboss');
+      if (ball.x < -40) snowRollers.splice(i, 1);
+    }
+    const mixDone = snowIcicleSpawned >= SNOW_BOSS_MIX_ICICLES.length
+      && snowRollerSpawned >= SNOW_BOSS_MIX_BALLS.length
+      && snowIcicles.length === 0
+      && snowRollers.length === 0;
+    if (mixDone) {
+      snowIcicles = [];
+      snowRollers = [];
+      snowBossSquash = 0;
+      snowDeathBurst = false;
+      snowBossBeginEase();
+      miniBossAttackState = 'snowDying';
+      miniBossAttackStateStartFrame = frame;
+    }
+    return;
+  }
+  if (miniBossAttackState === 'crumbling') {
+    snowBossPlace(miniBoss.restX, miniBoss.baseY);
+    const t = Math.min(1, stateElapsed / SNOW_BOSS_CRUMBLE_FRAMES);
+    miniBoss.r = miniBoss.maxR * (1 - t * 0.82);
+    if (stateElapsed % 4 === 0) {
+      miniBossDeathAshParticles.push({
+        x: miniBoss.x + (Math.random() - 0.5) * miniBoss.r * 2,
+        y: miniBoss.y + (Math.random() - 0.5) * miniBoss.r * 2,
+        vx: (Math.random() - 0.5) * 1.4,
+        vy: -0.4 - Math.random() * 0.8,
+        flutterPhase: Math.random() * 6,
+        flutterSpeed: 0.08,
+        size: 2 + Math.random() * 3,
+        rotation: 0,
+        rotSpeed: 0,
+        life: 0,
+        maxLife: 50 + Math.random() * 30
+      });
+    }
+    for (let i = miniBossDeathAshParticles.length - 1; i >= 0; i--) {
+      const p = miniBossDeathAshParticles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life++;
+      if (p.life >= p.maxLife) miniBossDeathAshParticles.splice(i, 1);
+    }
+    if (stateElapsed >= SNOW_BOSS_CRUMBLE_FRAMES) {
+      miniBossDefeated = true;
+      miniBossDefeatFrame = frame;
+    }
+  }
+}
 
 // ==================== REACTOR CORE (second mini boss) ====================
 // a stationary defense installation -- unlike the fire boss, it never
@@ -2067,6 +2647,12 @@ let fireballSpawnCounter = 0;
 let extraFireballCounter = 0;
 let extraFireballPatternIndex = 0;
 let iceChunkPatternIndex = 0;
+let iceFloePatternIndex = 0;
+let iceBergPatternIndex = 0;
+let glacierSnowContinue = false;
+let glacierSnowballX = 0;
+let glacierSnowLane = 0;
+let glacierSnowSpawned = [];
 let iceChunkSpawnX = 0;
 let extraToxicCounter = 0;
 let extraToxicPatternIndex = 0;
@@ -2202,6 +2788,15 @@ function spawnGate(x) {
   }
   if (th.obstacleShape === 'hbar') {
     return spawnHBarCluster(x);
+  }
+  if (th.obstacleShape === 'kelp') {
+    return spawnKelpCluster(x);
+  }
+  if (th.obstacleShape === 'copper') {
+    return spawnCopperCluster(x);
+  }
+  if (th.obstacleShape === 'chrome') {
+    return spawnNeonCluster(x);
   }
   if (th.obstacleShape === 'barrier') {
     return spawnBarrier(x);
@@ -2345,6 +2940,257 @@ function spawnHBarCluster(x) {
   return entry.spacing;
 }
 
+function kelpPose(g) {
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  const len = Math.max(80, g.lengthFrac * playHeight);
+  const sway = Math.sin((frame - zoneStartFrame) * g.freq + g.phase) * g.sway;
+  const fromTop = g.anchor !== 'bottom';
+  const y0 = fromTop ? PLAY_TOP : PLAY_BOTTOM;
+  const y1 = fromTop ? PLAY_TOP + len : PLAY_BOTTOM - len;
+  const x0 = g.x;
+  const x1 = g.x + sway;
+  return {
+    x0, y0, x1, y1,
+    mx: (x0 + x1) / 2 + sway * 0.22,
+    my: (y0 + y1) / 2,
+    thick: g.thick || 24
+  };
+}
+
+function distToSegment(px, py, x0, y0, x1, y1) {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 < 1 ? 0 : ((px - x0) * dx + (py - y0) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const qx = x0 + t * dx;
+  const qy = y0 + t * dy;
+  const ex = px - qx;
+  const ey = py - qy;
+  return Math.sqrt(ex * ex + ey * ey);
+}
+
+function jellyPose(g) {
+  const t = (frame - zoneStartFrame) * g.freq + g.phase;
+  const y = g.y + Math.sin(t) * g.bob;
+  const wag = Math.sin(t * 1.6) * 16;
+  return {
+    x: g.x,
+    y,
+    bellR: g.bellR,
+    tent: g.tent,
+    rising: Math.cos(t) < 0,
+    tx: g.x + wag,
+    ty: y + g.bellR + g.tent,
+    tx2: g.x - wag * 0.65,
+    ty2: y + g.bellR + g.tent - 10
+  };
+}
+
+function spongeTubes(g) {
+  const n = g.heights.length;
+  const step = 70;
+  return g.heights.map((h, i) => ({
+    x: g.x + (i - (n - 1) / 2) * step,
+    h,
+    w: Math.max(44, Math.min(58, 38 + h * 0.06)),
+    lean: i % 2 === 0 ? -6 : 5
+  }));
+}
+
+function spongeRight(g) {
+  const tubes = spongeTubes(g);
+  const last = tubes[tubes.length - 1];
+  return last.x + last.w / 2 + 6;
+}
+
+function urchinReach(g) {
+  const t = (frame - zoneStartFrame) * g.freq + g.phase;
+  const s = Math.max(0, Math.sin(t));
+  return g.coreR + g.spine * s * s * s * s;
+}
+
+function urchinCenter(g) {
+  const t = (frame - zoneStartFrame) * g.bobFreq + g.phase;
+  return g.y + Math.sin(t) * g.bob;
+}
+
+function bloomRadius(g) {
+  const t = (frame - zoneStartFrame) * (g.freq || 0.02) + (g.phase || 0);
+  const s = 0.5 - 0.5 * Math.cos(t);
+  return g.minR + (g.maxR - g.minR) * s;
+}
+
+function coilFiring(g) {
+  const ahead = g.x - ship.x;
+  return ahead < 36 && ahead > -80;
+}
+
+function courierPods(g) {
+  const top = PLAY_TOP + 36;
+  const bottom = PLAY_BOTTOM - 48;
+  const n = g.count || 8;
+  const step = (bottom - top) / (n - 1);
+  const pods = [];
+  for (let i = 0; i < n; i++) {
+    if (i === g.gap || i === g.gap + 1) continue;
+    pods.push(top + i * step);
+  }
+  return pods;
+}
+
+function spawnCopperCluster(x) {
+  const th = currentTheme();
+  const entry = th.pattern[patternIndex % th.pattern.length];
+  patternIndex++;
+  for (const m of entry.marquees || []) {
+    gates.push({
+      type: 'marquee',
+      anchor: m.anchor === 'ceiling' ? 'ceiling' : 'floor',
+      x,
+      width: m.width,
+      height: m.heightFrac ? (PLAY_BOTTOM - PLAY_TOP) * m.heightFrac : m.height,
+      passed: false
+    });
+  }
+  for (const c of entry.couriers || []) {
+    gates.push({
+      type: 'courier',
+      x,
+      gap: c.gap,
+      count: 8,
+      podR: 16,
+      passed: false
+    });
+  }
+  for (const b of entry.blooms || []) {
+    gates.push({
+      type: 'bloom',
+      x,
+      minR: b.minR,
+      maxR: b.maxR,
+      freq: b.freq,
+      phase: b.phase,
+      passed: false
+    });
+  }
+  for (const c of entry.coils || []) {
+    gates.push({
+      type: 'coil',
+      x,
+      sparkH: c.sparkH,
+      halfW: c.halfW,
+      passed: false
+    });
+  }
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  for (const h of entry.headlamps || []) {
+    const yFrac = Math.max(0.16, Math.min(0.84, h.yFrac));
+    const y = PLAY_TOP + yFrac * playHeight;
+    gates.push({
+      type: 'headlamp',
+      x: x + 320,
+      y,
+      baseY: y,
+      driftY: 0,
+      driftTarget: 0,
+      jumpBucket: -1,
+      lurchBucket: -1,
+      r: 28,
+      speedMult: 1.55,
+      passed: false
+    });
+  }
+  return entry.spacing;
+}
+
+function spawnNeonCluster(x) {
+  const th = currentTheme();
+  const entry = th.pattern[patternIndex % th.pattern.length];
+  patternIndex++;
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  for (const b of entry.bars || []) {
+    gates.push({
+      type: 'neonbar',
+      x,
+      y: PLAY_TOP + b.yFrac * playHeight,
+      width: b.width,
+      thick: b.thick || 26,
+      hot: !!b.hot,
+      passed: false
+    });
+  }
+  for (const w of entry.wedges || []) {
+    gates.push({
+      type: 'wedge',
+      anchor: w.anchor === 'ceiling' ? 'ceiling' : 'floor',
+      x: x + (w.xJitter || 0),
+      width: w.width,
+      height: w.height,
+      lean: w.lean || 0,
+      passed: false
+    });
+  }
+  return entry.spacing;
+}
+
+function spawnKelpCluster(x) {
+  const th = currentTheme();
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  const entry = th.pattern[patternIndex % th.pattern.length];
+  patternIndex++;
+  if (entry.kelp) {
+    for (const k of entry.kelp) {
+      gates.push({
+        type: 'kelp',
+        anchor: k.anchor === 'bottom' ? 'bottom' : 'top',
+        x: x + (k.xJitter || 0),
+        lengthFrac: k.lengthFrac,
+        sway: k.sway,
+        freq: k.freq,
+        phase: k.phase,
+        thick: k.thick || 24,
+        passed: false
+      });
+    }
+  }
+  if (entry.sponge) {
+    gates.push({ type: 'sponge', x, heights: entry.sponge.slice(), passed: false });
+  }
+  if (entry.jelly) {
+    const j = entry.jelly;
+    const bell = j.bell || 24;
+    const tent = j.tent || 90;
+    const bob = j.bob || 40;
+    const raw = PLAY_TOP + j.yFrac * playHeight;
+    const y = Math.max(PLAY_TOP + bell + bob + 36, Math.min(PLAY_BOTTOM - tent - bell - bob - 48, raw));
+    gates.push({
+      type: 'jelly', x, y, bob, tent, bellR: bell,
+      freq: j.freq || 0.022, phase: j.phase || 0, passed: false
+    });
+  }
+  if (entry.school) {
+    const s = entry.school;
+    const half = s.height / 2;
+    const y = Math.max(PLAY_TOP + half + 28, Math.min(PLAY_BOTTOM - half - 28, PLAY_TOP + s.yFrac * playHeight));
+    gates.push({
+      type: 'school', x, y, width: s.width, height: s.height, swim: s.swim, passed: false
+    });
+  }
+  if (entry.urchin) {
+    const u = entry.urchin;
+    const reach = u.core + u.spine;
+    const bob = 58;
+    const raw = PLAY_TOP + u.yFrac * playHeight;
+    const y = Math.max(PLAY_TOP + reach + bob + 16, Math.min(PLAY_BOTTOM - reach - bob - 16, raw));
+    gates.push({
+      type: 'urchin', x, y, coreR: u.core, spine: u.spine,
+      freq: u.freq, phase: u.phase, bob, bobFreq: 0.011, passed: false
+    });
+  }
+  return entry.spacing;
+}
+
 // hand-picked bolt silhouettes (normalized: x as fraction of swingWidth/2,
 // y as fraction of height from top), each a distinct filled icon shape
 const BOLT_SHAPES = {
@@ -2397,6 +3243,34 @@ function rectIntersectsPolygon(left, top, right, bottom, poly) {
     }
   }
   return false;
+}
+
+// Same outline drawIceSpire fills. The old hit was the full rectangle, which
+// stays wide after the crystal has already narrowed to a point.
+function iceSpirePolygon(g) {
+  const fromTop = g.anchor === 'top';
+  const half = g.width / 2;
+  const left = g.x - half;
+  const right = g.x + half;
+  const innerTop = g.y - g.height / 2;
+  const innerBot = g.y + g.height / 2;
+  const root = fromTop ? innerTop - 20 : innerBot + 20;
+  const tip = fromTop ? innerBot : innerTop;
+  const yAt = (frac) => fromTop ? root + (tip - root) * frac : root - (root - tip) * frac;
+  return [
+    [left - 14, root],
+    [left - 4, yAt(0.18)],
+    [left + 6, yAt(0.55)],
+    [left + half * 0.22, yAt(0.92)],
+    [left + half * 0.38, yAt(0.97)],
+    [left + half * 0.52, yAt(0.93)],
+    [g.x + half * 0.08, tip],
+    [g.x + half * 0.3, yAt(0.95)],
+    [right - half * 0.2, yAt(0.98)],
+    [right - 8, yAt(0.68)],
+    [right + 4, yAt(0.2)],
+    [right + 16, root]
+  ];
 }
 
 function spawnPendulumCluster(x) {
@@ -2786,7 +3660,8 @@ function gateClearsPortal(g, portalSafeX) {
     return g.x + g.r * 9 * 1.2 < portalSafeX;
   }
   if (g.type === 'fireball') return g.x + g.r * 8.5 < portalSafeX;
-  if (g.type === 'splitrock' || g.type === 'asteroid' || g.type === 'pendulum' || g.type === 'aciddrip' || g.type === 'wreckage') return g.x + g.r < portalSafeX;
+  if (g.type === 'asteroid' || g.type === 'snowball') return g.x + g.r < portalSafeX;
+  if (g.type === 'splitrock' || g.type === 'pendulum' || g.type === 'aciddrip' || g.type === 'wreckage') return g.x + g.r < portalSafeX;
   if (g.type === 'zone2storm') return g.x + g.r < portalSafeX;
   if (g.type === 'securitydrone') return g.x + g.r < portalSafeX;
   if (g.type === 'turretshot') return g.x + g.r < portalSafeX;
@@ -2801,11 +3676,23 @@ function gateClearsPortal(g, portalSafeX) {
   if (g.type === 'supernova') return g.x + g.planetR < portalSafeX;
   if (g.type === 'toxicpool') return g.x + g.baseR + g.pulseAmp < portalSafeX;
   if (g.type === 'geyser' || g.type === 'movingdoor' || g.type === 'specialdoor') return g.x + g.width / 2 < portalSafeX;
+  if (g.type === 'icefloe' || g.type === 'icespire' || g.type === 'icearch' || g.type === 'snowgust' || g.type === 'icecalve') return g.x + g.width / 2 < portalSafeX;
   if (g.type === 'sparkhub') return g.x < portalSafeX;
   if (g.type === 'sparkprojectile') return g.x < portalSafeX;
   if (g.type === 'supernovadebris') return g.x < portalSafeX;
   if (g.type === 'accesskey') return g.x + g.r < portalSafeX;
   if (g.type === 'hbar') return g.x + g.width / 2 < portalSafeX;
+  if (g.type === 'marquee') return g.x + g.width / 2 < portalSafeX;
+  if (g.type === 'courier') return g.x + (g.podR || 16) < portalSafeX;
+  if (g.type === 'bloom') return g.x + g.maxR < portalSafeX;
+  if (g.type === 'coil') return g.x + g.halfW < portalSafeX;
+  if (g.type === 'headlamp') return g.x + g.r < portalSafeX;
+  if (g.type === 'kelp') return g.x + Math.abs(g.sway || 0) + 30 < portalSafeX;
+  if (g.type === 'jelly') return g.x + (g.bellR || 24) + 20 < portalSafeX;
+  if (g.type === 'sponge') return spongeRight(g) < portalSafeX;
+  if (g.type === 'school') return g.x + g.width / 2 < portalSafeX;
+  if (g.type === 'urchin') return g.x + g.coreR + g.spine < portalSafeX;
+  if (g.type === 'current') return g.x + g.width / 2 < portalSafeX;
   if (g.type === 'billboard') return g.x + g.panelWidth / 2 < portalSafeX;
   if (g.type === 'emp') return g.x + 30 < portalSafeX;
   if (g.type === 'echotrail') return g.x + g.zoneWidth / 2 < portalSafeX;
@@ -2824,6 +3711,7 @@ function gateClearsPortal(g, portalSafeX) {
   if (g.type === 'lbolt') return g.x + g.swingWidth / 2 < portalSafeX;
   if (g.type === 'barrier') return g.x + g.width / 2 < portalSafeX;
   if (g.type === 'lightning') return g.x + g.span / 2 < portalSafeX;
+  if (g.type === 'wedge') return g.x + g.width / 2 + Math.abs(g.lean || 0) < portalSafeX;
   return g.x + GATE_WIDTH < portalSafeX;
 }
 
@@ -3954,6 +4842,257 @@ function spawnIceChunkCluster(x) {
   }
 }
 
+function spawnIceFloeCluster(x) {
+  const th = currentTheme();
+  const entry = th.iceFloePattern[iceFloePatternIndex % th.iceFloePattern.length];
+  iceFloePatternIndex++;
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  if (entry.spires) {
+    for (const s of entry.spires) {
+      const fromTop = s.anchor === 'top';
+      const height = Math.min(Math.max(220, s.heightFrac * playHeight), playHeight - 200);
+      const root = fromTop ? PLAY_TOP : PLAY_BOTTOM;
+      const tip = fromTop ? root + height : root - height;
+      gates.push({
+        type: 'icespire',
+        anchor: fromTop ? 'top' : 'bottom',
+        x: x + (s.xJitter || 0),
+        y: (root + tip) / 2,
+        width: s.width,
+        height,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  for (const f of entry.floes) {
+    const y = PLAY_TOP + f.yFrac * playHeight;
+    gates.push({
+      type: 'icefloe',
+      x: x + (f.xJitter || 0),
+      y: Math.max(PLAY_TOP + f.thickness / 2 + 36, Math.min(PLAY_BOTTOM - f.thickness / 2 - 36, y)),
+      width: f.width,
+      thickness: f.thickness,
+      passed: false
+    });
+  }
+  return entry.spacing;
+}
+
+function pushScatteredSnowball(x, lane, vy, drift, r) {
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  const laneSpan = Math.max(80, playHeight - r * 2 - 140);
+  const laneY = PLAY_TOP + r + 70 + lane * laneSpan;
+  gates.push({
+    type: 'snowball',
+    x,
+    y: -r - 16,
+    laneY,
+    r,
+    vy,
+    drift,
+    falling: false,
+    passed: false
+  });
+}
+
+// One row per snowball. dist is the zone distance when it crosses the ship.
+// lane 0 is high, 1 is low. Angle comes from vy and drift.
+const GLACIER_SNOW_DEFAULTS = [
+  { dist: 730, lane: 0.80, vy: 3.9, drift: 0.28, r: 42 },
+  { dist: 762, lane: 0.16, vy: 1.6, drift: 0.28, r: 38 },
+  { dist: 808, lane: 0.72, vy: 3.25, drift: 0.40, r: 46 },
+  { dist: 868, lane: 0.80, vy: 2.7, drift: 0.55, r: 40 },
+  { dist: 908, lane: 0.18, vy: 1.65, drift: 1.15, r: 36 },
+  { dist: 934, lane: 0.76, vy: 3.1, drift: 0.45, r: 44 },
+  { dist: 958, lane: 0.82, vy: 3.7, drift: 0.22, r: 38 },
+  { dist: 984, lane: 0.74, vy: 4.1, drift: 0.10, r: 40 }
+];
+const GLACIER_SNOW_STORAGE = 'glacierSnowSchedule';
+
+function cloneSnowSchedule(list) {
+  return list.map(s => ({
+    dist: s.dist,
+    lane: s.lane,
+    vy: s.vy,
+    drift: s.drift,
+    r: s.r
+  }));
+}
+
+let glacierSnowSchedule = cloneSnowSchedule(GLACIER_SNOW_DEFAULTS);
+
+function snowAngleDeg(vy, drift) {
+  return Math.round(Math.atan2(vy, 2.8 + (drift || 0)) * 180 / Math.PI);
+}
+
+function snowDriftFor(vy, deg) {
+  const rad = Math.max(14, Math.min(70, deg)) * Math.PI / 180;
+  const h = vy / Math.tan(rad);
+  return Math.round((h - 2.8) * 100) / 100;
+}
+
+function loadGlacierSnowSchedule() {
+  try {
+    const raw = localStorage.getItem(GAME_STORAGE_PREFIX + GLACIER_SNOW_STORAGE);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) return;
+    const clean = [];
+    for (const s of parsed) {
+      if (!s || !isFinite(+s.dist) || !isFinite(+s.lane) || !isFinite(+s.vy)) continue;
+      clean.push({
+        dist: Math.max(620, Math.min(1000, +s.dist)),
+        lane: Math.max(0, Math.min(1, +s.lane)),
+        vy: Math.max(1.2, Math.min(4.8, +s.vy)),
+        drift: isFinite(+s.drift) ? +s.drift : 0.4,
+        r: Math.max(28, Math.min(56, +s.r || 40))
+      });
+    }
+    if (clean.length) glacierSnowSchedule = clean;
+  } catch (e) { /* keep the shipped list */ }
+}
+
+function saveGlacierSnowSchedule() {
+  try {
+    localStorage.setItem(GAME_STORAGE_PREFIX + GLACIER_SNOW_STORAGE, JSON.stringify(glacierSnowSchedule));
+  } catch (e) { /* private mode */ }
+}
+
+function resetGlacierSnowSpawned() {
+  glacierSnowSpawned = glacierSnowSchedule.map(() => false);
+}
+
+loadGlacierSnowSchedule();
+resetGlacierSnowSpawned();
+
+function spawnScheduledSnowballs() {
+  if (glacierSnowSpawned.length !== glacierSnowSchedule.length) resetGlacierSnowSpawned();
+  const zone = distance - zoneStartDistance;
+  const portalX = predictedPortalX();
+  glacierSnowSchedule.forEach((s, i) => {
+    if (glacierSnowSpawned[i]) return;
+    const hSpeed = 2.8 + (s.drift || 0);
+    if (hSpeed < 0.6) return;
+    const x = ship.x + (s.dist - zone) * hSpeed / 0.28;
+    const r = s.r || 40;
+    const portalLimit = portalX == null ? Infinity : portalX - 80;
+    if (x > portalLimit) return;
+    if (x > W + 640) return;
+    if (x < W + r + 12) {
+      glacierSnowSpawned[i] = true;
+      return;
+    }
+    glacierSnowSpawned[i] = true;
+    pushScatteredSnowball(x, s.lane, s.vy, s.drift, r);
+  });
+}
+
+function spawnIceBergCluster(x) {
+  const th = currentTheme();
+  const entry = th.iceBergPattern[iceBergPatternIndex % th.iceBergPattern.length];
+  iceBergPatternIndex++;
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  if (entry.snowballs) {
+    for (const s of entry.snowballs) {
+      const r = s.r;
+      const laneY = PLAY_TOP + r + 70 + s.lane * (playHeight - r * 2 - 140);
+      gates.push({
+        type: 'snowball',
+        x: x + (s.xJitter || 0),
+        y: -r - 16,
+        laneY,
+        r,
+        vy: s.vy,
+        drift: s.drift != null ? s.drift : 0.9,
+        falling: false,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  if (entry.gusts) {
+    for (const s of entry.gusts) {
+      const halfH = s.height / 2;
+      const y = PLAY_TOP + s.yFrac * playHeight;
+      gates.push({
+        type: 'snowgust',
+        x: x + s.width / 2 + 30 + (s.xJitter || 0),
+        y: Math.max(PLAY_TOP + halfH + 24, Math.min(PLAY_BOTTOM - halfH - 24, y)),
+        width: s.width,
+        height: s.height,
+        push: s.push >= 0 ? 0.55 : -0.55,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  if (entry.arches) {
+    for (const a of entry.arches) {
+      const fromTop = a.anchor === 'top';
+      const height = Math.min(Math.max(280, a.heightFrac * playHeight), playHeight - 170);
+      const root = fromTop ? PLAY_TOP : PLAY_BOTTOM;
+      const tip = fromTop ? root + height : root - height;
+      const holeH = Math.min(a.holeH || 140, height * 0.4);
+      const holeW = Math.min(a.holeW || 150, a.width * 0.56);
+      const crown = 70;
+      const holeY = fromTop ? tip - crown - holeH / 2 : tip + crown + holeH / 2;
+      gates.push({
+        type: 'icearch',
+        anchor: fromTop ? 'top' : 'bottom',
+        x: x + (a.xJitter || 0),
+        y: (root + tip) / 2,
+        width: a.width,
+        height,
+        holeY,
+        holeW,
+        holeH,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  if (entry.calving) {
+    const minR = 34, maxR = 48;
+    for (const a of entry.calving) {
+      const r = minR + a.rFrac * (maxR - minR);
+      const y = PLAY_TOP + a.yFrac * playHeight;
+      gates.push({
+        type: 'asteroid',
+        x: x + (a.xJitter || 0),
+        y: Math.max(PLAY_TOP + r + 36, Math.min(PLAY_BOTTOM - r - 180, y)),
+        r,
+        rotSeed: 0,
+        spin: 0,
+        vy: 0,
+        berg: true,
+        calving: true,
+        calved: false,
+        passed: false
+      });
+    }
+    return entry.spacing;
+  }
+  if (!entry.bergs) return entry.spacing;
+  const minR = 26, maxR = 44;
+  for (const a of entry.bergs) {
+    const r = minR + a.rFrac * (maxR - minR);
+    const y = PLAY_TOP + a.yFrac * playHeight;
+    gates.push({
+      type: 'asteroid',
+      x: x + (a.xJitter || 0),
+      y: Math.max(PLAY_TOP + r + 28, Math.min(PLAY_BOTTOM - r - 28, y)),
+      r: r,
+      rotSeed: a.xJitter || a.yFrac,
+      spin: 0.006,
+      vy: a.vy || 0,
+      berg: true,
+      passed: false
+    });
+  }
+  return entry.spacing;
+}
+
 function spawnFireball() {
   const th = currentTheme();
   const playHeight = PLAY_BOTTOM - PLAY_TOP;
@@ -4499,54 +5638,114 @@ function initTerrain() {
   terrainWaypointIslandLabel = '';
   terrainWaypointIslandBias = 0;
   terrainMeanderIndex = 0;
+  if (th.iceChunks) {
+    // Distance 0 is open sky. Walls sit off screen, and nothing is placed
+    // where it would reach the ship before distance 50.
+    const openGap = playHeight + 160;
+    const center = PLAY_TOP + playHeight * 0.5;
+    const top = center - openGap / 2;
+    const bottom = center + openGap / 2;
+    terrainSegmentsSinceEntry = 16;
+    terrainSegments.push({
+      x: -spacing, topY: top, bottomY: bottom, baseTop: top, baseBottom: bottom,
+      islandTop: center, islandBottom: center, islandShape: '', islandLabel: '', field: 'floe'
+    });
+    let guard = 0;
+    // Keep a stretch of course off the right edge so objects can be born there.
+    while (terrainSegments[terrainSegments.length - 1].x < W + 760 && guard++ < 400) {
+      addTerrainSegment();
+    }
+    // Nothing reaches the ship before distance 50, and nothing is placed
+    // on the visible screen. Centers start past the right edge and scroll in.
+    const clearX = ship.x + Math.max(0, 50 - (distance - zoneStartDistance)) * 10 + 170;
+    let fx = Math.max(clearX, W + 180);
+    let spawned = 0;
+    while (fx < W + 760 && spawned++ < 12) {
+      let field = '';
+      for (let i = terrainSegments.length - 1; i >= 0; i--) {
+        if (terrainSegments[i].x <= fx) { field = terrainSegments[i].field || ''; break; }
+      }
+      if (field !== 'floe') break;
+      fx += spawnIceFloeCluster(fx);
+    }
+    iceChunkSpawnX = fx;
+    return;
+  }
   for (let x = -spacing; x <= W + spacing; x += spacing) {
     terrainSegments.push({ x, topY: startTop, bottomY: startBottom, islandTop: startCenter, islandBottom: startCenter });
     terrainSegmentsSinceEntry++;
   }
 }
 
-function buildGlacierCourse() {
-  // One pass. The tunnel still kinks in straight facets. The high run is
-  // pressed to the ceiling and the low run to the floor, and the two are
-  // different lengths and different cuts so the level does not mirror itself.
-  const facet = (center, n) => Array(n).fill(center);
-  const centers = [
-    ...facet(0.50, 3), ...facet(0.40, 2), ...facet(0.32, 2),
-    ...facet(0.28, 5), ...facet(0.36, 2), ...facet(0.29, 4), ...facet(0.40, 2),
-    ...facet(0.28, 6), ...facet(0.34, 3), ...facet(0.30, 4), ...facet(0.43, 2),
-    ...facet(0.28, 5), ...facet(0.37, 3), ...facet(0.31, 4), ...facet(0.28, 3),
-    ...facet(0.39, 2), ...facet(0.30, 5), ...facet(0.35, 2), ...facet(0.28, 4),
-    ...facet(0.40, 2), ...facet(0.52, 2), ...facet(0.64, 2), ...facet(0.72, 2),
-    ...facet(0.70, 6), ...facet(0.62, 2), ...facet(0.73, 4), ...facet(0.66, 3),
-    ...facet(0.72, 5), ...facet(0.64, 2), ...facet(0.73, 4), ...facet(0.68, 3),
-    ...facet(0.71, 2),
-    ...facet(0.64, 2), ...facet(0.54, 2), ...facet(0.46, 3),
-    ...facet(0.38, 2), ...facet(0.48, 3), ...facet(0.34, 2), ...facet(0.44, 4),
-    ...facet(0.36, 2), ...facet(0.50, 3), ...facet(0.40, 2),
-    ...facet(0.58, 2), ...facet(0.70, 2),
-    ...facet(0.68, 2), ...facet(0.73, 2), ...facet(0.64, 2), ...facet(0.71, 3),
-    ...facet(0.66, 2), ...facet(0.73, 2), ...facet(0.60, 2), ...facet(0.69, 3),
-    ...facet(0.73, 2), ...facet(0.65, 2), ...facet(0.72, 4), ...facet(0.67, 2),
-    ...facet(0.60, 2), ...facet(0.48, 2), ...facet(0.34, 2),
-    ...facet(0.28, 4), ...facet(0.36, 2), ...facet(0.28, 3), ...facet(0.42, 2),
-    ...facet(0.30, 3), ...facet(0.28, 5),
-    ...facet(0.40, 2), ...facet(0.55, 2), ...facet(0.68, 3), ...facet(0.73, 4),
-    ...facet(0.66, 2), ...facet(0.72, 3), ...facet(0.64, 2), ...facet(0.70, 4),
-    ...facet(0.60, 2), ...facet(0.48, 3),
-    ...facet(0.56, 3), ...facet(0.42, 2), ...facet(0.32, 3), ...facet(0.28, 4),
-    ...facet(0.38, 2), ...facet(0.50, 2), ...facet(0.66, 3), ...facet(0.73, 3),
-    ...facet(0.62, 2), ...facet(0.70, 4), ...facet(0.54, 2), ...facet(0.40, 3),
-    ...facet(0.30, 2), ...facet(0.46, 3), ...facet(0.62, 2), ...facet(0.72, 3),
-    ...facet(0.58, 2), ...facet(0.44, 3), ...facet(0.34, 2)
-  ];
-  return centers.map(centerFrac => ({ centerFrac, top: 0, bottom: 0 }));
+let glacierCeilingFacets = null;
+let glacierFloorFacets = null;
+function glacierFacetRun(pairs) {
+  const out = [];
+  for (let i = 0; i < pairs.length; i += 2) {
+    for (let n = 0; n < pairs[i + 1]; n++) out.push(pairs[i]);
+  }
+  return out;
 }
-
-let glacierCourseCache = null;
-function glacierCourse(segmentIndex) {
-  if (!glacierCourseCache) glacierCourseCache = buildGlacierCourse();
-  const i = Math.max(0, Math.min(glacierCourseCache.length - 1, segmentIndex));
-  return glacierCourseCache[i];
+function glacierBeatAt(segmentX) {
+  // HUD distance when this segment reaches the ship. 1 distance = 10px of scroll.
+  const arrival = (distance - zoneStartDistance) + (segmentX - ship.x) * 0.1;
+  if (!glacierCeilingFacets) {
+    glacierCeilingFacets = glacierFacetRun([
+      0.50, 3, 0.40, 2, 0.32, 2,
+      0.28, 5, 0.36, 2, 0.29, 4, 0.40, 2,
+      0.28, 6, 0.34, 3, 0.30, 4, 0.43, 2,
+      0.28, 5, 0.37, 3, 0.31, 4, 0.28, 3,
+      0.39, 2, 0.30, 5, 0.35, 2, 0.28, 4,
+      0.36, 2, 0.46, 2
+    ]);
+    glacierFloorFacets = glacierFacetRun([
+      0.62, 2, 0.73, 3,
+      0.70, 6, 0.62, 2, 0.73, 4, 0.66, 3,
+      0.72, 5, 0.64, 2, 0.73, 4, 0.68, 3, 0.71, 2,
+      0.68, 2, 0.73, 2, 0.64, 2, 0.71, 3,
+      0.66, 2, 0.73, 2, 0.60, 2, 0.69, 3,
+      0.73, 2, 0.65, 2, 0.72, 4, 0.67, 2
+    ]);
+  }
+  const pick = (list, start) => {
+    const i = Math.max(0, Math.floor((arrival - start) * 10 / 42));
+    return list[Math.min(list.length - 1, i)];
+  };
+  // Open until 350, cave through 650, then open sky to the portal.
+  // 650 is when the ship is still inside. The walls open after that.
+  // The cave rides the ceiling first and the floor second.
+  if (arrival < 260) return { open: true, field: 'floe', centerFrac: 0.5, top: 0, bottom: 0 };
+  if (arrival < 290) return { open: true, field: '', centerFrac: 0.5, top: 0, bottom: 0 };
+  if (arrival < 500) return { open: false, field: '', centerFrac: pick(glacierCeilingFacets, 290), top: 0, bottom: 0 };
+  if (arrival < 650) return { open: false, field: '', centerFrac: pick(glacierFloorFacets, 500), top: 0, bottom: 0 };
+  // Hold the first snowballs until the mouth is opening, then keep them
+  // falling for the rest of the open stretch.
+  if (arrival < 730) return { open: true, field: '', centerFrac: 0.5, top: 0, bottom: 0, mound: 0 };
+  // Rounded snow dunes. Each point is a crest or a dip; the blend
+  // between them is smooth, and the heights and widths don't repeat.
+  const peaks = [
+    [0, 0],
+    [42, 70],
+    [88, 170],
+    [124, 95],
+    [168, 28],
+    [214, 150],
+    [252, 210],
+    [310, 40]
+  ];
+  const x = arrival - 748;
+  let mound = 0;
+  if (x > 0) {
+    let i = 0;
+    while (i < peaks.length - 1 && x > peaks[i + 1][0]) i++;
+    const a = peaks[i];
+    const b = peaks[Math.min(peaks.length - 1, i + 1)];
+    const span = Math.max(1, b[0] - a[0]);
+    const t = Math.max(0, Math.min(1, (x - a[0]) / span));
+    const s = 0.5 - 0.5 * Math.cos(Math.PI * t);
+    mound = a[1] + (b[1] - a[1]) * s;
+  }
+  return { open: true, field: 'berg', centerFrac: 0.5, top: 0, bottom: 0, mound };
 }
 
 function addTerrainSegment() {
@@ -4557,6 +5756,7 @@ function addTerrainSegment() {
   // segment treat a spike as the new cave and stacks the following tooth on it.
   const steerTop = last.baseTop != null ? last.baseTop : last.topY;
   const steerBottom = last.baseBottom != null ? last.baseBottom : last.bottomY;
+  let segmentField = '';
   const margin = 20;
   const playHeight = PLAY_BOTTOM - PLAY_TOP;
   terrainSegmentsSinceEntry++;
@@ -4577,21 +5777,6 @@ function addTerrainSegment() {
   } else {
     const baseGap = currentGapSize();
 
-    if (portalObject) {
-      // funnel wide open for a clean run into the portal, instead of
-      // continuing to generate normal (possibly tight) cave shape
-      const wideGap = playHeight * 0.9;
-      const lastCenter = (steerTop + steerBottom) / 2;
-      const minCenter = PLAY_TOP + wideGap / 2;
-      const maxCenter = PLAY_BOTTOM - wideGap / 2;
-      const target = Math.max(minCenter, Math.min(maxCenter, lastCenter));
-      const nextCenter = lastCenter + (target - lastCenter) * 0.35;
-      targetTop = nextCenter - wideGap / 2;
-      targetBottom = nextCenter + wideGap / 2;
-      targetIslandTop = nextCenter;
-      targetIslandBottom = nextCenter;
-    } else {
-
     // pathing analysis: figure out how fast the ship can actually climb/dive
     // (in px per segment, at this theme's physics and scroll speed), then spread
     // each waypoint transition across enough segments to stay within that limit
@@ -4601,6 +5786,54 @@ function addTerrainSegment() {
     const maxDiveSpeed = MAX_FALL_SPEED * th.gravityMult;
     const safetyFactor = 0.55; // leave headroom for reaction time, not just raw capability
     const maxDeltaPerSegment = Math.min(maxClimbSpeed, maxDiveSpeed) * framesPerSegment * safetyFactor;
+    const lastCenterNow = (steerTop + steerBottom) / 2;
+    const lastGapNow = steerBottom - steerTop;
+
+    if (portalObject) {
+      // funnel wide open for a clean run into the portal, instead of
+      // continuing to generate normal (possibly tight) cave shape.
+      // Glacier's open sky is already wider than that funnel; don't pull
+      // the walls back in over the berg field.
+      const wideGap = playHeight * 0.9;
+      if (th.iceChunks && (lastGapNow > wideGap || last.field === 'berg')) {
+        targetTop = steerTop;
+        targetBottom = steerBottom;
+        targetIslandTop = lastCenterNow;
+        targetIslandBottom = lastCenterNow;
+        segmentField = last.field || '';
+      } else {
+        const minCenter = PLAY_TOP + wideGap / 2;
+        const maxCenter = PLAY_BOTTOM - wideGap / 2;
+        const target = Math.max(minCenter, Math.min(maxCenter, lastCenterNow));
+        const nextCenter = lastCenterNow + (target - lastCenterNow) * 0.35;
+        targetTop = nextCenter - wideGap / 2;
+        targetBottom = nextCenter + wideGap / 2;
+        targetIslandTop = nextCenter;
+        targetIslandBottom = nextCenter;
+      }
+    } else if (th.iceChunks) {
+      const course = glacierBeatAt(last.x + spacing);
+      segmentField = course.open ? (course.field || '') : '';
+      const openGap = playHeight + 160;
+      const wantGap = course.open ? openGap : baseGap;
+      const clampGap = course.open ? playHeight : baseGap;
+      const minCenter = PLAY_TOP + clampGap / 2 + (course.open ? 0 : margin);
+      const maxCenter = PLAY_BOTTOM - clampGap / 2 - (course.open ? 0 : margin);
+      const rawTarget = PLAY_TOP + course.centerFrac * playHeight;
+      const targetCenter = Math.max(minCenter, Math.min(maxCenter, rawTarget));
+      let nextTop = targetCenter - wantGap / 2;
+      let nextBottom = targetCenter + wantGap / 2;
+      if (course.open && course.mound > 0) nextBottom = PLAY_BOTTOM - course.mound;
+      const dTop = nextTop - steerTop;
+      const dBot = nextBottom - steerBottom;
+      const scale = Math.max(1, Math.abs(dTop) / maxDeltaPerSegment, Math.abs(dBot) / maxDeltaPerSegment);
+      targetTop = steerTop + dTop / scale;
+      targetBottom = steerBottom + dBot / scale;
+      const nextCenter = (targetTop + targetBottom) / 2;
+      targetIslandTop = nextCenter;
+      targetIslandBottom = nextCenter;
+      terrainWaypointSegLeft = 0;
+    } else {
 
     if (terrainWaypointSegLeft <= 0) {
       const pattern = terrainPattern(th);
@@ -4622,10 +5855,6 @@ function addTerrainSegment() {
       if (consumePattern) {
         patternIndex++;
         terrainMeanderIndex = 0;
-      }
-      if (th.iceChunks) {
-        const course = glacierCourse(Math.max(0, Math.floor(terrainLevelX / spacing) - 1));
-        entry = { centerFrac: course.centerFrac };
       }
 
       const gapMult = entry.gapMult !== undefined ? entry.gapMult : 1;
@@ -4720,8 +5949,11 @@ function addTerrainSegment() {
     targetTop = mid - minGapPx / 2;
     targetBottom = mid + minGapPx / 2;
   }
-  targetTop = Math.max(PLAY_TOP + margin, targetTop);
-  targetBottom = Math.min(PLAY_BOTTOM - margin, targetBottom);
+  const openSky = th.iceChunks && (targetBottom - targetTop) > playHeight * 0.65;
+  if (!openSky) {
+    targetTop = Math.max(PLAY_TOP + margin, targetTop);
+    targetBottom = Math.min(PLAY_BOTTOM - margin, targetBottom);
+  }
 
   // safety clamp: if a fork's island would leave either path too narrow to fly, shrink the island
   const minPathPx = minGapPx * 1.1;
@@ -4741,8 +5973,8 @@ function addTerrainSegment() {
   let nextBottom = steerBottom + (targetBottom - steerBottom) * rampFactor;
   const baseTopY = nextTop;
   const baseBottomY = nextBottom;
-  if (th.iceChunks && !portalObject && rampFactor >= 1) {
-    const course = glacierCourse(Math.floor(terrainLevelX / spacing));
+  if (th.iceChunks && !portalObject && rampFactor >= 1 && !openSky) {
+    const course = glacierBeatAt(last.x + spacing);
     let topN = course.top;
     let botN = course.bottom;
     const room = (nextBottom - nextTop) - minGapPx;
@@ -4774,7 +6006,8 @@ function addTerrainSegment() {
     islandTop: nextIslandTop,
     islandBottom: nextIslandBottom,
     islandShape: terrainWaypointIslandShape,
-    islandLabel: terrainWaypointIslandLabel
+    islandLabel: terrainWaypointIslandLabel,
+    field: segmentField
   });
 }
 
@@ -4891,6 +6124,30 @@ function initBackgroundParticles(theme) {
         alpha: 0.28 + Math.random() * 0.45
       });
     }
+  } else if (theme.bgStyle === 'chrome') {
+    for (let i = 0; i < 16; i++) {
+      bgParticles.push({
+        kind: 'rush',
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        speed: 7 + Math.random() * 10,
+        len: 28 + Math.random() * 70,
+        alpha: 0.32 + Math.random() * 0.38,
+        thick: 1 + Math.random() * 1.4
+      });
+    }
+    for (let i = 0; i < 18; i++) {
+      bgParticles.push({
+        kind: 'spark',
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        speed: 3.2 + Math.random() * 5.5,
+        lift: 0.15 + Math.random() * 0.55,
+        len: 10 + Math.random() * 22,
+        r: 0.7 + Math.random() * 1.6,
+        alpha: 0.45 + Math.random() * 0.4
+      });
+    }
   } else if (theme.bgStyle === 'ruins') {
     for (let i = 0; i < 45; i++) {
       bgParticles.push({
@@ -4935,6 +6192,29 @@ function initBackgroundParticles(theme) {
         alpha: 0.08 + Math.random() * 0.18,
         speed: 0.05 + Math.random() * 0.15,
         drift: 0
+      });
+    }
+  } else if (theme.bgStyle === 'solar') {
+    for (let i = 0; i < 28; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight * 0.72,
+        speed: 3.2 + Math.random() * 6,
+        len: 48 + Math.random() * 110,
+        alpha: 0.16 + Math.random() * 0.34,
+        thick: 1 + Math.random() * 1.6
+      });
+    }
+  } else if (theme.bgStyle === 'kelp') {
+    for (let i = 0; i < 48; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 1.2 + Math.random() * 2.6,
+        alpha: 0.15 + Math.random() * 0.28,
+        speed: 0.35 + Math.random() * 0.7,
+        drift: (Math.random() - 0.5) * 0.4,
+        wobble: Math.random() * Math.PI * 2
       });
     }
   } else if (theme.bgStyle === 'storm') {
@@ -4994,9 +6274,25 @@ function reseedZoneObstacles(startX) {
   extraHubCounter = 0;
   extraHubPatternIndex = 0;
   iceChunkPatternIndex = 0;
+  iceFloePatternIndex = 0;
+  iceBergPatternIndex = 0;
+  glacierSnowContinue = false;
+  glacierSnowballX = 0;
+  glacierSnowLane = 0;
+  resetGlacierSnowSpawned();
   iceChunkSpawnX = W + 700;
   if (currentTheme().obstacleShape === 'terrain') {
     initTerrain();
+  } else if (currentTheme().obstacleShape === 'kelp' || currentTheme().obstacleShape === 'copper' || currentTheme().obstacleShape === 'chrome') {
+    let x = Math.max(startX, W + 220);
+    for (let i = 0; i < 6; i++) {
+      if (i > 0) {
+        const th0 = currentTheme();
+        x += th0.pattern[patternIndex % th0.pattern.length].spacing || GATE_SPACING;
+      }
+      spawnGate(x);
+      lastSpawnX = x;
+    }
   } else if (currentTheme().obstacleShape !== 'none') {
     let x = startX;
     for (let i = 0; i < 6; i++) {
@@ -5118,9 +6414,18 @@ function reseedZoneObstacles(startX) {
     miniBossDeathPatches = [];
     miniBossDeathAshParticles = [];
     miniBossWallCracks = [];
+    snowWallDetail = [];
     coreWallPanels = [];
     coreWallSensors = [];
     miniBossEscapeRunActive = false;
+    snowIcicles = [];
+    snowRollers = [];
+    snowAttackStep = 0;
+    snowIcicleSpawned = 0;
+    snowRollerSpawned = 0;
+    snowFeintStage = 'high';
+    snowBossSquash = 0;
+    snowDeathBurst = false;
     coreBossPhase = 1;
     coreBossHadFirstFloat = false;
     coreBossDefeated = false;
@@ -5687,15 +6992,20 @@ function updateBackgroundParticles(theme) {
       }
     }
   } else if (theme.bgStyle === 'frozen') {
+    const zoneDist = distance - zoneStartDistance;
+    // Full snowfall from the cave mouth through the portal.
+    const storm = zoneDist > 680 ? Math.min(1, (zoneDist - 680) / 30) : 0;
+    const fall = 1 + storm * 3.2;
+    const push = 1 + storm * 2.4;
     for (let p of bgParticles) {
-      p.y += p.speed;
-      p.x -= p.drift;
+      p.y += p.speed * fall;
+      p.x -= p.drift * push;
       if (p.y > PLAY_BOTTOM || p.x < -4) {
         p.y = PLAY_TOP - 4;
         p.x = Math.random() * W;
       }
     }
-  } else if (theme.bgStyle === 'embers') {
+  } else if (theme.bgStyle === 'embers' || theme.bgStyle === 'chrome') {
     const rushBoost = 0.85 + 0.45 * (theme.scrollMult || 1);
     for (let p of bgParticles) {
       p.x -= p.speed * rushBoost;
@@ -5740,6 +7050,23 @@ function updateBackgroundParticles(theme) {
       if (p.x < 0) {
         p.x = W;
         p.y = PLAY_TOP + Math.random() * playHeight;
+      }
+    }
+  } else if (theme.bgStyle === 'solar') {
+    for (let p of bgParticles) {
+      p.x -= p.speed;
+      if (p.x + p.len < 0) {
+        p.x = W + 20;
+        p.y = PLAY_TOP + Math.random() * playHeight * 0.72;
+      }
+    }
+  } else if (theme.bgStyle === 'kelp') {
+    for (let p of bgParticles) {
+      p.y -= p.speed;
+      p.x += Math.sin(frame * 0.02 + p.wobble) * 0.35;
+      if (p.y + p.r < PLAY_TOP) {
+        p.y = PLAY_BOTTOM + p.r;
+        p.x = Math.random() * W;
       }
     }
   } else if (theme.bgStyle === 'storm') {
@@ -6512,6 +7839,31 @@ function update() {
       }
     }
 
+    // Glacier snow gust: a pale band that shoves the ship. Stronger than
+    // hold or release, still capped at normal rise and fall speed.
+    if (th.iceChunks && !inGracePeriod && !bossDeathSequenceHold) {
+      let gust = 0;
+      const gustLeft = ship.x - SHIP_W / 2;
+      const gustRight = ship.x + SHIP_W / 2;
+      const gustTop = ship.y - SHIP_H / 2;
+      const gustBottom = ship.y + SHIP_H / 2;
+      for (const g of gates) {
+        if (g.type !== 'snowgust') continue;
+        const left = g.x - g.width / 2;
+        const right = g.x + g.width / 2;
+        const top = g.y - g.height / 2;
+        const bottom = g.y + g.height / 2;
+        if (gustRight > left && gustLeft < right && gustBottom > top && gustTop < bottom) gust += g.push;
+      }
+      if (gust !== 0) {
+        ship.vy += gust;
+        const capFall = MAX_FALL_SPEED * th.gravityMult;
+        const capRise = MAX_RISE_SPEED * th.liftMult;
+        if (ship.vy > capFall) ship.vy = capFall;
+        if (ship.vy < capRise) ship.vy = capRise;
+      }
+    }
+
     ship.y += ship.vy;
     ship.rotation = Math.max(-15, Math.min(20, ship.vy * 3));
 
@@ -6519,6 +7871,9 @@ function update() {
       ship.vx = (ship.vx || 0) + SHIP_FLYOFF_ACCEL;
       ship.x += ship.vx;
       ship.rotation = Math.max(ship.rotation, 8); // nose tilts up triumphantly as it accelerates away
+      const flyMargin = SHIP_H;
+      if (ship.y < PLAY_TOP + flyMargin) { ship.y = PLAY_TOP + flyMargin; ship.vy = 0; }
+      if (ship.y > PLAY_BOTTOM - flyMargin) { ship.y = PLAY_BOTTOM - flyMargin; ship.vy = 0; }
     }
 
     updateBackgroundParticles(currentTheme());
@@ -6814,9 +8169,13 @@ function update() {
           miniBossAttackStateStartFrame = frame;
         }
       } else {
-        miniBoss.r = miniBoss.maxR;
+        if (!(th.miniBossVariant === 'snow' && (miniBossDefeated || miniBossAttackState === 'crumbling' || miniBossAttackState === 'snowDying'))) {
+          miniBoss.r = miniBoss.maxR;
+        }
         if (th.miniBossVariant === 'core') {
           updateReactorCoreBoss();
+        } else if (th.miniBossVariant === 'snow' && !miniBossDefeated) {
+          updateSnowBoss();
         } else if (!miniBossDefeated) {
           const stateElapsed = frame - miniBossAttackStateStartFrame;
           if (miniBossCyclesCompleted >= 1 && miniBossAttackState === 'floating') {
@@ -7126,6 +8485,22 @@ function update() {
               }
             }
           }
+        } else if (th.miniBossVariant === 'snow') {
+          // death scene is over -- the ship drives off. The ice wall
+          // slides away with it. No terrain run, no escape distance.
+          snowBossStepAsh();
+          if (!shipFlyOffActive && frame - miniBossDefeatFrame >= 28) {
+            shipFlyOffActive = true;
+            ship.vx = 0;
+            if (miniBossWallRecedeStartFrame === -1) miniBossWallRecedeStartFrame = frame;
+          }
+          if (shipFlyOffActive && ship.x > W + 60) {
+            shipFlyOffActive = false;
+            miniBoss = null;
+            ship.x = W * 0.28;
+            ship.vx = 0;
+            beginWarp();
+          }
         } else if (miniBossWallRecedeStartFrame === -1 && frame - miniBossDefeatFrame >= MINI_BOSS_DEFEAT_PAUSE) {
           // the fight is over -- turn the zone into a real terrain run for
           // a short stretch, matching INFERNO's feel (same speed, wave
@@ -7203,7 +8578,7 @@ function update() {
     } else if (th.obstacleShape === 'terrain') {
       for (let s of terrainSegments) s.x -= effScroll;
       const spacing = th.terrainSpacing || 34;
-      while (terrainSegments[terrainSegments.length - 1].x < W + spacing) {
+      while (terrainSegments[terrainSegments.length - 1].x < (th.iceChunks ? W + 760 : W + spacing)) {
         addTerrainSegment();
       }
       terrainSegments = terrainSegments.filter(s => s.x > -spacing * 2);
@@ -7231,29 +8606,124 @@ function update() {
       }
       if (th.iceChunks) {
         const shipR = SHIP_W * 0.4;
+        const shipLeft = ship.x - SHIP_W / 2;
+        const shipRight = ship.x + SHIP_W / 2;
         for (const g of gates) {
-          if (g.type !== 'asteroid') continue;
-          const dx = ship.x - g.x;
-          const dy = ship.y - g.y;
-          if (Math.sqrt(dx * dx + dy * dy) < shipR + g.r) tryEndGame('asteroid');
+          if (g.type === 'asteroid' || g.type === 'snowball') {
+            const dx = ship.x - g.x;
+            const dy = ship.y - g.y;
+            if (Math.sqrt(dx * dx + dy * dy) < shipR + g.r) tryEndGame(g.type === 'snowball' ? 'snowball' : 'asteroid');
+          } else if (g.type === 'icespire') {
+            if (rectIntersectsPolygon(shipLeft, shipTop, shipRight, shipBottom, iceSpirePolygon(g))) tryEndGame(g.type);
+          } else if (g.type === 'icefloe' || g.type === 'icecalve') {
+            const left = g.x - g.width / 2;
+            const right = g.x + g.width / 2;
+            const halfH = g.thickness / 2;
+            const top = g.y - halfH;
+            const bottom = g.y + halfH;
+            if (shipRight > left && shipLeft < right && shipBottom > top && shipTop < bottom) tryEndGame(g.type);
+          } else if (g.type === 'icearch') {
+            const left = g.x - g.width / 2;
+            const right = g.x + g.width / 2;
+            const top = g.y - g.height / 2;
+            const bottom = g.y + g.height / 2;
+            const holeLeft = g.x - g.holeW / 2;
+            const holeRight = g.x + g.holeW / 2;
+            const capY = g.anchor === 'top' ? g.holeY + g.holeH / 2 : g.holeY - g.holeH / 2;
+            const hit = (l, r, t, b) => shipRight > l && shipLeft < r && shipBottom > t && shipTop < b;
+            const legs = hit(left - 16, holeLeft, top, bottom) || hit(holeRight, right + 16, top, bottom);
+            const crown = g.anchor === 'top'
+              ? hit(holeLeft, holeRight, capY, bottom)
+              : hit(holeLeft, holeRight, top, capY);
+            if (legs || crown) tryEndGame('icearch');
+          }
         }
       }
       }
       if (th.iceChunks) {
+        const freshCalves = [];
         for (const g of gates) {
-          if (g.type === 'asteroid') g.x -= effScroll;
+          if (g.type === 'asteroid' || g.type === 'icefloe' || g.type === 'icespire' || g.type === 'snowgust' || g.type === 'icearch' || g.type === 'icecalve' || g.type === 'snowball') g.x -= effScroll;
+          if (g.type === 'asteroid' && g.vy) {
+            g.y += g.vy;
+            g.y = Math.max(PLAY_TOP + g.r + 4, Math.min(PLAY_BOTTOM - g.r - 4, g.y));
+          }
+          if (g.type === 'snowball') {
+            g.x -= g.drift || 0;
+            if (!g.falling) {
+              const hSpeed = effScroll + (g.drift || 0);
+              const dist = g.x - ship.x;
+              const drop = Math.max(0, g.laneY - g.y);
+              const lead = g.vy > 0 ? drop * hSpeed / g.vy : 0;
+              if (dist <= lead) g.falling = true;
+            }
+            if (g.falling) g.y += g.vy;
+          }
+          if (g.type === 'icecalve') {
+            g.vy = Math.min(6.2, (g.vy || 0) + 0.16);
+            g.y += g.vy;
+          }
+          if (g.type === 'asteroid' && g.calving && !g.calved && g.x < ship.x + 460 && g.x > ship.x - 20) {
+            g.calved = true;
+            freshCalves.push({
+              type: 'icecalve',
+              x: g.x,
+              y: g.y + g.r + 18,
+              width: 74,
+              thickness: 32,
+              vy: 0.6,
+              passed: false
+            });
+          }
         }
+        for (const c of freshCalves) gates.push(c);
         if (portalObject) {
           const portalSafeX = portalObject.x - 40;
-          gates = gates.filter(g => g.type !== 'asteroid' || g.x + g.r < portalSafeX);
+          gates = gates.filter(g => {
+            if (g.type === 'asteroid' || g.type === 'snowball') return g.x + g.r < portalSafeX;
+            if (g.type === 'icefloe' || g.type === 'icespire' || g.type === 'icearch' || g.type === 'snowgust' || g.type === 'icecalve') return g.x + g.width / 2 < portalSafeX;
+            return true;
+          });
         }
-        gates = gates.filter(g => g.type !== 'asteroid' || g.x + g.r > -80);
+        gates = gates.filter(g => {
+          if (g.type === 'asteroid') return g.x + g.r > -80;
+          if (g.type === 'snowball') return g.x + g.r > -80 && g.y - g.r < PLAY_BOTTOM + 30;
+          if (g.type === 'icefloe' || g.type === 'icespire' || g.type === 'icearch' || g.type === 'snowgust') return g.x + g.width / 2 > -80;
+          if (g.type === 'icecalve') return g.x + g.width / 2 > -80 && g.y < PLAY_BOTTOM + 48;
+          return true;
+        });
         iceChunkSpawnX -= effScroll;
+        if (th.iceChunks) spawnScheduledSnowballs();
+        // Stay past the right edge, and past the distance-50 line on a narrow window.
+        const glacierClearX = ship.x + Math.max(0, 50 - (distance - zoneStartDistance)) * 10 + 170;
+        const glacierMinX = Math.max(glacierClearX, W + 180);
+        if (iceChunkSpawnX < glacierMinX) iceChunkSpawnX = glacierMinX;
         const horizon = terrainSegments[terrainSegments.length - 1].x - 8;
         if (!portalObject && iceChunkSpawnX <= horizon) {
-          const entry = th.iceChunkPattern[iceChunkPatternIndex % th.iceChunkPattern.length];
-          if (!spawnWouldHitPortal(iceChunkSpawnX, 48)) spawnIceChunkCluster(iceChunkSpawnX);
-          iceChunkSpawnX += entry.spacing;
+          const bounds = terrainBoundsAt(iceChunkSpawnX) || terrainBoundsAt(horizon);
+          const gap = bounds ? bounds.bottom - bounds.top : 0;
+          const playHeight = PLAY_BOTTOM - PLAY_TOP;
+          let field = '';
+          for (let i = terrainSegments.length - 1; i >= 0; i--) {
+            if (terrainSegments[i].x <= iceChunkSpawnX + 8) {
+              field = terrainSegments[i].field || '';
+              break;
+            }
+          }
+          let spacingAdd = 220;
+          const blocked = spawnWouldHitPortal(iceChunkSpawnX, 80);
+          if (field === 'floe' && gap > playHeight * 0.9) {
+            spacingAdd = blocked ? th.iceFloePattern[iceFloePatternIndex % th.iceFloePattern.length].spacing : spawnIceFloeCluster(iceChunkSpawnX);
+          } else if (field === 'berg' && bounds && bounds.top < PLAY_TOP + 40) {
+            // One pass. A repeat puts the first snowball on top of the last gust.
+            if (iceBergPatternIndex >= th.iceBergPattern.length) spacingAdd = 480;
+            else spacingAdd = blocked ? th.iceBergPattern[iceBergPatternIndex].spacing : spawnIceBergCluster(iceChunkSpawnX);
+          } else if (!field && gap > 0 && gap < playHeight * 0.55) {
+            const entry = th.iceChunkPattern[iceChunkPatternIndex % th.iceChunkPattern.length];
+            if (!blocked) spawnIceChunkCluster(iceChunkSpawnX);
+            spacingAdd = entry.spacing;
+          }
+          iceChunkSpawnX += spacingAdd;
         }
       }
     } else {
@@ -7267,8 +8737,11 @@ function update() {
         if (g.type === 'bossdrone') continue; // moved separately below via vx
         if (g.type === 'bossember') continue; // moved separately below via vx/vy
         if (g.type === 'bossashcloud') continue; // moved separately below via vx
-        g.x -= (g.type === 'fireball' ? effScroll * fireballSpeedMult : (g.type === 'zone2storm' ? effScroll * 1.4 : (g.type === 'securitydrone' ? effScroll * g.speedMult : effScroll)));
+        g.x -= (g.type === 'fireball' ? effScroll * fireballSpeedMult : (g.type === 'zone2storm' ? effScroll * 1.4 : (g.type === 'securitydrone' || g.type === 'headlamp' ? effScroll * g.speedMult : effScroll)));
         if (g.type === 'cloudarc') g.x2 -= effScroll; // second endpoint isn't covered by the g.x update above
+        // A school scrolls with the trench until it enters, then dashes across.
+        if (g.type === 'school' && g.x < W + 40) g.x -= g.swim;
+        if (g.type === 'headlamp') updateHeadlamp(g);
       }
       for (const g of gates) {
         if (g.type === 'turretshot') { g.x += g.vx; g.y += g.vy; }
@@ -7321,7 +8794,8 @@ function update() {
         }
       } else if (th.obstacleShape !== 'none') {
         lastSpawnX -= effScroll;
-        if (!portalObject && (gates.length === 0 || lastSpawnX < W + 150)) {
+        const courseDone = (th.obstacleShape === 'kelp' || th.obstacleShape === 'copper' || th.obstacleShape === 'chrome') && patternIndex >= th.pattern.length;
+        if (!portalObject && !courseDone && (gates.length === 0 || lastSpawnX < W + 150)) {
           const nextSpacing = th.pattern[patternIndex % th.pattern.length].spacing;
           const nextX = (gates.length ? lastSpawnX : W + 150) + nextSpacing;
           if (!spawnWouldHitPortal(nextX, 180)) {
@@ -7701,6 +9175,17 @@ function update() {
           return onScreen && withinSafetyNet;
         }
         if (g.type === 'hbar') return g.x + g.width / 2 > -80;
+        if (g.type === 'marquee') return g.x + g.width / 2 > -80;
+        if (g.type === 'courier') return g.x + (g.podR || 16) > -80;
+        if (g.type === 'bloom') return g.x + g.maxR > -80;
+        if (g.type === 'coil') return g.x + g.halfW > -80;
+        if (g.type === 'headlamp') return g.x + g.r > -80;
+        if (g.type === 'kelp') return g.x + Math.abs(g.sway || 0) + 30 > -80;
+        if (g.type === 'jelly') return g.x + (g.bellR || 24) + 20 > -80;
+        if (g.type === 'sponge') return spongeRight(g) > -80;
+        if (g.type === 'school') return g.x + g.width / 2 > -80;
+        if (g.type === 'urchin') return g.x + g.coreR + g.spine > -80;
+        if (g.type === 'current') return g.x + g.width / 2 > -80;
         if (g.type === 'billboard') return g.x + g.panelWidth / 2 > -80;
         if (g.type === 'emp') return g.x + 30 > -80;
         if (g.type === 'echotrail') return g.x + g.zoneWidth / 2 > -80;
@@ -7719,6 +9204,7 @@ function update() {
         if (g.type === 'lbolt') return g.x + g.swingWidth / 2 > -80;
         if (g.type === 'barrier') return g.x + g.width / 2 > -50;
         if (g.type === 'lightning') return g.x + g.span / 2 > -50;
+        if (g.type === 'wedge') return g.x + g.width / 2 + Math.abs(g.lean || 0) > -50;
         return g.x + GATE_WIDTH > -50;
       });
 
@@ -7828,6 +9314,68 @@ function update() {
           if (shipRight > barLeft && shipLeft < barRight && shipBottom > barTop && shipTop < barBottom) {
             tryEndGame(g.type);
           }
+        } else if (g.type === 'marquee') {
+          const left = g.x - g.width / 2;
+          const right = g.x + g.width / 2;
+          const top = g.anchor === 'ceiling' ? PLAY_TOP : PLAY_BOTTOM - g.height;
+          const bottom = g.anchor === 'ceiling' ? PLAY_TOP + g.height : PLAY_BOTTOM;
+          if (shipRight > left && shipLeft < right && shipBottom > top && shipTop < bottom) tryEndGame('marquee');
+        } else if (g.type === 'courier') {
+          for (const y of courierPods(g)) {
+            if (Math.hypot(ship.x - g.x, ship.y - y) < shipR + g.podR) {
+              tryEndGame('courier');
+              break;
+            }
+          }
+        } else if (g.type === 'bloom') {
+          if (Math.hypot(ship.x - g.x, ship.y - PLAY_BOTTOM) < bloomRadius(g) + shipR) tryEndGame('bloom');
+        } else if (g.type === 'coil') {
+          const sparkTop = PLAY_BOTTOM - g.sparkH;
+          if (coilFiring(g) && Math.abs(ship.x - g.x) < g.halfW + shipR && shipBottom > sparkTop) tryEndGame('coil');
+        } else if (g.type === 'headlamp') {
+          if (Math.hypot(ship.x - g.x, ship.y - g.y) < shipR + g.r) tryEndGame('headlamp');
+        } else if (g.type === 'neonbar') {
+          const left = g.x - g.width / 2;
+          const right = g.x + g.width / 2;
+          const top = g.y - g.thick / 2;
+          const bottom = g.y + g.thick / 2;
+          if (shipRight > left && shipLeft < right && shipBottom > top && shipTop < bottom) tryEndGame('neonbar');
+        } else if (g.type === 'wedge') {
+          if (rectIntersectsPolygon(shipLeft, shipTop, shipRight, shipBottom, wedgePolygon(g))) tryEndGame('wedge');
+        } else if (g.type === 'kelp') {
+          const pose = kelpPose(g);
+          const hit = distToSegment(ship.x, ship.y, pose.x0, pose.y0, pose.x1, pose.y1);
+          const midHit = distToSegment(ship.x, ship.y, pose.x0, pose.y0, pose.mx, pose.my);
+          const tipHit = distToSegment(ship.x, ship.y, pose.mx, pose.my, pose.x1, pose.y1);
+          if (Math.min(hit, midHit, tipHit) < shipR + pose.thick * 0.5) tryEndGame('kelp');
+        } else if (g.type === 'jelly') {
+          const pose = jellyPose(g);
+          const dx = ship.x - pose.x;
+          const dy = ship.y - pose.y;
+          const bellHit = Math.hypot(dx, dy) < shipR + pose.bellR;
+          const tentHit = distToSegment(ship.x, ship.y, pose.x, pose.y + pose.bellR * 0.35, pose.tx, pose.ty) < shipR + 5;
+          const tentHit2 = distToSegment(ship.x, ship.y, pose.x - 8, pose.y + pose.bellR * 0.2, pose.tx2, pose.ty2) < shipR + 5;
+          if (bellHit || tentHit || tentHit2) tryEndGame('jelly');
+        } else if (g.type === 'sponge') {
+          for (const tube of spongeTubes(g)) {
+            const cx = tube.x + tube.lean * 0.5;
+            const left = cx - tube.w / 2;
+            const right = cx + tube.w / 2;
+            const top = PLAY_BOTTOM - tube.h;
+            if (shipRight > left && shipLeft < right && shipBottom > top) {
+              tryEndGame('sponge');
+              break;
+            }
+          }
+        } else if (g.type === 'school') {
+          const halfW = g.width / 2;
+          const halfH = g.height / 2;
+          if (shipRight > g.x - halfW && shipLeft < g.x + halfW && shipBottom > g.y - halfH && shipTop < g.y + halfH) {
+            tryEndGame('school');
+          }
+        } else if (g.type === 'urchin') {
+          const uy = urchinCenter(g);
+          if (Math.hypot(ship.x - g.x, ship.y - uy) < shipR + urchinReach(g)) tryEndGame('urchin');
         } else if (g.type === 'billboard') {
           const panelLeft = g.x - g.panelWidth / 2;
           const panelRight = g.x + g.panelWidth / 2;
@@ -8345,10 +9893,10 @@ function mergeDurableSaves(blobs) {
     return Array.from(set);
   };
   const maxArr = (key) => {
-    const out = new Array(13).fill(0);
+    const out = new Array(15).fill(0);
     profiles.forEach((p) => {
       const arr = p[key] || [];
-      for (let i = 0; i < 13; i++) out[i] = Math.max(out[i], arr[i] || 0);
+      for (let i = 0; i < 14; i++) out[i] = Math.max(out[i], arr[i] || 0);
     });
     return out;
   };
@@ -8831,6 +10379,9 @@ const HAZARD_FAMILY = {
   signalcorruption: 'electric', emp: 'electric', pulsingorb: 'plasma', boomerang: 'whoosh',
   echotrail: 'echo', lensingzone: 'gravity', supernova: 'nova', supernovadebris: 'nova',
   wreckage: 'rock', lasergrid: 'laser', asteroid: 'rock', splitrock: 'rock', fireball: 'fire',
+  kelp: 'whoosh', current: 'whoosh', wedge: 'plasma', neonbar: 'laser',
+  marquee: 'rock', courier: 'whoosh', bloom: 'plasma', coil: 'electric', headlamp: 'whoosh',
+  jelly: 'whoosh', sponge: 'rock', school: 'whoosh', urchin: 'rock',
   toxicpool: 'drip', geyser: 'fire', movingdoor: 'metal', sparkhub: 'electric',
   sparkprojectile: 'electric', accesskey: 'key', specialdoor: 'metal', shootingstar: 'whoosh',
   aciddrip: 'drip', terrain: 'rock',
@@ -11805,7 +13356,7 @@ function sfxHazardImpact(type) {
     playHBarClank();
     return;
   }
-  if (type === 'asteroid' || type === 'splitrock') {
+  if (type === 'asteroid' || type === 'splitrock' || type === 'icefloe' || type === 'icespire' || type === 'icearch' || type === 'icecalve' || type === 'snowball') {
     playAsteroidCrunch();
     return;
   }
@@ -12440,7 +13991,7 @@ function syncMoltenCoreIdleSound() {
   const active = state === 'playing'
     && th
     && th.isMiniBossZone
-    && th.miniBossVariant !== 'core'
+    && !th.miniBossVariant
     && miniBoss
     && !miniBossDefeated
     && miniBossAttackState === 'floating'
@@ -12588,7 +14139,7 @@ function syncMoltenFlameWallSound() {
   const active = state === 'playing'
     && th
     && th.isMiniBossZone
-    && th.miniBossVariant !== 'core'
+    && !th.miniBossVariant
     && miniBoss
     && !miniBossDefeated
     && miniBossAttackState === 'flameWallActive';
@@ -12771,7 +14322,7 @@ function syncMoltenSqueezeSound() {
   const active = state === 'playing'
     && th
     && th.isMiniBossZone
-    && th.miniBossVariant !== 'core'
+    && !th.miniBossVariant
     && miniBoss
     && !miniBossDefeated
     && miniBossAttackState === 'barrageActive';
@@ -12892,7 +14443,7 @@ function syncMoltenDeathAshSound() {
   const active = state === 'playing'
     && th
     && th.isMiniBossZone
-    && th.miniBossVariant !== 'core'
+    && !th.miniBossVariant
     && miniBoss
     && !miniBossDefeated
     && miniBossAttackState === 'dying'
@@ -14336,23 +15887,26 @@ function bgmSchedulerTick() {
 }
 
 const BGM_FILE_TRACKS = [
-  { id: 'bgm-01-glacier', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 0, start: 0, loopStart: 0, loopEnd: 22 },
+  { id: 'bgm-00-solar-chrome', src: 'audio/bgm/bgm-01-synthwave.mp3', themeIndex: 0, start: 0, loopStart: 0, loopEnd: 192 },
+  { id: 'bgm-01-glacier', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 2, start: 0, loopStart: 0, loopEnd: 22 },
+  { id: 'bgm-whiteout', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 3, start: 0, loopStart: 0, loopEnd: 22 },
   { id: 'bgm-02-gravity-well', src: 'audio/bgm/bgm-02-gravity-well.mp3', themeIndex: 1, start: 0, loopStart: 0 },
-  { id: 'bgm-03-deep-space', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 2, start: 0, loopStart: 0, loopEnd: 22 },
-  { id: 'bgm-04-inferno', src: 'audio/bgm/bgm-04-inferno.mp3', themeIndex: 3, start: 0, loopStart: 0, loopEnd: 104 },
-  { id: 'bgm-05-molten-core-boss', src: 'audio/bgm/bgm-05-molten-core-boss.mp3?v=snes272', themeIndex: 4, phaseMin: 1, phaseMax: 1, start: 0, loopStart: 0 },
-  { id: 'bgm-05-molten-core', src: 'audio/bgm/bgm-05-molten-core.mp3', themeIndex: 4, phaseMin: 2, phaseMax: 99, start: 0, loopStart: 0, loopEnd: 104 },
-  { id: 'bgm-06-storm-skies', src: 'audio/bgm/bgm-06-storm-skies.mp3', themeIndex: 5, start: 0, loopStart: 0 },
-  { id: 'bgm-07-ancient-ruins', src: 'audio/bgm/bgm-07-ancient-ruins.ogg', themeIndex: 6, start: 0, loopStart: 0 },
-  { id: 'bgm-08-toxic-wasteland', src: 'audio/bgm/bgm-08-toxic-wasteland.mp3', themeIndex: 7, start: 0, loopStart: 0, loopEnd: 46 },
-  { id: 'bgm-09-derelict-station', src: 'audio/bgm/bgm-09-derelict-station.mp3?v=snes271', themeIndex: 8, start: 2, loopStart: 2, loopEnd: 101 },
-  { id: 'bgm-10-reactor-core-p1', src: 'audio/bgm/bgm-10-reactor-core-p1.mp3', themeIndex: 9, phaseMin: 1, phaseMax: 7, start: 0, loopStart: 0 },
-  { id: 'bgm-10-reactor-core-p8', src: 'audio/bgm/bgm-10-reactor-core-p8.mp3?v=snes267', themeIndex: 9, phaseMin: 8, phaseMax: 99, start: 50, loopStart: 50 },
-  { id: 'bgm-11-the-void', src: 'audio/bgm/bgm-11-the-void.mp3', themeIndex: 10, start: 1, loopStart: 1, loopEnd: 38 },
-  { id: 'bgm-12-neon-city', src: 'audio/bgm/bgm-12-neon-city.mp3', themeIndex: 11, start: 0, loopStart: 0 },
-  { id: 'bgm-13-the-signal-p1', src: 'audio/bgm/bgm-13-the-signal-p1.mp3?v=snes266', themeIndex: 12, phaseMin: 1, phaseMax: 2, start: 0, loopStart: 0 },
-  { id: 'bgm-13-the-signal-p3', src: 'audio/bgm/bgm-13-the-signal-p3.mp3', themeIndex: 12, phaseMin: 3, phaseMax: 4, start: 0, loopStart: 0 },
-  { id: 'bgm-13-the-signal-p5', src: 'audio/bgm/bgm-13-the-signal-p5.mp3', themeIndex: 12, phaseMin: 5, phaseMax: 99, start: 0, loopStart: 0 },
+  { id: 'bgm-03-deep-space', src: 'audio/bgm/bgm-03-deep-space.mp3', start: 0, loopStart: 0, loopEnd: 22 },
+  { id: 'bgm-solar-chrome-zone', src: 'audio/bgm/bgm-01-synthwave.mp3', themeIndex: 4, start: 0, loopStart: 0, loopEnd: 192 },
+  { id: 'bgm-04-inferno', src: 'audio/bgm/bgm-04-inferno.mp3', themeIndex: 5, start: 0, loopStart: 0, loopEnd: 104 },
+  { id: 'bgm-05-molten-core-boss', src: 'audio/bgm/bgm-05-molten-core-boss.mp3?v=snes272', themeIndex: 6, phaseMin: 1, phaseMax: 1, start: 0, loopStart: 0 },
+  { id: 'bgm-05-molten-core', src: 'audio/bgm/bgm-05-molten-core.mp3', themeIndex: 6, phaseMin: 2, phaseMax: 99, start: 0, loopStart: 0, loopEnd: 104 },
+  { id: 'bgm-06-storm-skies', src: 'audio/bgm/bgm-06-storm-skies.mp3', themeIndex: 7, start: 0, loopStart: 0 },
+  { id: 'bgm-07-ancient-ruins', src: 'audio/bgm/bgm-07-ancient-ruins.ogg', themeIndex: 8, start: 0, loopStart: 0 },
+  { id: 'bgm-08-toxic-wasteland', src: 'audio/bgm/bgm-08-toxic-wasteland.mp3', themeIndex: 9, start: 0, loopStart: 0, loopEnd: 46 },
+  { id: 'bgm-09-derelict-station', src: 'audio/bgm/bgm-09-derelict-station.mp3?v=snes271', themeIndex: 10, start: 2, loopStart: 2, loopEnd: 101 },
+  { id: 'bgm-10-reactor-core-p1', src: 'audio/bgm/bgm-10-reactor-core-p1.mp3', themeIndex: 11, phaseMin: 1, phaseMax: 7, start: 0, loopStart: 0 },
+  { id: 'bgm-10-reactor-core-p8', src: 'audio/bgm/bgm-10-reactor-core-p8.mp3?v=snes267', themeIndex: 11, phaseMin: 8, phaseMax: 99, start: 50, loopStart: 50 },
+  { id: 'bgm-11-the-void', src: 'audio/bgm/bgm-11-the-void.mp3', themeIndex: 12, start: 1, loopStart: 1, loopEnd: 38 },
+  { id: 'bgm-12-neon-city', src: 'audio/bgm/bgm-12-neon-city.mp3', themeIndex: 13, start: 0, loopStart: 0 },
+  { id: 'bgm-13-the-signal-p1', src: 'audio/bgm/bgm-13-the-signal-p1.mp3?v=snes266', themeIndex: 14, phaseMin: 1, phaseMax: 2, start: 0, loopStart: 0 },
+  { id: 'bgm-13-the-signal-p3', src: 'audio/bgm/bgm-13-the-signal-p3.mp3', themeIndex: 14, phaseMin: 3, phaseMax: 4, start: 0, loopStart: 0 },
+  { id: 'bgm-13-the-signal-p5', src: 'audio/bgm/bgm-13-the-signal-p5.mp3', themeIndex: 14, phaseMin: 5, phaseMax: 99, start: 0, loopStart: 0 },
 ];
 const bgmElementCache = {};
 const bgmMediaNodeCache = {};
@@ -14927,9 +16481,11 @@ const SFX_CATALOG = [
   { id: 'bgmMenu', section: '6. Background Music', name: 'Menu / home loop (synth)', kind: 'bgm', profile: 'menu', play: () => {} },
   { id: 'bgmVictory', section: '6. Background Music', name: 'Victory — Neon Rise (synth)', kind: 'bgm', profile: 'victory', play: () => {} },
   { id: 'bgmGameOver', section: '6. Background Music', name: 'Game over stinger', kind: 'oneshot', play: () => sfxGameOver() },
+  { id: 'bgm00', section: '6. Background Music', name: '01 Copper Midnight', kind: 'bgm', trackId: 'bgm-00-solar-chrome', play: () => {} },
   { id: 'bgm01', section: '6. Background Music', name: '01 Glacier', kind: 'bgm', trackId: 'bgm-01-glacier', play: () => {} },
   { id: 'bgm02', section: '6. Background Music', name: '02 Gravity Well', kind: 'bgm', trackId: 'bgm-02-gravity-well', play: () => {} },
   { id: 'bgm03', section: '6. Background Music', name: '03 Deep Space', kind: 'bgm', trackId: 'bgm-03-deep-space', play: () => {} },
+  { id: 'bgmChrome', section: '6. Background Music', name: '05 Solar Chrome', kind: 'bgm', trackId: 'bgm-solar-chrome-zone', play: () => {} },
   { id: 'bgm04', section: '6. Background Music', name: '04 Inferno', kind: 'bgm', trackId: 'bgm-04-inferno', play: () => {} },
   { id: 'bgm05a', section: '6. Background Music', name: '05 Molten Core (boss)', kind: 'bgm', trackId: 'bgm-05-molten-core-boss', play: () => {} },
   { id: 'bgm05b', section: '6. Background Music', name: '05 Molten Core (escape)', kind: 'bgm', trackId: 'bgm-05-molten-core', play: () => {} },
@@ -16324,6 +17880,12 @@ function drawMiniBoss(theme) {
     drawReactorCoreWallBoss(x, r);
     return;
   }
+  if (theme.miniBossVariant === 'snow') {
+    drawSnowChargeWake();
+    if (!miniBossDefeated) drawSnowBossBody(x, y, r);
+    drawSnowBossHazards();
+    return;
+  }
 
   const motion = moltenCoreChargeMotion();
   if (motion) {
@@ -16760,6 +18322,7 @@ function drawBossArenaVignette(theme, bossEntity) {
 // seeded once per mini boss spawn so the crack pattern doesn't jitter frame
 // to frame; regenerated in resetGame's mini boss setup alongside restX
 let miniBossWallCracks = [];
+let snowWallDetail = [];
 
 // seeded once per core boss spawn, mirrors miniBossWallCracks' pattern but
 // for panel seams/rivets instead of rock cracks
@@ -16949,6 +18512,401 @@ function drawBossArenaBulkheadWall(theme, bossEntity) {
   // near-edge highlight
   ctx.fillStyle = `rgba(94,200,232,${0.5 * pulse})`;
   ctx.fillRect(wallX, 0, 2, H);
+
+  ctx.restore();
+}
+
+function drawSnowChargeWake() {
+  if (!miniBoss) return;
+  const state = miniBossAttackState;
+  const goingRight = state === 'arcRight' || state === 'exiting';
+  const charging = state === 'arcLeft' || goingRight;
+  if (!charging) return;
+  const intensity = state === 'exiting' ? 0.45 : 1;
+  const behind = goingRight ? -1 : 1;
+  const x = miniBoss.x;
+  const y = miniBoss.y;
+  const r = Math.max(24, miniBoss.r);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, PLAY_TOP, W, PLAY_BOTTOM - PLAY_TOP);
+  ctx.clip();
+
+  for (let i = 3; i >= 1; i--) {
+    ctx.globalAlpha = (0.22 - i * 0.05) * intensity;
+    ctx.fillStyle = '#f4fbff';
+    ctx.beginPath();
+    ctx.ellipse(
+      x + behind * r * (0.45 + i * 0.62),
+      y,
+      r * (1.05 - i * 0.08),
+      r * (0.62 - i * 0.06),
+      0, 0, Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  const len = r * (2.2 + 1.6 * intensity);
+  const plume = ctx.createLinearGradient(x, y, x + behind * len, y);
+  plume.addColorStop(0, `rgba(255,255,255,${0.5 * intensity})`);
+  plume.addColorStop(0.4, `rgba(214,236,246,${0.22 * intensity})`);
+  plume.addColorStop(1, 'rgba(214,236,246,0)');
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = plume;
+  ctx.beginPath();
+  ctx.ellipse(x + behind * len * 0.4, y, len * 0.5, r * (0.7 + 0.15 * intensity), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  for (let i = 0; i < 10; i++) {
+    const seed = i * 1.4 + frame * 0.5;
+    const along = r * (1.15 + (i % 5) * 0.42);
+    const oy = Math.sin(seed) * r * (0.12 + (i % 4) * 0.1);
+    ctx.globalAlpha = (0.28 + 0.45 * (1 - (i % 5) / 5)) * intensity;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x + behind * along, y + oy, 1.8 + (i % 3) * 1.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const spin = frame * 0.22 + i * 1.4;
+    ctx.save();
+    ctx.translate(x + behind * r * (1.2 + i * 0.34), y + Math.sin(spin) * r * 0.28);
+    ctx.rotate(spin);
+    ctx.globalAlpha = 0.7 * intensity;
+    ctx.fillStyle = '#f7fbff';
+    ctx.fillRect(-3.2, -3.2, 6.4, 6.4);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawSnowBossBody(x, y, r) {
+  ctx.save();
+  ctx.translate(x, y);
+  const squash = snowBossSquash || 0;
+  const charging = miniBossAttackState === 'arcLeft' || miniBossAttackState === 'arcRight' || miniBossAttackState === 'exiting';
+  const punch = charging && squash < 0.2 ? (miniBossAttackState === 'exiting' ? 0.4 : 1) : 0;
+  ctx.scale((1 + squash * 0.45) * (1 + punch * 0.32), (1 - squash * 0.4) * (1 - punch * 0.22));
+  const glow = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.35);
+  glow.addColorStop(0, 'rgba(255,255,255,0.55)');
+  glow.addColorStop(0.6, 'rgba(186, 220, 236, 0.18)');
+  glow.addColorStop(1, 'rgba(186, 220, 236, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.35, 0, Math.PI * 2);
+  ctx.fill();
+  const body = ctx.createRadialGradient(-r * 0.28, -r * 0.32, r * 0.1, 0, 0, r);
+  body.addColorStop(0, '#ffffff');
+  body.addColorStop(0.45, '#e7f4fb');
+  body.addColorStop(1, '#8eb8d0');
+  ctx.fillStyle = body;
+  ctx.shadowColor = '#d7f3ff';
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  for (let i = 0; i < 7; i++) {
+    const a = frame * 0.01 + i * 1.3;
+    const d = r * (0.25 + (i % 3) * 0.18);
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * d, Math.sin(a * 1.3) * d * 0.8, r * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawSnowBossHazards() {
+  ctx.save();
+  for (const ic of snowIcicles) {
+    const grad = ctx.createLinearGradient(ic.x, ic.base, ic.x, ic.tip);
+    grad.addColorStop(0, 'rgba(186, 214, 228, 0.55)');
+    grad.addColorStop(1, '#ffffff');
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = ic.loose ? '#ffffff' : '#9fd4ea';
+    ctx.lineWidth = 2;
+    const halfW = ic.slim ? 8 : 16;
+    ctx.beginPath();
+    ctx.moveTo(ic.x, ic.tip);
+    ctx.lineTo(ic.x + halfW, ic.base);
+    ctx.lineTo(ic.x - halfW, ic.base);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  if (miniBossAttackState === 'gust') {
+    const play = PLAY_BOTTOM - PLAY_TOP;
+    ctx.save();
+    ctx.lineWidth = 2.5;
+    for (let i = 0; i < 36; i++) {
+      const y = PLAY_TOP + play * (0.18 + (i % 9) * 0.08);
+      const x = ((i * 83 - frame * 5) % (W + 140)) - 70;
+      ctx.strokeStyle = '#f7fbff';
+      ctx.globalAlpha = 0.45 + (i % 3) * 0.15;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - 64, y + 18);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  for (const ball of snowRollers) {
+    const dir = ball.vx < 0 ? -1 : 1;
+    const behind = -dir;
+    const r = ball.r;
+    ctx.save();
+    const streakLen = r * 3.6;
+    const wake = ctx.createLinearGradient(ball.x, ball.y, ball.x + behind * streakLen, ball.y);
+    wake.addColorStop(0, 'rgba(255,255,255,0.62)');
+    wake.addColorStop(0.22, 'rgba(214,236,246,0.32)');
+    wake.addColorStop(1, 'rgba(214,236,246,0)');
+    ctx.fillStyle = wake;
+    ctx.beginPath();
+    ctx.ellipse(ball.x + behind * streakLen * 0.42, ball.y, streakLen * 0.55, r * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#f7fbff';
+    for (let i = 0; i < 5; i++) {
+      const seed = i * 1.7 + frame * 0.22 + ball.y * 0.01;
+      const oy = (i - 2) * r * 0.26 + Math.sin(seed) * r * 0.06;
+      const len = r * (1.2 + (i % 3) * 0.38);
+      const start = ball.x + behind * r * 0.75;
+      ctx.globalAlpha = 0.4 + 0.45 * Math.abs(Math.sin(seed));
+      ctx.lineWidth = i === 2 ? 3.5 : 2;
+      ctx.beginPath();
+      ctx.moveTo(start, ball.y + oy);
+      ctx.lineTo(start + behind * len, ball.y + oy * 0.8);
+      ctx.stroke();
+    }
+
+    for (let i = 3; i >= 1; i--) {
+      const t = i / 3;
+      ctx.globalAlpha = 0.18 * (1 - t * 0.3);
+      ctx.fillStyle = '#e7f3fa';
+      ctx.beginPath();
+      ctx.ellipse(
+        ball.x + behind * r * (0.5 + i * 0.58),
+        ball.y + Math.sin(frame * 0.35 + i + ball.x * 0.02) * 2,
+        r * (1.05 + t * 0.22),
+        r * (0.58 - t * 0.08),
+        0, 0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    for (let i = 0; i < 6; i++) {
+      const t = (i + (frame * 0.5) % 1) / 6;
+      const px = ball.x + behind * r * (1.0 + t * 2.5);
+      const py = ball.y + Math.sin(frame * 0.55 + i * 1.8) * r * 0.36;
+      ctx.globalAlpha = 0.62 - t * 0.42;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(px, py, 1.5 + (1 - t) * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.translate(ball.x, ball.y);
+    ctx.scale(1.24, 0.86);
+    const grad = ctx.createRadialGradient(-r * 0.28, -r * 0.32, 2, 0, 0, r);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.72, '#d5ebf6');
+    grad.addColorStop(1, '#6ea4be');
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = '#f7fbff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.rotate(-ball.x * 0.08);
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    ctx.arc(-r * 0.16, -r * 0.32, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(110, 164, 190, 0.6)';
+    ctx.beginPath();
+    ctx.arc(r * 0.28, r * 0.08, r * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  if (miniBoss && miniBossAttackState === 'snowDying') {
+    const burstAge = frame - miniBossAttackStateStartFrame - SNOW_BOSS_DEATH_BURST;
+    if (burstAge >= 0 && burstAge < 28) {
+      const u = burstAge / 28;
+      ctx.globalAlpha = (1 - u) * 0.72;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(miniBoss.x, miniBoss.y, miniBoss.maxR * (0.5 + u * 5.2), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  for (const p of miniBossDeathAshParticles) {
+    ctx.globalAlpha = Math.max(0, 1 - p.life / p.maxLife);
+    ctx.fillStyle = '#f7fbff';
+    if (p.size > 4) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
+  }
+  ctx.restore();
+}
+
+function drawSnowArenaWall(theme, bossEntity) {
+  if (!bossEntity) return;
+  let wallX = bossEntity.restX + bossEntity.maxR + 150;
+  if (miniBossWallRecedeStartFrame !== -1) {
+    const recedeElapsed = frame - miniBossWallRecedeStartFrame;
+    const recedeProgress = Math.min(1, recedeElapsed / MINI_BOSS_WALL_RECEDE_DURATION);
+    const eased = recedeProgress * recedeProgress * recedeProgress;
+    wallX = wallX + ((W + 200) - wallX) * eased;
+  }
+  if (wallX >= W) return;
+  ctx.save();
+
+  const pulse = 0.72 + 0.28 * Math.sin(frame * 0.05);
+  const face = 84;
+
+  if (snowWallDetail.length === 0) {
+    const plates = [];
+    let y = 0;
+    while (y < H) {
+      const h = 52 + Math.random() * 36;
+      plates.push({ y, h, inset: 8 + Math.random() * 14, shade: Math.random() });
+      y += h;
+    }
+    const veins = [];
+    const veinCount = Math.max(6, Math.ceil(H / 70));
+    for (let i = 0; i < veinCount; i++) {
+      const points = [];
+      let cx = face * (0.28 + Math.random() * 0.45);
+      let cy = (i / veinCount) * H + Math.random() * 16;
+      const segments = 5 + Math.floor(Math.random() * 3);
+      for (let s = 0; s <= segments; s++) {
+        points.push({ x: cx, y: cy });
+        cx = Math.max(10, Math.min(face - 10, cx + (Math.random() - 0.5) * 20));
+        cy += (H / veinCount) / segments * 0.85 + Math.random() * 8;
+      }
+      veins.push({ points, phase: Math.random() * Math.PI * 2 });
+    }
+    const crystals = [];
+    for (let i = 0; i < 8; i++) {
+      crystals.push({
+        y: 28 + (i / 8) * (H - 70) + Math.random() * 18,
+        len: 12 + Math.random() * 16,
+        w: 5 + Math.random() * 4
+      });
+    }
+    const deepCracks = [];
+    for (let i = 0; i < 4; i++) {
+      deepCracks.push({
+        x: 30 + Math.random() * 160,
+        y: Math.random() * H * 0.2,
+        len: 180 + Math.random() * 220,
+        lean: (Math.random() - 0.5) * 40
+      });
+    }
+    snowWallDetail.push({ plates, veins, crystals, deepCracks });
+  }
+  const detail = snowWallDetail[0];
+
+  const beyond = ctx.createLinearGradient(wallX + face, 0, Math.min(W, wallX + face + 260), 0);
+  beyond.addColorStop(0, '#d5e8f2');
+  beyond.addColorStop(0.4, '#9ec3d4');
+  beyond.addColorStop(1, '#6f9aaf');
+  ctx.fillStyle = beyond;
+  ctx.fillRect(wallX + face, 0, W - wallX - face, H);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = 1;
+  for (let y = 14; y < H; y += 28) {
+    ctx.beginPath();
+    ctx.moveTo(wallX + face, y);
+    ctx.lineTo(W, y + 8);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 1.4;
+  for (const crack of detail.deepCracks) {
+    ctx.beginPath();
+    ctx.moveTo(wallX + face + crack.x, crack.y);
+    ctx.lineTo(wallX + face + crack.x + crack.lean, crack.y + crack.len);
+    ctx.stroke();
+  }
+
+  const glow = ctx.createLinearGradient(wallX - 46, 0, wallX + 10, 0);
+  glow.addColorStop(0, 'rgba(186,220,236,0)');
+  glow.addColorStop(1, `rgba(232,246,255,${0.42 * pulse})`);
+  ctx.fillStyle = glow;
+  ctx.fillRect(wallX - 46, 0, 56, H);
+
+  const ice = ctx.createLinearGradient(wallX, 0, wallX + face, 0);
+  ice.addColorStop(0, '#f7fbff');
+  ice.addColorStop(0.28, '#e4f2f8');
+  ice.addColorStop(0.7, '#b7d4e4');
+  ice.addColorStop(1, '#7eabc2');
+  ctx.fillStyle = ice;
+  ctx.fillRect(wallX, 0, face, H);
+
+  for (const plate of detail.plates) {
+    ctx.fillStyle = plate.shade > 0.55 ? 'rgba(255,255,255,0.34)' : 'rgba(70,120,146,0.2)';
+    ctx.fillRect(wallX + plate.inset, plate.y + 4, face - plate.inset - 12, Math.max(8, plate.h - 10));
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(wallX + 3, plate.y);
+    ctx.lineTo(wallX + face - 4, plate.y);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(90,130,150,0.55)';
+    ctx.beginPath();
+    ctx.arc(wallX + 14, plate.y + plate.h * 0.45, 2.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(wallX + face - 16, plate.y + plate.h * 0.45, 2.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.lineCap = 'round';
+  for (const vein of detail.veins) {
+    const veinPulse = 0.45 + 0.55 * Math.sin(frame * 0.05 + vein.phase);
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 + 0.5 * veinPulse})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(wallX + vein.points[0].x, vein.points[0].y);
+    for (let i = 1; i < vein.points.length; i++) ctx.lineTo(wallX + vein.points[i].x, vein.points[i].y);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(121,214,255,${0.25 * veinPulse})`;
+    ctx.lineWidth = 3.2;
+    ctx.stroke();
+  }
+
+  for (const crystal of detail.crystals) {
+    const grad = ctx.createLinearGradient(wallX - crystal.len, 0, wallX, 0);
+    grad.addColorStop(0, 'rgba(247,251,255,0.15)');
+    grad.addColorStop(1, 'rgba(247,251,255,0.95)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(wallX + 2, crystal.y);
+    ctx.lineTo(wallX - crystal.len, crystal.y + crystal.w);
+    ctx.lineTo(wallX + 2, crystal.y + crystal.w * 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = `rgba(255,255,255,${0.85 * pulse})`;
+  ctx.fillRect(wallX, 0, 3, H);
+  ctx.fillStyle = `rgba(121,214,255,${0.45 * pulse})`;
+  ctx.fillRect(wallX + 8, 0, 2, H);
 
   ctx.restore();
 }
@@ -17732,6 +19690,37 @@ function drawBackground(theme) {
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+    const zoneDist = distance - zoneStartDistance;
+    const storm = zoneDist > 680 ? Math.min(1, (zoneDist - 680) / 30) : 0;
+    if (storm > 0.04) {
+      const playHeight = PLAY_BOTTOM - PLAY_TOP;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, PLAY_TOP, W, playHeight);
+      ctx.clip();
+      ctx.fillStyle = 'rgba(214, 232, 242, ' + (0.07 * storm) + ')';
+      ctx.fillRect(0, PLAY_TOP, W, playHeight);
+      ctx.strokeStyle = '#f7fbff';
+      ctx.lineWidth = 1.6;
+      const count = Math.floor(96 * storm);
+      const span = playHeight + 70;
+      for (let i = 0; i < count; i++) {
+        const col = i % 16;
+        const row = Math.floor(i / 16);
+        const speed = 4.2 + (i % 5) * 0.85;
+        const drift = 2.4 + (i % 4) * 0.55;
+        const len = 12 + (i % 6) * 3;
+        const y = PLAY_TOP - 36 + ((row * 54 + col * 19 + frame * speed) % span);
+        const x = ((col + 0.5) * (W / 16) + row * 41 - frame * drift) % (W + 48);
+        const wrapped = x < 0 ? x + W + 48 : x;
+        ctx.globalAlpha = (0.28 + (i % 5) * 0.08) * storm;
+        ctx.beginPath();
+        ctx.moveTo(wrapped, y);
+        ctx.lineTo(wrapped - len * 0.65, y + len);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
   } else if (theme.bgStyle === 'embers') {
     drawInfernoHeatBackdrop(theme);
   } else if (theme.bgStyle === 'ruins') {
@@ -17875,6 +19864,207 @@ function drawBackground(theme) {
       ctx.globalAlpha = p.alpha;
       ctx.fillStyle = theme.accentA;
       ctx.fillRect(p.x, p.y, p.r, p.r);
+    }
+    ctx.globalAlpha = 1;
+  } else if (theme.bgStyle === 'chrome') {
+    const playHeight = PLAY_BOTTOM - PLAY_TOP;
+    const floorGlow = ctx.createLinearGradient(0, PLAY_BOTTOM - playHeight * 0.28, 0, PLAY_BOTTOM);
+    floorGlow.addColorStop(0, 'rgba(255, 225, 160, 0)');
+    floorGlow.addColorStop(0.55, 'rgba(255, 236, 190, 0.16)');
+    floorGlow.addColorStop(1, 'rgba(255, 254, 248, 0.28)');
+    ctx.fillStyle = floorGlow;
+    ctx.fillRect(0, PLAY_BOTTOM - playHeight * 0.28, W, playHeight * 0.28);
+    const roofGlow = ctx.createLinearGradient(0, PLAY_TOP, 0, PLAY_TOP + playHeight * 0.16);
+    roofGlow.addColorStop(0, 'rgba(255, 254, 248, 0.22)');
+    roofGlow.addColorStop(1, 'rgba(255, 209, 90, 0)');
+    ctx.fillStyle = roofGlow;
+    ctx.fillRect(0, PLAY_TOP, W, playHeight * 0.16);
+    for (let i = 0; i < bgParticles.length; i++) {
+      const p = bgParticles[i];
+      const spark = p.kind === 'spark';
+      ctx.globalAlpha = p.alpha;
+      ctx.strokeStyle = spark || i % 3 !== 0 ? '#fffef8' : '#ffd15a';
+      ctx.lineWidth = spark ? 1.4 : (p.thick || 1.2);
+      ctx.beginPath();
+      ctx.moveTo(p.x + (p.len || 12), p.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else if (theme.bgStyle === 'copper') {
+    const playHeight = PLAY_BOTTOM - PLAY_TOP;
+    const zoneT = Math.max(0, Math.min(1, (distance - zoneStartDistance) / THEME_DISTANCE));
+    const sunR = 78;
+    // One slow pass for the whole zone: right edge at the start, left edge at the portal.
+    const sunX = (W - sunR * 0.35) - zoneT * (W - sunR * 0.7);
+    const sunY = PLAY_TOP + playHeight * 0.22;
+    ctx.save();
+    const halo = ctx.createRadialGradient(sunX, sunY, sunR * 0.2, sunX, sunY, sunR * 2.4);
+    halo.addColorStop(0, 'rgba(255, 186, 90, 0.55)');
+    halo.addColorStop(0.45, 'rgba(255, 110, 40, 0.18)');
+    halo.addColorStop(1, 'rgba(255, 80, 20, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunR * 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    const sun = ctx.createRadialGradient(sunX, sunY - 8, 4, sunX, sunY, sunR);
+    sun.addColorStop(0, '#fff3d2');
+    sun.addColorStop(0.55, '#ff8a32');
+    sun.addColorStop(1, '#e25a18');
+    ctx.fillStyle = sun;
+    ctx.shadowColor = '#ff9a3c';
+    ctx.shadowBlur = 28;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    const wash = ctx.createLinearGradient(0, PLAY_BOTTOM - playHeight * 0.42, 0, PLAY_BOTTOM);
+    wash.addColorStop(0, 'rgba(255, 120, 40, 0)');
+    wash.addColorStop(0.55, 'rgba(255, 110, 40, 0.16)');
+    wash.addColorStop(1, 'rgba(255, 150, 60, 0.28)');
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, PLAY_BOTTOM - playHeight * 0.42, W, playHeight * 0.42);
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 14; i++) {
+      const y = PLAY_TOP + 30 + ((i * 47 + frame * (1.6 + (i % 3) * 0.45)) % (playHeight * 0.62));
+      const x = ((i * 180 - frame * (3.2 + (i % 4))) % (W + 260)) - 80;
+      ctx.globalAlpha = 0.18 + (i % 3) * 0.08;
+      ctx.strokeStyle = i % 2 === 0 ? '#ffb15a' : '#fff1d0';
+      ctx.lineWidth = i % 3 === 0 ? 2.4 : 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 70 + (i % 4) * 28, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, PLAY_BOTTOM);
+    for (let x = 0; x <= W; x += 10) {
+      const y = PLAY_BOTTOM - 54 - Math.sin(x * 0.006 + frame * 0.01) * 14;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, PLAY_BOTTOM);
+    ctx.closePath();
+    const chrome = ctx.createLinearGradient(0, PLAY_BOTTOM - 80, 0, PLAY_BOTTOM);
+    chrome.addColorStop(0, 'rgba(255, 196, 130, 0.55)');
+    chrome.addColorStop(0.18, '#6a5038');
+    chrome.addColorStop(1, '#100c0a');
+    ctx.fillStyle = chrome;
+    ctx.fill();
+    ctx.strokeStyle = '#ffd7a4';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#ff9a3c';
+    ctx.shadowBlur = 12;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  } else if (theme.bgStyle === 'outrun') {
+    drawSynthwaveBackdropSun(theme);
+    const horizonY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.58;
+    const vanishX = W * 0.5;
+    const groundHeight = PLAY_BOTTOM - horizonY;
+    ctx.save();
+    ctx.strokeStyle = theme.accentA;
+    ctx.lineWidth = 1.15;
+    const scrollPhase = (frame * 0.04) % 1;
+    for (let i = 1; i <= 16; i++) {
+      const depth = i + scrollPhase;
+      const y = horizonY + groundHeight / depth;
+      if (y > PLAY_BOTTOM || y < horizonY) continue;
+      const fadeIn = Math.min(1, (y - horizonY) / (groundHeight * 0.12));
+      ctx.globalAlpha = 0.55 * fadeIn;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.5;
+    const spread = W * 2.4;
+    for (let i = -16; i <= 16; i++) {
+      const bottomX = vanishX + (i / 16) * spread;
+      ctx.beginPath();
+      ctx.moveTo(vanishX, horizonY);
+      ctx.lineTo(bottomX, PLAY_BOTTOM);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  } else if (theme.bgStyle === 'solar') {
+    const playHeight = PLAY_BOTTOM - PLAY_TOP;
+    const bandH = playHeight * 0.2;
+    const bandTop = PLAY_BOTTOM - bandH;
+    const sunX = W * 0.62;
+    const sunY = bandTop + 6;
+    const sunR = 42;
+    const sun = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, sunR);
+    sun.addColorStop(0, '#fffef6');
+    sun.addColorStop(0.7, '#ffe08a');
+    sun.addColorStop(1, 'rgba(255, 196, 90, 0)');
+    ctx.fillStyle = sun;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+    ctx.fill();
+    const chrome = ctx.createLinearGradient(0, bandTop - 20, 0, PLAY_BOTTOM);
+    chrome.addColorStop(0, 'rgba(255, 236, 196, 0)');
+    chrome.addColorStop(0.22, 'rgba(255, 214, 150, 0.42)');
+    chrome.addColorStop(0.55, 'rgba(255, 168, 90, 0.62)');
+    chrome.addColorStop(1, 'rgba(255, 126, 70, 0.78)');
+    ctx.fillStyle = chrome;
+    ctx.fillRect(0, bandTop - 20, W, bandH + 20);
+    ctx.strokeStyle = 'rgba(255, 250, 232, 0.92)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, bandTop + 4);
+    ctx.lineTo(W, bandTop + 4);
+    ctx.stroke();
+    const mirror = ctx.createRadialGradient(sunX, bandTop + 28, 2, sunX, bandTop + 36, 70);
+    mirror.addColorStop(0, 'rgba(255, 248, 220, 0.55)');
+    mirror.addColorStop(1, 'rgba(255, 196, 110, 0)');
+    ctx.fillStyle = mirror;
+    ctx.beginPath();
+    ctx.ellipse(sunX, bandTop + 34, 54, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineCap = 'round';
+    for (let p of bgParticles) {
+      ctx.globalAlpha = p.alpha;
+      ctx.strokeStyle = '#fff6df';
+      ctx.lineWidth = p.thick;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + p.len, p.y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else if (theme.bgStyle === 'kelp') {
+    ctx.save();
+    for (let i = 0; i < 5; i++) {
+      const x = ((i * 290 - frame * 0.22) % (W + 240)) - 120;
+      const shaft = ctx.createLinearGradient(x, PLAY_TOP, x + 30, PLAY_BOTTOM);
+      shaft.addColorStop(0, 'rgba(190, 255, 226, 0.10)');
+      shaft.addColorStop(0.45, 'rgba(120, 210, 180, 0.03)');
+      shaft.addColorStop(1, 'rgba(80, 160, 140, 0)');
+      ctx.fillStyle = shaft;
+      ctx.beginPath();
+      ctx.moveTo(x, PLAY_TOP);
+      ctx.lineTo(x + 64, PLAY_TOP);
+      ctx.lineTo(x + 150, PLAY_BOTTOM);
+      ctx.lineTo(x + 36, PLAY_BOTTOM);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    for (let p of bgParticles) {
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = '#d8fff2';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = p.alpha * 0.45;
+      ctx.strokeStyle = '#9dffe0';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
   } else if (theme.bgStyle === 'storm') {
@@ -19298,10 +21488,10 @@ function drawIceChunk(g, theme) {
   ctx.shadowColor = theme.accentB;
   ctx.shadowBlur = 12;
   ctx.beginPath();
-  const sides = 6;
+  const sides = g.berg ? 8 : 6;
   for (let i = 0; i < sides; i++) {
     const a = (i / sides) * Math.PI * 2 - Math.PI / 2;
-    const rr = g.r * (i % 2 === 0 ? 1 : 0.82);
+    const rr = g.r * (i % 2 === 0 ? 1 : (g.berg ? 0.7 : 0.82));
     const px = Math.cos(a) * rr;
     const py = Math.sin(a) * rr;
     if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
@@ -19312,7 +21502,237 @@ function drawIceChunk(g, theme) {
   ctx.strokeStyle = 'rgba(255,255,255,0.85)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
+  if (g.calving && !g.calved) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-g.r * 0.42, g.r * 0.05);
+    ctx.lineTo(-g.r * 0.08, g.r * 0.34);
+    ctx.lineTo(g.r * 0.16, g.r * 0.58);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-g.r * 0.55, g.r * 0.28);
+    ctx.lineTo(g.r * 0.05, g.r * 0.16);
+    ctx.lineTo(g.r * 0.42, g.r * 0.62);
+    ctx.lineTo(g.r * 0.02, g.r * 0.98);
+    ctx.lineTo(-g.r * 0.48, g.r * 0.72);
+    ctx.closePath();
+    ctx.fillStyle = '#f7fcff';
+    ctx.fill();
+    ctx.stroke();
+  }
   ctx.restore();
+}
+
+function drawIceFloe(g, theme) {
+  const left = g.x - g.width / 2;
+  const top = g.y - g.thickness / 2;
+  const r = Math.min(8, g.thickness / 2);
+  ctx.save();
+  ctx.shadowColor = theme.accentB;
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.moveTo(left + r, top);
+  ctx.lineTo(left + g.width - r, top);
+  ctx.quadraticCurveTo(left + g.width, top, left + g.width, top + r);
+  ctx.lineTo(left + g.width, top + g.thickness - r);
+  ctx.quadraticCurveTo(left + g.width, top + g.thickness, left + g.width - r, top + g.thickness);
+  ctx.lineTo(left + r, top + g.thickness);
+  ctx.quadraticCurveTo(left, top + g.thickness, left, top + g.thickness - r);
+  ctx.lineTo(left, top + r);
+  ctx.quadraticCurveTo(left, top, left + r, top);
+  ctx.closePath();
+  const body = ctx.createLinearGradient(left, top, left, top + g.thickness);
+  body.addColorStop(0, '#f7fcff');
+  body.addColorStop(0.42, '#b7e4f4');
+  body.addColorStop(1, '#3f86a6');
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.moveTo(left + g.width * 0.28, top + 5);
+  ctx.lineTo(g.x, g.y + 1);
+  ctx.lineTo(left + g.width * 0.66, top + g.thickness - 5);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawIceSpire(g, theme) {
+  const fromTop = g.anchor === 'top';
+  const half = g.width / 2;
+  const left = g.x - half;
+  const innerTop = g.y - g.height / 2;
+  const innerBot = g.y + g.height / 2;
+  const root = fromTop ? innerTop - 20 : innerBot + 20;
+  const tip = fromTop ? innerBot : innerTop;
+  const yAt = (frac) => fromTop ? root + (tip - root) * frac : root - (root - tip) * frac;
+  const poly = iceSpirePolygon(g);
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.moveTo(poly[0][0], poly[0][1]);
+  for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]);
+  ctx.closePath();
+  const body = ctx.createLinearGradient(g.x, fromTop ? root : tip, g.x, fromTop ? tip : root);
+  body.addColorStop(0, theme.accentA);
+  body.addColorStop(1, theme.accentB);
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.moveTo(g.x + half * 0.08, tip);
+  ctx.lineTo(g.x - half * 0.12, root);
+  ctx.moveTo(left + half * 0.38, yAt(0.97));
+  ctx.lineTo(left + half * 0.12, yAt(0.4));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSnowGust(g, theme) {
+  const left = g.x - g.width / 2;
+  const top = g.y - g.height / 2;
+  const down = g.push >= 0;
+  const specks = [
+    [0.18, 0.22, 13],
+    [0.42, 0.58, 9],
+    [0.67, 0.3, 16],
+    [0.84, 0.72, 8],
+    [0.3, 0.84, 11],
+    [0.55, 0.12, 7]
+  ];
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left - 4, top - 4, g.width + 8, g.height + 8);
+  ctx.clip();
+  const shift = (frame * 1.6) % g.height;
+  ctx.lineWidth = 1.25;
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  for (let i = 0; i < specks.length; i++) {
+    const s = specks[i];
+    const x = left + s[0] * g.width;
+    let y = top + s[1] * g.height + (down ? shift : -shift);
+    y = top + ((y - top) % g.height + g.height) % g.height;
+    const r = s[2];
+    const grad = ctx.createRadialGradient(x - 2, y - 3, 1, x, y, r);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(1, theme.accentB);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 - Math.PI / 2 + i;
+      const rr = r * (k % 2 === 0 ? 1 : 0.66);
+      const px = x + Math.cos(a) * rr;
+      const py = y + Math.sin(a) * rr;
+      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawIceArch(g, theme) {
+  const fromTop = g.anchor === 'top';
+  const half = g.width / 2;
+  const left = g.x - half;
+  const right = g.x + half;
+  const innerTop = g.y - g.height / 2;
+  const innerBot = g.y + g.height / 2;
+  const root = fromTop ? innerTop - 20 : innerBot + 20;
+  const tip = fromTop ? innerBot : innerTop;
+  const yAt = (frac) => fromTop ? root + (tip - root) * frac : root - (root - tip) * frac;
+  const holeLeft = g.x - g.holeW / 2;
+  const holeRight = g.x + g.holeW / 2;
+  const capY = fromTop ? g.holeY + g.holeH / 2 : g.holeY - g.holeH / 2;
+  ctx.save();
+  ctx.shadowBlur = 0;
+  const body = ctx.createLinearGradient(g.x, fromTop ? root : tip, g.x, fromTop ? tip : root);
+  body.addColorStop(0, theme.accentA);
+  body.addColorStop(1, theme.accentB);
+  ctx.fillStyle = body;
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+  ctx.moveTo(left - 14, root);
+  ctx.lineTo(left + 8, yAt(0.38));
+  ctx.lineTo(left + half * 0.28, yAt(0.62));
+  ctx.lineTo(g.x - half * 0.08, yAt(0.84));
+  ctx.lineTo(g.x - 4, tip);
+  ctx.lineTo(g.x + half * 0.12, yAt(0.9));
+  ctx.lineTo(holeLeft, capY);
+  ctx.lineTo(holeLeft, root);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(right + 14, root);
+  ctx.lineTo(right - 6, yAt(0.34));
+  ctx.lineTo(right - half * 0.22, yAt(0.6));
+  ctx.lineTo(g.x + half * 0.16, yAt(0.82));
+  ctx.lineTo(g.x + 8, tip);
+  ctx.lineTo(g.x - half * 0.02, yAt(0.92));
+  ctx.lineTo(holeRight, capY);
+  ctx.lineTo(holeRight, root);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.moveTo(left + 10, yAt(0.55));
+  ctx.lineTo(holeLeft - 4, root);
+  ctx.moveTo(right - 8, yAt(0.5));
+  ctx.lineTo(holeRight + 2, root);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSnowball(g) {
+  const r = g.r;
+  ctx.save();
+  ctx.translate(g.x, g.y);
+  const body = ctx.createRadialGradient(-r * 0.28, -r * 0.32, r * 0.1, 0, 0, r);
+  body.addColorStop(0, '#ffffff');
+  body.addColorStop(0.55, '#f4fbff');
+  body.addColorStop(1, '#9fd4ea');
+  ctx.fillStyle = body;
+  ctx.shadowColor = 'rgba(180, 220, 235, 0.45)';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath();
+  ctx.arc(-r * 0.22, -r * 0.28, r * 0.28, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, r - 1, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawIceCalve(g, theme) {
+  drawIceChunk({
+    x: g.x,
+    y: g.y,
+    r: Math.max(g.width, g.thickness) * 0.46,
+    berg: true,
+    rotSeed: 0.6,
+    spin: 0
+  }, theme);
 }
 
 function drawAsteroid(g, theme) {
@@ -19486,6 +21906,450 @@ function drawGravityWellBackdrop(theme) {
   ctx.fillStyle = core;
   ctx.beginPath();
   ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawJelly(g) {
+  const pose = jellyPose(g);
+  ctx.save();
+  ctx.lineCap = 'round';
+  const glow = ctx.createRadialGradient(pose.x, pose.y - 4, 4, pose.x, pose.y, pose.bellR + 18);
+  glow.addColorStop(0, 'rgba(244, 232, 255, 0.85)');
+  glow.addColorStop(0.45, 'rgba(186, 156, 230, 0.35)');
+  glow.addColorStop(1, 'rgba(186, 156, 230, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(pose.x, pose.y, pose.bellR + 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(214, 196, 255, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(pose.x, pose.y, pose.bellR, Math.PI, 0);
+  ctx.quadraticCurveTo(pose.x + pose.bellR * 0.2, pose.y + pose.bellR * 0.85, pose.x, pose.y + pose.bellR * 0.35);
+  ctx.quadraticCurveTo(pose.x - pose.bellR * 0.2, pose.y + pose.bellR * 0.85, pose.x - pose.bellR, pose.y);
+  ctx.fillStyle = 'rgba(228, 214, 255, 0.72)';
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(176, 150, 214, 0.9)';
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(pose.x - 6, pose.y + pose.bellR * 0.2);
+  ctx.quadraticCurveTo(pose.x + (pose.tx - pose.x) * 0.5, pose.y + pose.tent * 0.55, pose.tx, pose.ty);
+  ctx.moveTo(pose.x + 7, pose.y + pose.bellR * 0.15);
+  ctx.quadraticCurveTo(pose.x - (pose.tx - pose.x) * 0.35, pose.y + pose.tent * 0.6, pose.tx2, pose.ty2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSponges(g) {
+  const tubes = spongeTubes(g).slice().sort((a, b) => a.h - b.h);
+  ctx.save();
+  for (const tube of tubes) {
+    const topX = tube.x + tube.lean;
+    const topY = PLAY_BOTTOM - tube.h;
+    const hw = tube.w / 2;
+    ctx.beginPath();
+    ctx.moveTo(tube.x - hw - 3, PLAY_BOTTOM);
+    ctx.lineTo(topX - hw, topY + hw * 0.42);
+    ctx.quadraticCurveTo(topX - hw * 0.15, topY + 2, topX, topY + hw * 0.3);
+    ctx.quadraticCurveTo(topX + hw * 0.15, topY + 2, topX + hw, topY + hw * 0.42);
+    ctx.lineTo(tube.x + hw + 3, PLAY_BOTTOM);
+    ctx.closePath();
+    const body = ctx.createLinearGradient(topX - hw, topY, topX + hw, topY);
+    body.addColorStop(0, '#f6e2b4');
+    body.addColorStop(0.42, '#e0b15c');
+    body.addColorStop(1, '#a56b2e');
+    ctx.fillStyle = body;
+    ctx.fill();
+    ctx.fillStyle = '#f8e7c4';
+    ctx.beginPath();
+    ctx.ellipse(topX, topY + hw * 0.3, hw * 0.92, hw * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#4a2c12';
+    ctx.beginPath();
+    ctx.ellipse(topX, topY + hw * 0.34, hw * 0.52, hw * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawSchool(g) {
+  const left = g.x - g.width / 2;
+  const top = g.y - g.height / 2;
+  const count = Math.max(18, Math.round(g.width * g.height / 2600));
+  ctx.save();
+  for (let i = 0; i < count; i++) {
+    const col = (i * 0.41 + 0.07) % 1;
+    const row = ((i * 5) % 7) / 7;
+    const fx = left + 18 + col * (g.width - 40);
+    const fy = top + 10 + row * (g.height - 20) + Math.sin(frame * 0.09 + i) * 2;
+    const len = 13 + (i % 3) * 3;
+    ctx.fillStyle = i % 2 ? '#e7fff8' : '#7dcec0';
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, len * 0.48, 3.4, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(fx + len * 0.28, fy);
+    ctx.lineTo(fx + len * 0.62, fy - 3.4);
+    ctx.lineTo(fx + len * 0.62, fy + 3.4);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawUrchin(g) {
+  const reach = urchinReach(g);
+  const show = Math.max(reach, g.coreR + g.spine * 0.45);
+  const y = urchinCenter(g);
+  ctx.save();
+  ctx.strokeStyle = '#d7fff2';
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.85;
+  const spines = g.coreR > 22 ? 18 : 14;
+  for (let i = 0; i < spines; i++) {
+    const a = (i / spines) * Math.PI * 2 + g.phase;
+    ctx.beginPath();
+    ctx.moveTo(g.x + Math.cos(a) * (g.coreR * 0.45), y + Math.sin(a) * (g.coreR * 0.45));
+    ctx.lineTo(g.x + Math.cos(a) * show, y + Math.sin(a) * show);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  const body = ctx.createRadialGradient(g.x - 3, y - 3, 2, g.x, y, g.coreR);
+  body.addColorStop(0, '#35524e');
+  body.addColorStop(1, '#101816');
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.arc(g.x, y, g.coreR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawNeonBar(g, theme) {
+  const left = g.x - g.width / 2;
+  const top = g.y - g.thick / 2;
+  const color = g.hot ? theme.accentB : theme.accentA;
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = color;
+  ctx.fillRect(left, top, g.width, g.thick);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#fff7ff';
+  ctx.fillRect(left, g.y - 1.5, g.width, 3);
+  ctx.restore();
+}
+
+function drawMarquee(g) {
+  const left = g.x - g.width / 2;
+  const top = g.anchor === 'ceiling' ? PLAY_TOP : PLAY_BOTTOM - g.height;
+  ctx.save();
+  const grad = ctx.createLinearGradient(0, top, 0, top + g.height);
+  grad.addColorStop(0, 'rgba(255, 154, 60, 0.28)');
+  grad.addColorStop(1, 'rgba(216, 255, 106, 0.10)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(left, top, g.width, g.height);
+  ctx.strokeStyle = '#ff9a3c';
+  ctx.shadowColor = '#ff9a3c';
+  ctx.shadowBlur = 16;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(left, top, g.width, g.height);
+  ctx.shadowBlur = 0;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left + 6, top + 6, g.width - 12, g.height - 12);
+  ctx.clip();
+  const scroll = (frame * 1.8 + g.x) % 36;
+  for (let row = 0; row < Math.ceil(g.height / 36) + 2; row++) {
+    const y = top - 36 + row * 36 + 12 - scroll;
+    ctx.globalAlpha = row % 2 === 0 ? 0.85 : 0.45;
+    ctx.fillStyle = row % 2 === 0 ? '#ffb15a' : '#d8ff6a';
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 8;
+    ctx.fillRect(left + 18, y, g.width - 36, 10);
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#fff6d8';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const lip = g.anchor === 'ceiling' ? top + g.height - 1 : top + 1;
+  ctx.moveTo(left + 4, lip);
+  ctx.lineTo(left + g.width - 4, lip);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawCourier(g) {
+  const pods = courierPods(g);
+  ctx.save();
+  if (pods.length) {
+    ctx.strokeStyle = '#ff9a3c';
+    ctx.shadowColor = '#ff9a3c';
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 3;
+    for (let i = 1; i < pods.length; i++) {
+      if (pods[i] - pods[i - 1] > 120) continue;
+      ctx.beginPath();
+      ctx.moveTo(g.x, pods[i - 1]);
+      ctx.lineTo(g.x, pods[i]);
+      ctx.stroke();
+    }
+  }
+  for (const y of pods) {
+    ctx.shadowColor = '#ff9a3c';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#1a120c';
+    ctx.strokeStyle = '#ffb15a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(g.x, y, g.podR + 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    const blink = 0.65 + 0.35 * Math.sin(frame * 0.18 + y);
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = blink > 0.8 ? '#fff6d2' : '#d8ff6a';
+    ctx.beginPath();
+    ctx.arc(g.x, y, g.podR * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function updateHeadlamp(g) {
+  const t = frame + g.baseY * 0.37;
+  const jump = Math.floor(t / 16);
+  const lurch = Math.floor(t / 41);
+  if (g.jumpBucket !== jump) {
+    g.jumpBucket = jump;
+    g.driftTarget = Math.sin(jump * 12.9898 + g.baseY * 0.013) * 64;
+  }
+  if (g.lurchBucket !== lurch) {
+    g.lurchBucket = lurch;
+    g.driftTarget += Math.sin(lurch * 78.233 + 1.4) * 36;
+  }
+  g.driftTarget = Math.max(-64, Math.min(64, g.driftTarget));
+  const step = Math.max(-3.4, Math.min(3.4, g.driftTarget - g.driftY));
+  g.driftY += step;
+  const lo = PLAY_TOP + g.r + 12;
+  const hi = PLAY_BOTTOM - g.r - 12;
+  g.y = Math.max(lo, Math.min(hi, g.baseY + g.driftY));
+}
+
+function drawHeadlamp(g) {
+  const flicker = 0.5 + 0.5 * Math.sin(frame * 0.55 + g.baseY * 0.03);
+  const sweep = Math.sin(frame * 0.09 + g.baseY * 0.02) * 0.16;
+  ctx.save();
+  ctx.translate(g.x, g.y);
+  ctx.rotate(sweep);
+  const beam = ctx.createLinearGradient(-g.r * 5.4, 0, 0, 0);
+  beam.addColorStop(0, 'rgba(216, 255, 106, 0)');
+  beam.addColorStop(0.5, 'rgba(255, 210, 120, 0.28)');
+  beam.addColorStop(1, 'rgba(255, 246, 216, 0.8)');
+  ctx.globalAlpha = 0.35 + 0.55 * flicker;
+  ctx.fillStyle = beam;
+  ctx.beginPath();
+  ctx.moveTo(-g.r * 0.15, -g.r * 0.28);
+  ctx.lineTo(-g.r * 5.4, -g.r * 1.25);
+  ctx.lineTo(-g.r * 5.4, g.r * 1.25);
+  ctx.lineTo(-g.r * 0.15, g.r * 0.28);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#120e0a';
+  ctx.strokeStyle = '#ffb15a';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = '#d8ff6a';
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.arc(0, 0, g.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#d8ff6a';
+  ctx.lineWidth = 2;
+  ctx.rotate(frame * 0.16);
+  for (let i = 0; i < 3; i++) {
+    ctx.rotate((Math.PI * 2) / 3);
+    ctx.beginPath();
+    ctx.arc(0, 0, g.r * 0.62, -0.42, 0.42);
+    ctx.stroke();
+  }
+  ctx.restore();
+  const hot = flicker > 0.45;
+  ctx.fillStyle = hot ? '#fff6d8' : '#d8ff6a';
+  ctx.shadowColor = ctx.fillStyle;
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  ctx.arc(0, 0, g.r * (hot ? 0.36 : 0.2), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBloom(g) {
+  const r = bloomRadius(g);
+  ctx.save();
+  ctx.lineCap = 'round';
+  const grad = ctx.createRadialGradient(g.x, PLAY_BOTTOM - r * 0.55, 4, g.x, PLAY_BOTTOM, r);
+  grad.addColorStop(0, '#fff6d8');
+  grad.addColorStop(0.5, '#ff8a32');
+  grad.addColorStop(1, '#ff5a14');
+  ctx.fillStyle = grad;
+  ctx.shadowColor = '#ff9a3c';
+  ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM, r, Math.PI, 0, false);
+  ctx.fill();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#fff6d8';
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM, r, Math.PI, 0, false);
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#d8ff6a';
+  ctx.shadowBlur = 10;
+  for (const frac of [0.62, 0.33]) {
+    ctx.beginPath();
+    ctx.arc(g.x, PLAY_BOTTOM, Math.max(12, r * frac), Math.PI, 0, false);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#140e0a';
+  ctx.strokeStyle = '#ffb15a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM - 10, 16, Math.PI, 0, false);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fff6d8';
+  ctx.shadowColor = '#fff6d8';
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM - 16, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCoil(g) {
+  const firing = coilFiring(g);
+  const top = PLAY_BOTTOM - g.sparkH;
+  const left = g.x - g.halfW;
+  const pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(frame * 0.25));
+  ctx.save();
+  ctx.fillStyle = firing ? 'rgba(216, 255, 106, 0.55)' : 'rgba(255, 154, 60, ' + (0.12 + pulse * 0.18) + ')';
+  ctx.shadowColor = firing ? '#d8ff6a' : '#ff9a3c';
+  ctx.shadowBlur = firing ? 24 : 12;
+  ctx.fillRect(left, top, g.halfW * 2, g.sparkH);
+  ctx.shadowBlur = firing ? 16 : 8;
+  ctx.strokeStyle = firing ? '#fff6d8' : '#ffb15a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(left, top, g.halfW * 2, g.sparkH);
+  if (firing) {
+    ctx.shadowBlur = 18;
+    ctx.strokeStyle = '#d8ff6a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(g.x, top);
+    ctx.lineTo(g.x, PLAY_BOTTOM);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = '#1a120c';
+  ctx.strokeStyle = firing ? '#d8ff6a' : '#ff9a3c';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM - 14, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = firing ? '#fff6d8' : '#ffb15a';
+  ctx.beginPath();
+  ctx.arc(g.x, PLAY_BOTTOM - 14, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function wedgePolygon(g) {
+  const half = g.width / 2;
+  const lean = g.lean || 0;
+  if (g.anchor === 'ceiling') {
+    return [
+      [g.x - half, PLAY_TOP],
+      [g.x + half, PLAY_TOP],
+      [g.x + lean, PLAY_TOP + g.height]
+    ];
+  }
+  return [
+    [g.x - half, PLAY_BOTTOM],
+    [g.x + half, PLAY_BOTTOM],
+    [g.x + lean, PLAY_BOTTOM - g.height]
+  ];
+}
+
+function drawWedge(g, theme) {
+  const poly = wedgePolygon(g);
+  const apex = poly[2];
+  ctx.save();
+  ctx.shadowBlur = 0;
+  const glow = ctx.createLinearGradient(apex[0], apex[1], g.x, g.anchor === 'ceiling' ? PLAY_TOP : PLAY_BOTTOM);
+  glow.addColorStop(0, '#fffef8');
+  glow.addColorStop(0.45, '#fff0b0');
+  glow.addColorStop(1, '#ffd15a');
+  ctx.beginPath();
+  ctx.moveTo(poly[0][0], poly[0][1]);
+  ctx.lineTo(poly[1][0], poly[1][1]);
+  ctx.lineTo(poly[2][0], poly[2][1]);
+  ctx.closePath();
+  ctx.fillStyle = '#ffe08a';
+  ctx.fill();
+  ctx.fillStyle = glow;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 252, 236, 0.95)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawKelp(g, theme) {
+  const pose = kelpPose(g);
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#14584a';
+  ctx.lineWidth = pose.thick;
+  ctx.beginPath();
+  ctx.moveTo(pose.x0, pose.y0);
+  ctx.quadraticCurveTo(pose.mx, pose.my, pose.x1, pose.y1);
+  ctx.stroke();
+  ctx.strokeStyle = theme.accentA || '#b8ffe6';
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = Math.max(2, pose.thick * 0.22);
+  ctx.stroke();
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = '#1f8f72';
+  const steps = 5;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / (steps + 1);
+    const omt = 1 - t;
+    const x = omt * omt * pose.x0 + 2 * omt * t * pose.mx + t * t * pose.x1;
+    const y = omt * omt * pose.y0 + 2 * omt * t * pose.my + t * t * pose.y1;
+    const side = i % 2 === 0 ? 1 : -1;
+    const dx = pose.x1 - pose.x0;
+    const dy = pose.y1 - pose.y0;
+    const len = Math.max(1, Math.hypot(dx, dy));
+    const nx = -dy / len;
+    const ny = dx / len;
+    const fx = x + nx * side * (pose.thick * 0.55 + 8);
+    const fy = y + ny * side * (pose.thick * 0.35 + 6);
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, 11, 5, Math.atan2(dy, dx) + side * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#d8fff2';
+  ctx.beginPath();
+  ctx.arc(pose.x1, pose.y1, pose.thick * 0.28, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -20318,6 +23182,30 @@ function drawGates(theme) {
       drawAsteroid(g, theme);
       continue;
     }
+    if (g.type === 'icefloe') {
+      drawIceFloe(g, theme);
+      continue;
+    }
+    if (g.type === 'icespire') {
+      drawIceSpire(g, theme);
+      continue;
+    }
+    if (g.type === 'snowgust') {
+      drawSnowGust(g, theme);
+      continue;
+    }
+    if (g.type === 'icearch') {
+      drawIceArch(g, theme);
+      continue;
+    }
+    if (g.type === 'snowball') {
+      drawSnowball(g);
+      continue;
+    }
+    if (g.type === 'icecalve') {
+      drawIceCalve(g, theme);
+      continue;
+    }
     if (g.type === 'splitrock') {
       drawSplitRock(g, theme);
       continue;
@@ -20484,6 +23372,54 @@ function drawGates(theme) {
     }
     if (g.type === 'hbar') {
       drawHBar(g, theme);
+      continue;
+    }
+    if (g.type === 'marquee') {
+      drawMarquee(g);
+      continue;
+    }
+    if (g.type === 'courier') {
+      drawCourier(g);
+      continue;
+    }
+    if (g.type === 'headlamp') {
+      drawHeadlamp(g);
+      continue;
+    }
+    if (g.type === 'bloom') {
+      drawBloom(g);
+      continue;
+    }
+    if (g.type === 'coil') {
+      drawCoil(g);
+      continue;
+    }
+    if (g.type === 'neonbar') {
+      drawNeonBar(g, theme);
+      continue;
+    }
+    if (g.type === 'wedge') {
+      drawWedge(g, theme);
+      continue;
+    }
+    if (g.type === 'kelp') {
+      drawKelp(g, theme);
+      continue;
+    }
+    if (g.type === 'sponge') {
+      drawSponges(g);
+      continue;
+    }
+    if (g.type === 'jelly') {
+      drawJelly(g);
+      continue;
+    }
+    if (g.type === 'school') {
+      drawSchool(g);
+      continue;
+    }
+    if (g.type === 'urchin') {
+      drawUrchin(g);
       continue;
     }
     if (g.type === 'lbolt') {
@@ -21778,6 +24714,28 @@ function drawTerrain(theme) {
       if (i === 0) ctx.moveTo(s.x, s.bottomY - 3); else ctx.lineTo(s.x, s.bottomY - 3);
     });
     ctx.stroke();
+
+    const mounds = terrainSegments.filter(s => s.topY < PLAY_TOP - 8 && s.bottomY < PLAY_BOTTOM - 16);
+    if (mounds.length > 1) {
+      const snow = ctx.createLinearGradient(0, PLAY_BOTTOM - 220, 0, PLAY_BOTTOM);
+      snow.addColorStop(0, '#f7fcff');
+      snow.addColorStop(0.4, '#e7f4fb');
+      snow.addColorStop(1, '#b7d7e8');
+      ctx.fillStyle = snow;
+      ctx.beginPath();
+      ctx.moveTo(mounds[0].x, PLAY_BOTTOM + 4);
+      for (const s of mounds) ctx.lineTo(s.x, s.bottomY);
+      ctx.lineTo(mounds[mounds.length - 1].x, PLAY_BOTTOM + 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      mounds.forEach((s, i) => {
+        if (i === 0) ctx.moveTo(s.x, s.bottomY); else ctx.lineTo(s.x, s.bottomY);
+      });
+      ctx.stroke();
+    }
   }
 
   // fork island: a solid mass splitting the passage -- draw only the contiguous
@@ -22050,7 +25008,8 @@ function draw() {
   // those rendering on top of it
   if (theme.isBossZone) drawBossArenaBarrierWall(theme, boss);
   if (theme.isMiniBossZone && miniBoss && theme.miniBossVariant !== 'core') {
-    drawBossArenaObsidianWall(theme, miniBoss);
+    if (theme.miniBossVariant === 'snow') drawSnowArenaWall(theme, miniBoss);
+    else drawBossArenaObsidianWall(theme, miniBoss);
   }
   if (state !== 'home' && state !== 'options') {
     drawShip(theme);
@@ -22555,10 +25514,10 @@ function devSkipToCorePhase6() {
     state = 'playing';
   }
   devSessionActive = true;
-  if (themeIndex !== 9) {
+  if (themeIndex !== 11) {
     distance = 0;
     themeLevelReached = 0;
-    beginWarp(9);
+    beginWarp(11);
   }
   while (warpActive) finishWarp();
   if (!miniBoss) {
@@ -22586,10 +25545,10 @@ function devSkipToCorePhase8() {
     state = 'playing';
   }
   devSessionActive = true;
-  if (themeIndex !== 9) {
+  if (themeIndex !== 11) {
     distance = 0;
     themeLevelReached = 0;
-    beginWarp(9);
+    beginWarp(11);
   }
   while (warpActive) finishWarp();
   if (!miniBoss) {
@@ -22951,6 +25910,166 @@ devPanel.appendChild(importCustomBtn);
 devPanel.appendChild(bakeCustomBtn);
 devPanel.appendChild(clearLocalCustomBtn);
 devPanel.appendChild(exportTextarea);
+
+function snowHeightWord(lane) {
+  if (lane < 0.34) return 'high';
+  if (lane > 0.66) return 'low';
+  return 'mid';
+}
+
+function replayGlacierSnow() {
+  devSessionActive = true;
+  flyControlsHintSeen = true;
+  showFlyControlsHint = false;
+  awaitingFirstFlyHold = false;
+  resetGame();
+  beginWarp(2);
+  state = 'playing';
+  holding = false;
+  devGracePeriodEndFrame = frame + DEV_GRACE_PERIOD_DURATION;
+  devStatus('Replaying glacier with this snowball list.');
+}
+
+function renderSnowBoard() {
+  const rows = document.getElementById('snow-rows');
+  if (!rows) return;
+  rows.innerHTML = '';
+  glacierSnowSchedule.forEach((s, i) => {
+    const card = document.createElement('div');
+    card.className = 'snow-card';
+    const title = document.createElement('div');
+    title.className = 'snow-title';
+    title.textContent = 'BALL ' + (i + 1);
+    card.appendChild(title);
+
+    const distLabel = document.createElement('label');
+    distLabel.appendChild(document.createTextNode('Where'));
+    const dist = document.createElement('input');
+    dist.type = 'number';
+    dist.min = '620';
+    dist.max = '1000';
+    dist.step = '1';
+    dist.value = String(Math.round(s.dist));
+    dist.addEventListener('change', () => {
+      s.dist = Math.max(620, Math.min(1000, parseFloat(dist.value) || s.dist));
+      dist.value = String(Math.round(s.dist));
+      saveGlacierSnowSchedule();
+    });
+    distLabel.appendChild(dist);
+    card.appendChild(distLabel);
+
+    const heightLabel = document.createElement('label');
+    const heightName = document.createElement('span');
+    heightName.textContent = 'Height ' + snowHeightWord(s.lane);
+    const height = document.createElement('input');
+    height.type = 'range';
+    height.min = '0';
+    height.max = '100';
+    height.step = '1';
+    height.value = String(Math.round(s.lane * 100));
+    height.addEventListener('input', () => {
+      s.lane = Math.max(0, Math.min(1, parseFloat(height.value) / 100));
+      heightName.textContent = 'Height ' + snowHeightWord(s.lane);
+      saveGlacierSnowSchedule();
+    });
+    heightLabel.appendChild(heightName);
+    heightLabel.appendChild(height);
+    card.appendChild(heightLabel);
+
+    const speedLabel = document.createElement('label');
+    speedLabel.appendChild(document.createTextNode('Speed'));
+    const speed = document.createElement('input');
+    speed.type = 'number';
+    speed.min = '1.2';
+    speed.max = '4.8';
+    speed.step = '0.1';
+    speed.value = String(s.vy);
+    const angle = document.createElement('input');
+    angle.type = 'number';
+    angle.min = '14';
+    angle.max = '70';
+    angle.step = '1';
+    angle.value = String(snowAngleDeg(s.vy, s.drift));
+    speed.addEventListener('change', () => {
+      const deg = parseFloat(angle.value) || snowAngleDeg(s.vy, s.drift);
+      s.vy = Math.max(1.2, Math.min(4.8, parseFloat(speed.value) || s.vy));
+      s.drift = snowDriftFor(s.vy, deg);
+      speed.value = String(Math.round(s.vy * 10) / 10);
+      saveGlacierSnowSchedule();
+    });
+    speedLabel.appendChild(speed);
+    card.appendChild(speedLabel);
+
+    const angleLabel = document.createElement('label');
+    angleLabel.appendChild(document.createTextNode('Angle'));
+    angle.addEventListener('change', () => {
+      const deg = Math.max(14, Math.min(70, parseFloat(angle.value) || 40));
+      angle.value = String(deg);
+      s.drift = snowDriftFor(s.vy, deg);
+      saveGlacierSnowSchedule();
+    });
+    angleLabel.appendChild(angle);
+    card.appendChild(angleLabel);
+
+    const remove = document.createElement('button');
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => {
+      glacierSnowSchedule.splice(i, 1);
+      glacierSnowSpawned.splice(i, 1);
+      saveGlacierSnowSchedule();
+      renderSnowBoard();
+    });
+    card.appendChild(remove);
+    rows.appendChild(card);
+  });
+}
+
+if (devPanel) {
+  const board = document.createElement('div');
+  board.id = 'snow-board';
+  const heading = document.createElement('div');
+  heading.className = 'dev-label';
+  heading.textContent = 'SNOWBALLS';
+  const note = document.createElement('div');
+  note.className = 'snow-note';
+  note.textContent = 'Where is the distance when it crosses the ship. Height runs from high to low. Speed is how fast it falls. Angle is the diagonal: a low number is a long slide, a high number drops steep. Replay to see the list.';
+  const rows = document.createElement('div');
+  rows.id = 'snow-rows';
+  const addBtn = document.createElement('button');
+  addBtn.textContent = 'Add snowball';
+  addBtn.addEventListener('click', () => {
+    const last = glacierSnowSchedule[glacierSnowSchedule.length - 1];
+    const dist = Math.min(1000, (last ? last.dist : 730) + 28);
+    const lane = last && last.lane > 0.5 ? 0.2 : 0.78;
+    const vy = last && last.vy > 3 ? 1.7 : 3.6;
+    glacierSnowSchedule.push({ dist, lane, vy, drift: snowDriftFor(vy, vy > 3 ? 52 : 24), r: 40 });
+    glacierSnowSpawned.push(false);
+    saveGlacierSnowSchedule();
+    renderSnowBoard();
+  });
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'Reset snowballs';
+  resetBtn.addEventListener('click', () => {
+    glacierSnowSchedule = cloneSnowSchedule(GLACIER_SNOW_DEFAULTS);
+    try { localStorage.removeItem(GAME_STORAGE_PREFIX + GLACIER_SNOW_STORAGE); } catch (e) { /* ignore */ }
+    resetGlacierSnowSpawned();
+    renderSnowBoard();
+    devStatus('Snowballs reset to the level list.');
+  });
+  const replayBtn = document.createElement('button');
+  replayBtn.textContent = 'Replay glacier';
+  replayBtn.addEventListener('click', replayGlacierSnow);
+  board.appendChild(heading);
+  board.appendChild(note);
+  board.appendChild(rows);
+  board.appendChild(addBtn);
+  board.appendChild(resetBtn);
+  board.appendChild(replayBtn);
+  const status = document.getElementById('dev-status');
+  if (status) status.insertAdjacentElement('afterend', board);
+  else devPanel.insertBefore(board, devPanel.firstChild);
+  renderSnowBoard();
+}
 
 const fireballSpeedSlider = document.getElementById('fireball-speed-slider');
 const fireballSpeedValue = document.getElementById('fireball-speed-value');
@@ -23533,7 +26652,7 @@ function captureFullZoneRun(themeIdx, targetDistance) {
     miniBossSqueezeTopY, miniBossSqueezeBottomY, miniBossBarragePhaseStartFrame, miniBossDeathPatches,
     miniBossDeathAshParticles, miniBossEscapeRunActive, miniBossEscapeRunStartDistance, miniBossHadFirstFloat,
     miniBossNextAttackSet, miniBossFloatBlendStartX, miniBossFloatBlendStartY, miniBossFloatBlendStartFrame,
-    miniBossWallRecedeStartFrame, miniBossWallCracks, coreWallPanels, coreWallSensors,
+    miniBossWallRecedeStartFrame, miniBossWallCracks, snowWallDetail, coreWallPanels, coreWallSensors,
   };
 
   themeIndex = themeIdx;
@@ -23739,6 +26858,7 @@ function captureFullZoneRun(themeIdx, targetDistance) {
   miniBossFloatBlendStartFrame = savedMiniBossState.miniBossFloatBlendStartFrame;
   miniBossWallRecedeStartFrame = savedMiniBossState.miniBossWallRecedeStartFrame;
   miniBossWallCracks = savedMiniBossState.miniBossWallCracks;
+  snowWallDetail = savedMiniBossState.snowWallDetail || [];
   coreWallPanels = savedMiniBossState.coreWallPanels;
   coreWallSensors = savedMiniBossState.coreWallSensors;
   restoreSimState(saved);

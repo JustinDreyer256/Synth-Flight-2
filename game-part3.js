@@ -1,3 +1,942 @@
+function terrainBoundsAt(x) {
+  for (let i = 0; i < terrainSegments.length - 1; i++) {
+    const a = terrainSegments[i], b = terrainSegments[i + 1];
+    if (x >= a.x && x <= b.x) {
+      const t = (x - a.x) / (b.x - a.x);
+      return {
+        top: a.topY + (b.topY - a.topY) * t,
+        bottom: a.bottomY + (b.bottomY - a.bottomY) * t,
+        islandTop: a.islandTop + (b.islandTop - a.islandTop) * t,
+        islandBottom: a.islandBottom + (b.islandBottom - a.islandBottom) * t
+      };
+    }
+  }
+  return null;
+}
+
+function liveGateGap(gate) {
+  const theme = currentTheme();
+  const baseGap = currentGapSize();
+  if (!theme.pulseGap) return baseGap;
+  const amp = baseGap * theme.pulseAmpFrac;
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  const minGap = Math.max(50, baseGap * (1 - theme.pulseAmpFrac));
+  const maxGap = Math.min(playHeight - 40, baseGap * (1 + theme.pulseAmpFrac));
+  let g = baseGap + amp * Math.sin((frame - zoneStartFrame) * gate.pulseFreq + gate.pulsePhase);
+  return Math.max(minGap, Math.min(maxGap, g));
+}
+
+function diamondGeometry(gate) {
+  const radius = liveGateGap(gate) / 2;
+  const centerX = gate.x + GATE_WIDTH / 2;
+  const centerY = liveGateCenter(gate);
+  return { radius, centerX, centerY };
+}
+
+function liveGateCenter(gate) {
+  const margin = 20;
+  let minCenter;
+  let maxCenter;
+  if (gate.type === 'hbar') {
+    const half = (gate.thickness || 18) / 2;
+    minCenter = PLAY_TOP + half + margin;
+    maxCenter = PLAY_BOTTOM - half - margin;
+  } else {
+    const gap = liveGateGap(gate);
+    minCenter = PLAY_TOP + gap / 2 + margin;
+    maxCenter = PLAY_BOTTOM - gap / 2 - margin;
+  }
+  let c = gate.baseCenter + gate.amplitude * Math.sin((frame - zoneStartFrame) * gate.freq + gate.phase);
+  return Math.max(minCenter, Math.min(maxCenter, c));
+}
+
+function initBackgroundParticles(theme) {
+  bgParticles = [];
+  const playHeight = PLAY_BOTTOM - PLAY_TOP;
+  if (theme.bgStyle === 'matrix') {
+    for (let i = 0; i < 64; i++) {
+      const tint = i % 3;
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        speed: 1.2 + Math.random() * 3.2,
+        len: 16 + Math.random() * 46,
+        alpha: 0.22 + Math.random() * 0.5,
+        drift: (Math.random() - 0.5) * 0.35,
+        tint
+      });
+    }
+  } else if (theme.bgStyle === 'stars') {
+    for (let i = 0; i < 90; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 0.6 + Math.random() * 1.8,
+        alpha: 0.3 + Math.random() * 0.7,
+        speed: 0.3 + Math.random() * 1.4
+      });
+    }
+  } else if (theme.bgStyle === 'frozen') {
+    for (let i = 0; i < 56; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 1 + Math.random() * 2.4,
+        alpha: 0.35 + Math.random() * 0.55,
+        speed: 0.6 + Math.random() * 1.6,
+        drift: 0.4 + Math.random() * 1.1
+      });
+    }
+    } else if (theme.bgStyle === 'embers') {
+    for (let i = 0; i < 16; i++) {
+      bgParticles.push({
+        kind: 'rush',
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        speed: 7 + Math.random() * 10,
+        len: 28 + Math.random() * 70,
+        alpha: 0.08 + Math.random() * 0.16,
+        thick: 1 + Math.random() * 1.4
+      });
+    }
+    for (let i = 0; i < 18; i++) {
+      bgParticles.push({
+        kind: 'spark',
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        speed: 3.2 + Math.random() * 5.5,
+        lift: 0.15 + Math.random() * 0.55,
+        len: 10 + Math.random() * 22,
+        r: 0.7 + Math.random() * 1.6,
+        alpha: 0.28 + Math.random() * 0.45
+      });
+    }
+  } else if (theme.bgStyle === 'chrome') {
+    for (let i = 0; i < 16; i++) {
+      bgParticles.push({
+        kind: 'rush',
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        speed: 7 + Math.random() * 10,
+        len: 28 + Math.random() * 70,
+        alpha: 0.32 + Math.random() * 0.38,
+        thick: 1 + Math.random() * 1.4
+      });
+    }
+    for (let i = 0; i < 18; i++) {
+      bgParticles.push({
+        kind: 'spark',
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        speed: 3.2 + Math.random() * 5.5,
+        lift: 0.15 + Math.random() * 0.55,
+        len: 10 + Math.random() * 22,
+        r: 0.7 + Math.random() * 1.6,
+        alpha: 0.45 + Math.random() * 0.4
+      });
+    }
+  } else if (theme.bgStyle === 'ruins') {
+    for (let i = 0; i < 45; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 0.8 + Math.random() * 1.8,
+        alpha: 0.2 + Math.random() * 0.4,
+        speed: 0.15 + Math.random() * 0.4,
+        drift: (Math.random() - 0.5) * 0.3
+      });
+    }
+  } else if (theme.bgStyle === 'toxic') {
+    for (let i = 0; i < 36; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 1.2 + Math.random() * 2.4,
+        alpha: 0.12 + Math.random() * 0.18,
+        speed: 0.12 + Math.random() * 0.28,
+        drift: (Math.random() - 0.5) * 0.25,
+        wobble: Math.random() * Math.PI * 2,
+        stretch: 1.2 + Math.random() * 0.8
+      });
+    }
+  } else if (theme.bgStyle === 'station') {
+    for (let i = 0; i < 40; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 0.6 + Math.random() * 1.6,
+        alpha: 0.15 + Math.random() * 0.3,
+        speed: 0.1 + Math.random() * 0.3,
+        drift: (Math.random() - 0.5) * 0.5
+      });
+    }
+  } else if (theme.bgStyle === 'void') {
+    for (let i = 0; i < 22; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 0.4 + Math.random() * 1.0,
+        alpha: 0.08 + Math.random() * 0.18,
+        speed: 0.05 + Math.random() * 0.15,
+        drift: 0
+      });
+    }
+  } else if (theme.bgStyle === 'solar') {
+    for (let i = 0; i < 28; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight * 0.72,
+        speed: 3.2 + Math.random() * 6,
+        len: 48 + Math.random() * 110,
+        alpha: 0.16 + Math.random() * 0.34,
+        thick: 1 + Math.random() * 1.6
+      });
+    }
+  } else if (theme.bgStyle === 'kelp') {
+    for (let i = 0; i < 48; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        r: 1.2 + Math.random() * 2.6,
+        alpha: 0.15 + Math.random() * 0.28,
+        speed: 0.35 + Math.random() * 0.7,
+        drift: (Math.random() - 0.5) * 0.4,
+        wobble: Math.random() * Math.PI * 2
+      });
+    }
+  } else if (theme.bgStyle === 'storm') {
+    for (let i = 0; i < 70; i++) {
+      bgParticles.push({
+        x: Math.random() * W,
+        y: PLAY_TOP + Math.random() * playHeight,
+        speed: 5 + Math.random() * 6,
+        len: 15 + Math.random() * 20,
+        alpha: 0.2 + Math.random() * 0.4
+      });
+    }
+  }
+}
+
+function reseedZoneObstacles(startX) {
+  gates = [];
+  shipYHistory = [];
+  patternIndex = 0;
+  fireballSpawnCounter = 0;
+  extraFireballCounter = 0;
+  extraFireballPatternIndex = 0;
+  extraToxicCounter = 0;
+  extraToxicPatternIndex = 0;
+  extraGeyserCounter = 0;
+  extraGeyserPatternIndex = 0;
+  extraStarCounter = 0;
+  extraStarPatternIndex = 0;
+  extraMovingDoorCounter = 0;
+  extraMovingDoorPatternIndex = 0;
+  specialEventsSpawned = [false, false, false];
+  specialDoorUnlocked = [false, false, false];
+  blackHoleEventsSpawned = currentTheme().blackHoleEvents ? currentTheme().blackHoleEvents.map(() => false) : [];
+  windVortexEventsSpawned = currentTheme().windVortexEvents ? currentTheme().windVortexEvents.map(() => false) : [];
+  cloudArcEventsSpawned = currentTheme().cloudArcEvents ? currentTheme().cloudArcEvents.map(() => false) : [];
+  lightningStrikeEventsSpawned = currentTheme().lightningStrikeEvents ? currentTheme().lightningStrikeEvents.map(() => false) : [];
+  lasergridEventsSpawned = currentTheme().lasergridEvents ? currentTheme().lasergridEvents.map(() => false) : [];
+  droneSwarmEventsSpawned = currentTheme().droneSwarmEvents ? currentTheme().droneSwarmEvents.map(() => false) : [];
+  billboardEventsSpawned = currentTheme().billboardEvents ? currentTheme().billboardEvents.map(() => false) : [];
+  searchlightEventsSpawned = currentTheme().searchlightEvents ? currentTheme().searchlightEvents.map(() => false) : [];
+  turretEventsSpawned = currentTheme().turretEvents ? currentTheme().turretEvents.map(() => false) : [];
+  signalCorruptionEventsSpawned = currentTheme().signalCorruptionEvents ? currentTheme().signalCorruptionEvents.map(() => false) : [];
+  empEventsSpawned = currentTheme().empEvents ? currentTheme().empEvents.map(() => false) : [];
+  echoTrailEventsSpawned = currentTheme().echoTrailEvents ? currentTheme().echoTrailEvents.map(() => false) : [];
+  pulsingOrbEventsSpawned = currentTheme().pulsingOrbEvents ? currentTheme().pulsingOrbEvents.map(() => false) : [];
+  boomerangEventsSpawned = currentTheme().boomerangEvents ? currentTheme().boomerangEvents.map(() => false) : [];
+  oncomingCometEventsSpawned = currentTheme().oncomingCometEvents ? currentTheme().oncomingCometEvents.map(() => false) : [];
+  splitRockEventsSpawned = currentTheme().splitRockEvents ? currentTheme().splitRockEvents.map(() => false) : [];
+  extraStormCounter = 0;
+  extraStormPatternIndex = 0;
+  extraOrbiterCounter = 0;
+  extraOrbiterPatternIndex = 0;
+  extraArcPlanetCounter = 0;
+  extraArcPlanetPatternIndex = 0;
+  lensingZoneEventsSpawned = currentTheme().lensingZoneEvents ? currentTheme().lensingZoneEvents.map(() => false) : [];
+  supernovaEventsSpawned = currentTheme().supernovaEvents ? currentTheme().supernovaEvents.map(() => false) : [];
+  extraHubCounter = 0;
+  extraHubPatternIndex = 0;
+  iceChunkPatternIndex = 0;
+  iceFloePatternIndex = 0;
+  iceBergPatternIndex = 0;
+  glacierSnowContinue = false;
+  glacierSnowballX = 0;
+  glacierSnowLane = 0;
+  resetGlacierSnowSpawned();
+  iceChunkSpawnX = W + 700;
+  if (currentTheme().obstacleShape === 'terrain') {
+    initTerrain();
+  } else if (currentTheme().obstacleShape === 'kelp' || currentTheme().obstacleShape === 'copper' || currentTheme().obstacleShape === 'chrome') {
+    let x = Math.max(startX, W + 220);
+    for (let i = 0; i < 6; i++) {
+      if (i > 0) {
+        const th0 = currentTheme();
+        x += th0.pattern[patternIndex % th0.pattern.length].spacing || GATE_SPACING;
+      }
+      spawnGate(x);
+      lastSpawnX = x;
+    }
+  } else if (currentTheme().obstacleShape !== 'none') {
+    let x = startX;
+    for (let i = 0; i < 6; i++) {
+      if (i > 0) {
+        const th0 = currentTheme();
+        x += th0.pattern[patternIndex % th0.pattern.length].spacing || GATE_SPACING;
+      }
+      spawnGate(x);
+      lastSpawnX = x;
+    }
+  }
+  if (currentTheme().isBossZone) {
+    miniBoss = null;
+    const bossBaseY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.5;
+    const bossMaxR = (PLAY_BOTTOM - PLAY_TOP) * 0.22;
+    // fixed distance from the ship, calibrated to match Claude's preview
+    // width -- not a proportion of W, which would grow the gap on wider
+    // screens. clamped so narrower windows can't push the boss's sphere
+    // off the right edge of the screen
+    const bossFinalX = Math.min(ship.x + 415, W - bossMaxR - 40);
+    const fragmentCount = 8;
+    const fragments = [];
+    for (let i = 0; i < fragmentCount; i++) {
+      const angle = (i / fragmentCount) * Math.PI * 2;
+      const dist = 280 + 60 * Math.sin(i * 2.7); // deterministic variation, not random
+      fragments.push({
+        startX: bossFinalX + Math.cos(angle) * dist,
+        startY: bossBaseY + Math.sin(angle) * dist,
+        size: 8 + 4 * Math.sin(i * 1.9)
+      });
+    }
+    boss = {
+      x: bossFinalX,
+      y: bossBaseY,
+      baseY: bossBaseY,
+      maxR: bossMaxR,
+      r: 0,
+      fragments: fragments
+    };
+    bossSpawnFrame = frame;
+    bossTimer = currentTheme().bossDuration;
+    bossPhase = 1;
+    bossDefeated = false;
+    bossDefeatFrame = 0;
+    bossAttackTimer = 0;
+    bossVolleyTimer = 0;
+    bossTransitioning = false;
+    bossTransitionStartFrame = 0;
+    bossTransitionEndFrame = -9999;
+    bossWaitingForClear = false;
+    bossWaitingForClearStartFrame = -1;
+    bossRagePulseTimer = 0;
+    bossDiagonalRingTimer = 0;
+    bossDoubleWallTimer = 0;
+    bossDoubleWallPendingFrame = -1;
+    bossDroneFormationTimer = 0;
+    bossHomingFragmentTimer = 0;
+    bossChargeBeamTimer = 0;
+    bossChargeBeamNextGap = BOSS_CHARGE_BEAM_MIN_GAP + Math.floor(Math.random() * (BOSS_CHARGE_BEAM_MAX_GAP - BOSS_CHARGE_BEAM_MIN_GAP + 1));
+    bossChargeBeamCount = 0;
+    bossEmberTimer = 0;
+    bossAshCloudTimer = 0;
+    bossBeamHoldBlendStartFrame = -9999;
+    bossFinalChargeActive = false;
+    bossFinalChargeStartFrame = -1;
+    bossExplosionActive = false;
+    bossExplosionStartFrame = -1;
+    postBossDowntimeActive = false;
+    postBossDowntimeStartFrame = -1;
+    shipFlyOffActive = false;
+    shipFlyOffStartFrame = -1;
+    bossFullyDefeated = false;
+  } else if (currentTheme().isMiniBossZone) {
+    boss = null;
+    // undo any escape-run mutations left over from a previous playthrough
+    // in this session (theme objects persist across resetGame calls)
+    const th = currentTheme();
+    th.obstacleShape = 'none';
+    th.pattern = [{ spacing: 100000 }];
+    delete th.scrollMult;
+    delete th.ampMult;
+    delete th.freqMult;
+    delete th.pulseGap;
+    delete th.gapFractionStart;
+    delete th.gapConstant;
+    delete th.terrainSpacing;
+    delete th.terrainMaxDelta;
+    const miniBaseY = PLAY_TOP + (PLAY_BOTTOM - PLAY_TOP) * 0.5;
+    const miniBossMaxR = (PLAY_BOTTOM - PLAY_TOP) * 0.16 * 0.85; // 15% smaller
+    // fixed distance from the ship, calibrated to match Claude's preview
+    // width -- not a proportion of W, which would grow the gap on wider
+    // screens (same issue as the main boss). clamped so narrow windows
+    // can't push it off the right edge
+    const miniRestX = th.miniBossVariant === 'core'
+      ? Math.min(ship.x + 588, W - 84) // wall boss sits at the arena edge, not mid-arena
+      : Math.min(ship.x + 366, W - miniBossMaxR - 40);
+    miniBoss = {
+      x: W + 120, // starts off-screen, flies in during the entrance
+      restX: miniRestX,
+      y: miniBaseY,
+      baseY: miniBaseY,
+      maxR: miniBossMaxR,
+      r: 0
+    };
+    miniBossSpawnFrame = frame;
+    miniBossDefeated = false;
+    miniBossDefeatFrame = 0;
+    miniBossWallRecedeStartFrame = -1;
+    miniBossAttackState = th.miniBossVariant === 'core' ? 'coreFloating' : 'floating';
+    miniBossAttackStateStartFrame = 0;
+    miniBossChargeHeights = [0.2, 0.5, 0.8];
+    miniBossChargeIndex = 0;
+    miniBossChargeRound = 1;
+    miniBossHadFirstFloat = false;
+    miniBossNextAttackSet = 1;
+    miniBossCyclesCompleted = 0;
+    miniBossBarrageEmbers = [];
+    miniBossBarrageWavesLaunched = 0;
+    miniBossDeathPatches = [];
+    miniBossDeathAshParticles = [];
+    miniBossWallCracks = [];
+    snowWallDetail = [];
+    coreWallPanels = [];
+    coreWallSensors = [];
+    miniBossEscapeRunActive = false;
+    snowIcicles = [];
+    snowRollers = [];
+    snowAttackStep = 0;
+    snowIcicleSpawned = 0;
+    snowRollerSpawned = 0;
+    snowFeintStage = 'high';
+    snowBossSquash = 0;
+    snowDeathBurst = false;
+    coreBossPhase = 1;
+    coreBossHadFirstFloat = false;
+    coreBossDefeated = false;
+    coreBossDefeatFrame = 0;
+    coreSparks = [];
+    coreEmpPulses = [];
+    coreCrossfireRound = 0;
+    coreCrossfireBeamYs = [];
+    lastCoreCrossfireVolleyFrame = -999;
+    coreOrbitSpawned = 0;
+    coreOrbitProjectiles = [];
+    coreOrbitEmitAngle = 0;
+    coreEyeBeamState = 'track';
+    coreEyeBeamStateStartFrame = 0;
+    coreTeslaState = 'charging';
+    coreTeslaStateStartFrame = 0;
+    coreTeslaProjectiles = [];
+    coreGateOpenAmount = 0;
+    coreDeathPatches = [];
+    coreDeathDebris = [];
+  } else {
+    boss = null;
+    miniBoss = null;
+  }
+}
+
+// maps a death count to its rank tier letter -- shared by the
+// achievement-granting logic below and the victory screen's own display
+function rankTierForDeaths(deaths) {
+  if (deaths <= 3) return 'S';
+  if (deaths <= 9) return 'A';
+  if (deaths <= 14) return 'B+';
+  if (deaths <= 18) return 'B';
+  return 'C';
+}
+const RANK_TIER_ORDER = ['S', 'A', 'B+', 'B', 'C']; // best to worst
+const RANK_TIER_HINTS = {
+  S: '0-3 deaths',
+  A: '4-9 deaths',
+  'B+': '10-14 deaths',
+  B: '15-18 deaths',
+  C: '19+ deaths'
+};
+
+function tryAwardDeathless() {
+  // Hard only, no lives lost this zone visit, and not a DEV session.
+  // Zone Select practice is allowed so a true deathless clear can be earned
+  // one zone at a time.
+  if (devSessionActive) return false;
+  if (selectedDifficulty !== 'hard') return false;
+  if (diedInCurrentZone) return false;
+  if (deathlessZones.has(themeIndex)) return false;
+  deathlessZones.add(themeIndex);
+  return true;
+}
+
+function triggerVictory() {
+  if (isPracticeRun) {
+    if (tryAwardDeathless()) savePlayerProfile();
+    endPracticeRun();
+    return;
+  }
+  stopLiftSound();
+  stopGlowDangerSound();
+  stopFireballBreathSound();
+  stopToxicHazardSounds();
+  stopDustStormSound();
+  stopMeteorStreakSound();
+  stopStormSkiesHazardSounds();
+  stopMovingDoorSound();
+  stopBlackHoleSound();
+  sfxVictory();
+  state = 'victory';
+  clearTimeMs = nowMs() - runStartTimeMs;
+  if (devSessionActive) return; // dev preview only -- screen still displays, nothing gets recorded
+  let profileChanged = false;
+  if (!completedZones.has(themeIndex)) {
+    completedZones.add(themeIndex);
+    profileChanged = true;
+  }
+  zoneCompletionCounts[themeIndex] = (zoneCompletionCounts[themeIndex] || 0) + 1;
+  profileChanged = true;
+  if (tryAwardDeathless()) profileChanged = true;
+  if (!beatenDifficulties.has(selectedDifficulty)) {
+    beatenDifficulties.add(selectedDifficulty);
+    profileChanged = true;
+  }
+  // earning a given rank tier also grants every tier below it (e.g. B
+  // Rank also unlocks the C Rank achievement), since a better rank always
+  // satisfies a worse tier's requirement too
+  const earnedTierIdx = RANK_TIER_ORDER.indexOf(rankTierForDeaths(totalDeaths));
+  for (let i = earnedTierIdx; i < RANK_TIER_ORDER.length; i++) {
+    const tier = RANK_TIER_ORDER[i];
+    if (!achievedRanks.has(tier)) {
+      achievedRanks.add(tier);
+      profileChanged = true;
+    }
+  }
+  if ((selectedDifficulty === 'normal' || selectedDifficulty === 'hard') && !extraDifficultyUnlocked) {
+    extraDifficultyUnlocked = true;
+    justUnlockedExtraDifficulty = true;
+    profileChanged = true;
+  }
+  if (profileChanged) savePlayerProfile();
+  if (justUnlockedExtraDifficulty) sfxOverdriveUnlock();
+}
+
+function resetGame() {
+  ship = { x: W * 0.28, y: H / 2, vy: 0, rotation: 0 };
+  distance = 0;
+  frame = 0;
+  holding = false;
+  pointerHolding = false;
+  keyHolding = false;
+  stopLiftSound();
+  stopGlowDangerSound();
+  stopFireballBreathSound();
+  stopToxicHazardSounds();
+  stopDustStormSound();
+  stopMeteorStreakSound();
+  stopStormSkiesHazardSounds();
+  stopMovingDoorSound();
+  stopBlackHoleSound();
+  stopMoltenCoreIdleSound();
+  stopMoltenFlameWallSound();
+  stopMoltenSqueezeSound();
+  stopMoltenDeathAshSound();
+  stopCoreBulkheadHoldSound();
+  stopAllPulsingOrbSounds();
+  stopAllBoomerangSounds();
+  stopMegaManCharge(0.02);
+  stopSignalFinalCharge(0.02);
+  stopCoreOverload(0.02);
+  stopSignalPhase(0.04);
+  state = 'ready';
+  themeIndex = 0;
+  themeLevelReached = 0;
+  warpActive = false;
+  warpTimer = 0;
+  const diffConfig = DIFFICULTY_CONFIG[selectedDifficulty] || DIFFICULTY_CONFIG.normal;
+  MAX_LIVES = diffConfig.lives;
+  continuesRemaining = diffConfig.continues;
+  invincibilityEndTime = -1;
+  freeHitCooldownEndTime = -1;
+  resetHitCyclePauseClock();
+  freeHitsUsedThisLife = 0;
+  pendingRespawnMercyEligible = false;
+  diedInCurrentZone = false;
+  awaitingFirstFlyHold = false;
+  showFlyControlsHint = false;
+  lives = MAX_LIVES;
+  maxDistanceReached = 0;
+  lastDeathDistance = 0;
+  zoneStartDistance = 0;
+  zoneStartFrame = 0;
+  portalObject = null;
+  totalDeaths = 0;
+  deathsByZone = {};
+  runStartTimeMs = nowMs();
+  clearTimeMs = 0;
+  justUnlockedExtraDifficulty = false;
+  isPracticeRun = false;
+  devSessionActive = false;
+  bossFinalChargeActive = false;
+  bossFinalChargeStartFrame = -1;
+  bossExplosionActive = false;
+  bossExplosionStartFrame = -1;
+  postBossDowntimeActive = false;
+  postBossDowntimeStartFrame = -1;
+  shipFlyOffActive = false;
+  shipFlyOffStartFrame = -1;
+  bossFullyDefeated = false;
+  bossDefeated = false;
+  miniBossEscapeRunActive = false;
+  shipTrailParticles = [];
+  shipToxicDrips = [];
+  shipToxicDripCooldown = 0;
+
+  initBackgroundParticles(currentTheme());
+  reseedZoneObstacles(ship.x + 420);
+}
+
+function respawnInZone(opts) {
+  ship = { x: W * 0.28, y: H / 2, vy: 0, rotation: 0 };
+  distance = zoneStartDistance;
+  holding = false;
+  stopLiftSound();
+  stopGlowDangerSound();
+  stopFireballBreathSound();
+  stopToxicHazardSounds();
+  stopDustStormSound();
+  stopMeteorStreakSound();
+  stopStormSkiesHazardSounds();
+  stopMovingDoorSound();
+  stopBlackHoleSound();
+  if (!opts || opts.playLifeLost !== false) sfxLifeLost();
+  state = 'respawn';
+  portalObject = null;
+  invincibilityEndTime = -1;
+  freeHitCooldownEndTime = -1;
+  freeHitsUsedThisLife = 0;
+  pendingRespawnMercyEligible = false;
+  resetHitCyclePauseClock();
+  initBackgroundParticles(currentTheme());
+  reseedZoneObstacles(ship.x + 420);
+}
+
+function armFlyControlsHint() {
+  if (flyControlsHintSeen) return;
+  flyControlsHintSeen = true;
+  awaitingFirstFlyHold = true;
+  showFlyControlsHint = true;
+  lastRenderedOverlayState = null;
+}
+
+function flyControlsHintHtml() {
+  const sub = MOBILE_PERFORMANCE_MODE
+    ? 'TAP AND HOLD  ·  RELEASE TO FALL'
+    : 'LEFT CLICK OR SPACE  ·  RELEASE TO FALL';
+  return `
+      <div class="fly-controls-hint" aria-live="polite">
+        <div class="fly-controls-hint-title">HOLD TO FLY</div>
+        <div class="fly-controls-hint-sub">${sub}</div>
+      </div>
+    `;
+}
+
+function noteFlyHold() {
+  if (!awaitingFirstFlyHold && !showFlyControlsHint) return;
+  awaitingFirstFlyHold = false;
+  if (showFlyControlsHint) {
+    showFlyControlsHint = false;
+    lastRenderedOverlayState = null;
+  }
+}
+
+function beginRunFromOptions() {
+  resetGame(); // locks in MAX_LIVES/continuesRemaining for the chosen difficulty
+  armFlyControlsHint();
+  sfxStart();
+  holding = false;
+  beginWarp(0);
+  state = 'playing';
+  // Start file-backed music while the click/key gesture is still active.
+  // Embedded hosts such as itch.io can reject HTMLAudio.play() when it is
+  // deferred until the next animation frame, even though Web Audio SFX work.
+  updateBgmForState();
+  lastRenderedOverlayState = null;
+  updateOverlay();
+}
+
+function startPress() {
+  if (state === 'home') {
+    state = 'options';
+    updateOverlay();
+  } else if (state === 'options') {
+    beginRunFromOptions();
+  } else if (state === 'ready') {
+    state = 'playing';
+  } else if (state === 'respawn') {
+    sfxRespawn();
+    state = 'playing';
+    if (pendingRespawnMercyEligible && DIFFICULTY_CONFIG[selectedDifficulty]?.invincibilityFrames) {
+      invincibilityEndTime = gameNowMs() + INVINCIBILITY_DURATION_MS;
+    }
+    pendingRespawnMercyEligible = false;
+  } else if (state === 'gameover' || state === 'victory') {
+    resetGame();
+    flyControlsHintSeen = false;
+    state = 'home';
+    return;
+  }
+  holding = true;
+}
+
+function endPress() {
+  holding = pointerHolding || keyHolding;
+}
+
+// cycles the selected difficulty in either direction, skipping over the
+// 4th tier while it's still locked so it can never be landed on by cycling
+function cycleDifficulty(direction) {
+  const order = ['easy', 'normal', 'hard', 'extra'];
+  let idx = order.indexOf(selectedDifficulty);
+  do {
+    idx = (idx + direction + order.length) % order.length;
+  } while (order[idx] === 'extra' && !extraDifficultyUnlocked);
+  selectedDifficulty = order[idx];
+  updateOverlay();
+}
+
+// pause/resume: deliberately kept off the normal hold-to-fly input (mouse
+// click, space, touch) so a misclick or accidental tap during play can
+// never trigger it -- only the dedicated pause button or the Escape key
+function pauseGame() {
+  if (state !== 'playing') return;
+  state = 'paused';
+  beginHitCyclePauseClock();
+  pointerHolding = false;
+  holding = keyHolding;
+  stopLiftSound();
+  stopGlowDangerSound();
+  sfxPause();
+}
+
+function resumeGame() {
+  if (state !== 'paused') return;
+  endHitCyclePauseClock();
+  state = 'playing';
+}
+
+function quitToHome() {
+  if (isPracticeRun) {
+    endPracticeRun();
+    return;
+  }
+  resetGame();
+  flyControlsHintSeen = false;
+  state = 'home';
+  savePlayerProfile();
+}
+
+function endPracticeRun() {
+  const returnZone = practiceZoneIndex;
+  isPracticeRun = false;
+  resetGame();
+  zoneSelectPreviewIdx = unlockedZones.has(returnZone) ? returnZone : 0;
+  state = 'zone-select';
+  lastRenderedOverlayState = null;
+  updateOverlay();
+}
+
+function startPracticeZone(zoneIndex) {
+  if (!unlockedZones.has(zoneIndex)) return; // shouldn't be reachable via the UI anyway, since locked zones aren't clickable
+  resetGame(); // sets isPracticeRun=false, lives/continues based on selectedDifficulty
+  isPracticeRun = true;
+  practiceZoneIndex = zoneIndex;
+  distance = 0;
+  themeLevelReached = 0;
+  sfxStart();
+  prefetchThemeBgm(zoneIndex);
+  armFlyControlsHint();
+  beginWarp(zoneIndex);
+  state = 'playing';
+  updateBgmForState();
+}
+
+function startInfernoPlaytest() {
+  const zoneIndex = THEMES.findIndex((t) => t.name === 'INFERNO');
+  if (zoneIndex < 0) return;
+  resetGame();
+  isPracticeRun = true;
+  practiceZoneIndex = zoneIndex;
+  distance = 0;
+  themeLevelReached = 0;
+  state = 'playing';
+  beginWarp(zoneIndex);
+  while (warpActive) finishWarp();
+}
+
+function startForkGallery() {
+  startInfernoPlaytest();
+}
+
+// continue-prompt: consumes a continue, resets lives, and respawns in
+// place -- distance/zone/theme progress is deliberately preserved, since
+// that's what distinguishes a continue from starting a fresh run
+function useContinue() {
+  if (state !== 'continue-prompt' || continuesRemaining <= 0) return;
+  continuesRemaining--;
+  lives = MAX_LIVES;
+  sfxContinueUsed();
+  respawnInZone({ playLifeLost: false }); // sets state to 'respawn' for the usual "click to continue" beat
+}
+
+// options screen: difficulty cycling and navigating to/from the Settings
+// and Achievements sub-screens. Event delegation since this content is
+// re-created via innerHTML each time updateOverlay() renders.
+// Uses pointerup rather than click -- pointer events unify mouse, touch,
+// and pen handling and don't depend on the browser synthesizing a 'click'
+// event afterward, which has had reliability quirks on some mobile
+// browsers/webviews, especially combined with CSS transitions on the target.
+function focusGameKeyboardInput() {
+  try { window.focus(); } catch (e) { /* embedded host may deny window focus */ }
+  try {
+    canvas.focus({ preventScroll: true });
+  } catch (e) {
+    try { canvas.focus(); } catch (err) { /* keyboard still has window fallback */ }
+  }
+}
+
+function handleOverlayActivate(e) {
+  if (e && e.type === 'click' && performance.now() < overlayNavLockUntil) return;
+  if (e && e.type !== 'click' && e.pointerType === 'mouse' && e.button !== 0) return;
+  if (e && e.type === 'pointerup' && overlayPointerStart && e.pointerId === overlayPointerStart.id) {
+    const moved = Math.hypot(e.clientX - overlayPointerStart.x, e.clientY - overlayPointerStart.y);
+    overlayPointerStart = null;
+    if (moved > 10) return;
+  }
+  const targetTag = e && e.target && e.target.tagName;
+  if (targetTag !== 'INPUT' && targetTag !== 'SELECT' && targetTag !== 'TEXTAREA') {
+    focusGameKeyboardInput();
+  }
+  if (state === 'home') {
+    unlockAudio();
+    try { sfxUiClick(); } catch (err) { /* audio must never block the menu */ }
+    overlayNavLockUntil = performance.now() + 400;
+    state = 'options';
+    updateOverlay();
+    return;
+  }
+  if (state === 'respawn' || state === 'ready' || state === 'gameover' || state === 'victory') {
+    startPress();
+    updateOverlay();
+    return;
+  }
+  const actionEl = e.target.closest('[data-action]');
+  if (!actionEl) return;
+  unlockAudio();
+  try { sfxUiClick(); } catch (err) { /* audio must never block the menu */ }
+  const action = actionEl.dataset.action;
+  overlayNavLockUntil = performance.now() + 400;
+  if (state === 'options') {
+    if (action === 'diff-prev') cycleDifficulty(-1);
+    else if (action === 'diff-next') cycleDifficulty(1);
+    else if (action === 'open-settings') { settingsReturnState = 'options'; state = 'settings'; }
+    else if (action === 'open-achievements') state = 'achievements';
+    else if (action === 'open-statistics') state = 'statistics';
+    else if (action === 'open-zone-select') { zoneSelectPreviewIdx = 0; state = 'zone-select'; prefetchThemeBgm(0); }
+    else if (action === 'start-game') beginRunFromOptions();
+  } else if (state === 'settings') {
+    if (action === 'back-to-options') state = settingsReturnState;
+    else if (action === 'toggle-sfx') toggleSfxEnabled();
+    else if (action === 'toggle-bgm') toggleBgmEnabled();
+    else if (action === 'reset-audio-defaults') resetAudioVolumesToDefault();
+    else if (action === 'trail-prev') cycleShipTrail(-1);
+    else if (action === 'trail-next') cycleShipTrail(1);
+    else if (action === 'skin-prev') cycleShipSkin(-1);
+    else if (action === 'skin-next') cycleShipSkin(1);
+    else if (action === 'copy-save-id') copySaveIdToClipboard();
+    else if (action === 'export-save') exportPlayerSaveFile();
+    else if (action === 'import-save') {
+      const input = document.getElementById('player-save-import');
+      if (input) input.click();
+    } else if (action === 'restore-save-id') promptRestoreSaveId();
+  } else if ((state === 'achievements' || state === 'zone-select' || state === 'statistics') && action === 'back-to-options') {
+    state = 'options';
+  } else if (state === 'statistics' && action === 'confirm-reset-stats') {
+    state = 'confirm-reset-stats';
+  } else if (state === 'confirm-reset-stats') {
+    if (action === 'cancel-reset-stats') {
+      state = 'statistics';
+    } else if (action === 'reset-stats-confirmed') {
+      resetPlayerProfile();
+      state = 'statistics';
+    }
+  } else if (state === 'zone-select') {
+    if (action === 'preview-zone') {
+      const idx = parseInt(actionEl.dataset.zoneIdx, 10);
+      if (!isNaN(idx) && unlockedZones.has(idx)) {
+        zoneSelectPreviewIdx = idx;
+        prefetchThemeBgm(idx);
+        updateOverlay();
+      }
+    } else if (action === 'warp-to-zone' && unlockedZones.has(zoneSelectPreviewIdx)) {
+      startPracticeZone(zoneSelectPreviewIdx);
+    }
+  } else if (state === 'paused') {
+    if (action === 'resume-game') resumeGame();
+    else if (action === 'quit-to-home') quitToHome();
+    else if (action === 'open-pause-options') { settingsReturnState = 'paused'; state = 'settings'; }
+  } else if (state === 'continue-prompt') {
+    if (action === 'use-continue') useContinue();
+    else if (action === 'quit-to-home') quitToHome();
+  }
+  updateOverlay();
+}
+let overlayNavLockUntil = 0;
+let overlayPointerStart = null;
+overlay.addEventListener('pointerdown', (e) => {
+  overlayPointerStart = { id: e.pointerId, x: e.clientX, y: e.clientY };
+});
+overlay.addEventListener('pointerup', handleOverlayActivate);
+overlay.addEventListener('pointercancel', () => { overlayPointerStart = null; });
+overlay.addEventListener('click', handleOverlayActivate);
+
+// Input
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') {
+    e.preventDefault();
+    unlockAudio();
+    if (!e.repeat) {
+      keyHolding = true;
+      startPress();
+    }
+  } else if (e.code === 'Escape' && !e.repeat) {
+    if (state === 'playing') pauseGame();
+    else if (state === 'paused') resumeGame();
+  }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') {
+    e.preventDefault();
+    keyHolding = false;
+    endPress();
+  }
+});
+// Pointer capture keeps Chrome from dropping the hold when the cursor
+// crosses the pause button, HUD, or window chrome (mouseleave used to
+// call endPress and the ship would just fall).
+function canvasStartPress() {
+  unlockAudio();
+  if (state === 'home') return;
+  startPress();
+}
+function onCanvasPointerDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (state === 'home') return;
+  e.preventDefault();
+  focusGameKeyboardInput();
+  pointerHolding = true;
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
+  canvasStartPress();
+}
 function onCanvasPointerRelease(e) {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   pointerHolding = false;
@@ -40,15 +979,20 @@ function updateBackgroundParticles(theme) {
       }
     }
   } else if (theme.bgStyle === 'frozen') {
+    const zoneDist = distance - zoneStartDistance;
+    // Full snowfall from the cave mouth through the portal.
+    const storm = zoneDist > 680 ? Math.min(1, (zoneDist - 680) / 30) : 0;
+    const fall = 1 + storm * 3.2;
+    const push = 1 + storm * 2.4;
     for (let p of bgParticles) {
-      p.y += p.speed;
-      p.x -= p.drift;
+      p.y += p.speed * fall;
+      p.x -= p.drift * push;
       if (p.y > PLAY_BOTTOM || p.x < -4) {
         p.y = PLAY_TOP - 4;
         p.x = Math.random() * W;
       }
     }
-  } else if (theme.bgStyle === 'embers') {
+  } else if (theme.bgStyle === 'embers' || theme.bgStyle === 'chrome') {
     const rushBoost = 0.85 + 0.45 * (theme.scrollMult || 1);
     for (let p of bgParticles) {
       p.x -= p.speed * rushBoost;
@@ -93,6 +1037,23 @@ function updateBackgroundParticles(theme) {
       if (p.x < 0) {
         p.x = W;
         p.y = PLAY_TOP + Math.random() * playHeight;
+      }
+    }
+  } else if (theme.bgStyle === 'solar') {
+    for (let p of bgParticles) {
+      p.x -= p.speed;
+      if (p.x + p.len < 0) {
+        p.x = W + 20;
+        p.y = PLAY_TOP + Math.random() * playHeight * 0.72;
+      }
+    }
+  } else if (theme.bgStyle === 'kelp') {
+    for (let p of bgParticles) {
+      p.y -= p.speed;
+      p.x += Math.sin(frame * 0.02 + p.wobble) * 0.35;
+      if (p.y + p.r < PLAY_TOP) {
+        p.y = PLAY_BOTTOM + p.r;
+        p.x = Math.random() * W;
       }
     }
   } else if (theme.bgStyle === 'storm') {
@@ -865,6 +1826,31 @@ function update() {
       }
     }
 
+    // Glacier snow gust: a pale band that shoves the ship. Stronger than
+    // hold or release, still capped at normal rise and fall speed.
+    if (th.iceChunks && !inGracePeriod && !bossDeathSequenceHold) {
+      let gust = 0;
+      const gustLeft = ship.x - SHIP_W / 2;
+      const gustRight = ship.x + SHIP_W / 2;
+      const gustTop = ship.y - SHIP_H / 2;
+      const gustBottom = ship.y + SHIP_H / 2;
+      for (const g of gates) {
+        if (g.type !== 'snowgust') continue;
+        const left = g.x - g.width / 2;
+        const right = g.x + g.width / 2;
+        const top = g.y - g.height / 2;
+        const bottom = g.y + g.height / 2;
+        if (gustRight > left && gustLeft < right && gustBottom > top && gustTop < bottom) gust += g.push;
+      }
+      if (gust !== 0) {
+        ship.vy += gust;
+        const capFall = MAX_FALL_SPEED * th.gravityMult;
+        const capRise = MAX_RISE_SPEED * th.liftMult;
+        if (ship.vy > capFall) ship.vy = capFall;
+        if (ship.vy < capRise) ship.vy = capRise;
+      }
+    }
+
     ship.y += ship.vy;
     ship.rotation = Math.max(-15, Math.min(20, ship.vy * 3));
 
@@ -872,6 +1858,9 @@ function update() {
       ship.vx = (ship.vx || 0) + SHIP_FLYOFF_ACCEL;
       ship.x += ship.vx;
       ship.rotation = Math.max(ship.rotation, 8); // nose tilts up triumphantly as it accelerates away
+      const flyMargin = SHIP_H;
+      if (ship.y < PLAY_TOP + flyMargin) { ship.y = PLAY_TOP + flyMargin; ship.vy = 0; }
+      if (ship.y > PLAY_BOTTOM - flyMargin) { ship.y = PLAY_BOTTOM - flyMargin; ship.vy = 0; }
     }
 
     updateBackgroundParticles(currentTheme());
@@ -1167,9 +2156,13 @@ function update() {
           miniBossAttackStateStartFrame = frame;
         }
       } else {
-        miniBoss.r = miniBoss.maxR;
+        if (!(th.miniBossVariant === 'snow' && (miniBossDefeated || miniBossAttackState === 'crumbling' || miniBossAttackState === 'snowDying'))) {
+          miniBoss.r = miniBoss.maxR;
+        }
         if (th.miniBossVariant === 'core') {
           updateReactorCoreBoss();
+        } else if (th.miniBossVariant === 'snow' && !miniBossDefeated) {
+          updateSnowBoss();
         } else if (!miniBossDefeated) {
           const stateElapsed = frame - miniBossAttackStateStartFrame;
           if (miniBossCyclesCompleted >= 1 && miniBossAttackState === 'floating') {
@@ -1479,6 +2472,22 @@ function update() {
               }
             }
           }
+        } else if (th.miniBossVariant === 'snow') {
+          // death scene is over -- the ship drives off. The ice wall
+          // slides away with it. No terrain run, no escape distance.
+          snowBossStepAsh();
+          if (!shipFlyOffActive && frame - miniBossDefeatFrame >= 28) {
+            shipFlyOffActive = true;
+            ship.vx = 0;
+            if (miniBossWallRecedeStartFrame === -1) miniBossWallRecedeStartFrame = frame;
+          }
+          if (shipFlyOffActive && ship.x > W + 60) {
+            shipFlyOffActive = false;
+            miniBoss = null;
+            ship.x = W * 0.28;
+            ship.vx = 0;
+            beginWarp();
+          }
         } else if (miniBossWallRecedeStartFrame === -1 && frame - miniBossDefeatFrame >= MINI_BOSS_DEFEAT_PAUSE) {
           // the fight is over -- turn the zone into a real terrain run for
           // a short stretch, matching INFERNO's feel (same speed, wave
@@ -1556,7 +2565,7 @@ function update() {
     } else if (th.obstacleShape === 'terrain') {
       for (let s of terrainSegments) s.x -= effScroll;
       const spacing = th.terrainSpacing || 34;
-      while (terrainSegments[terrainSegments.length - 1].x < W + spacing) {
+      while (terrainSegments[terrainSegments.length - 1].x < (th.iceChunks ? W + 760 : W + spacing)) {
         addTerrainSegment();
       }
       terrainSegments = terrainSegments.filter(s => s.x > -spacing * 2);
@@ -1584,29 +2593,124 @@ function update() {
       }
       if (th.iceChunks) {
         const shipR = SHIP_W * 0.4;
+        const shipLeft = ship.x - SHIP_W / 2;
+        const shipRight = ship.x + SHIP_W / 2;
         for (const g of gates) {
-          if (g.type !== 'asteroid') continue;
-          const dx = ship.x - g.x;
-          const dy = ship.y - g.y;
-          if (Math.sqrt(dx * dx + dy * dy) < shipR + g.r) tryEndGame('asteroid');
+          if (g.type === 'asteroid' || g.type === 'snowball') {
+            const dx = ship.x - g.x;
+            const dy = ship.y - g.y;
+            if (Math.sqrt(dx * dx + dy * dy) < shipR + g.r) tryEndGame(g.type === 'snowball' ? 'snowball' : 'asteroid');
+          } else if (g.type === 'icespire') {
+            if (rectIntersectsPolygon(shipLeft, shipTop, shipRight, shipBottom, iceSpirePolygon(g))) tryEndGame(g.type);
+          } else if (g.type === 'icefloe' || g.type === 'icecalve') {
+            const left = g.x - g.width / 2;
+            const right = g.x + g.width / 2;
+            const halfH = g.thickness / 2;
+            const top = g.y - halfH;
+            const bottom = g.y + halfH;
+            if (shipRight > left && shipLeft < right && shipBottom > top && shipTop < bottom) tryEndGame(g.type);
+          } else if (g.type === 'icearch') {
+            const left = g.x - g.width / 2;
+            const right = g.x + g.width / 2;
+            const top = g.y - g.height / 2;
+            const bottom = g.y + g.height / 2;
+            const holeLeft = g.x - g.holeW / 2;
+            const holeRight = g.x + g.holeW / 2;
+            const capY = g.anchor === 'top' ? g.holeY + g.holeH / 2 : g.holeY - g.holeH / 2;
+            const hit = (l, r, t, b) => shipRight > l && shipLeft < r && shipBottom > t && shipTop < b;
+            const legs = hit(left - 16, holeLeft, top, bottom) || hit(holeRight, right + 16, top, bottom);
+            const crown = g.anchor === 'top'
+              ? hit(holeLeft, holeRight, capY, bottom)
+              : hit(holeLeft, holeRight, top, capY);
+            if (legs || crown) tryEndGame('icearch');
+          }
         }
       }
       }
       if (th.iceChunks) {
+        const freshCalves = [];
         for (const g of gates) {
-          if (g.type === 'asteroid') g.x -= effScroll;
+          if (g.type === 'asteroid' || g.type === 'icefloe' || g.type === 'icespire' || g.type === 'snowgust' || g.type === 'icearch' || g.type === 'icecalve' || g.type === 'snowball') g.x -= effScroll;
+          if (g.type === 'asteroid' && g.vy) {
+            g.y += g.vy;
+            g.y = Math.max(PLAY_TOP + g.r + 4, Math.min(PLAY_BOTTOM - g.r - 4, g.y));
+          }
+          if (g.type === 'snowball') {
+            g.x -= g.drift || 0;
+            if (!g.falling) {
+              const hSpeed = effScroll + (g.drift || 0);
+              const dist = g.x - ship.x;
+              const drop = Math.max(0, g.laneY - g.y);
+              const lead = g.vy > 0 ? drop * hSpeed / g.vy : 0;
+              if (dist <= lead) g.falling = true;
+            }
+            if (g.falling) g.y += g.vy;
+          }
+          if (g.type === 'icecalve') {
+            g.vy = Math.min(6.2, (g.vy || 0) + 0.16);
+            g.y += g.vy;
+          }
+          if (g.type === 'asteroid' && g.calving && !g.calved && g.x < ship.x + 460 && g.x > ship.x - 20) {
+            g.calved = true;
+            freshCalves.push({
+              type: 'icecalve',
+              x: g.x,
+              y: g.y + g.r + 18,
+              width: 74,
+              thickness: 32,
+              vy: 0.6,
+              passed: false
+            });
+          }
         }
+        for (const c of freshCalves) gates.push(c);
         if (portalObject) {
           const portalSafeX = portalObject.x - 40;
-          gates = gates.filter(g => g.type !== 'asteroid' || g.x + g.r < portalSafeX);
+          gates = gates.filter(g => {
+            if (g.type === 'asteroid' || g.type === 'snowball') return g.x + g.r < portalSafeX;
+            if (g.type === 'icefloe' || g.type === 'icespire' || g.type === 'icearch' || g.type === 'snowgust' || g.type === 'icecalve') return g.x + g.width / 2 < portalSafeX;
+            return true;
+          });
         }
-        gates = gates.filter(g => g.type !== 'asteroid' || g.x + g.r > -80);
+        gates = gates.filter(g => {
+          if (g.type === 'asteroid') return g.x + g.r > -80;
+          if (g.type === 'snowball') return g.x + g.r > -80 && g.y - g.r < PLAY_BOTTOM + 30;
+          if (g.type === 'icefloe' || g.type === 'icespire' || g.type === 'icearch' || g.type === 'snowgust') return g.x + g.width / 2 > -80;
+          if (g.type === 'icecalve') return g.x + g.width / 2 > -80 && g.y < PLAY_BOTTOM + 48;
+          return true;
+        });
         iceChunkSpawnX -= effScroll;
+        if (th.iceChunks) spawnScheduledSnowballs();
+        // Stay past the right edge, and past the distance-50 line on a narrow window.
+        const glacierClearX = ship.x + Math.max(0, 50 - (distance - zoneStartDistance)) * 10 + 170;
+        const glacierMinX = Math.max(glacierClearX, W + 180);
+        if (iceChunkSpawnX < glacierMinX) iceChunkSpawnX = glacierMinX;
         const horizon = terrainSegments[terrainSegments.length - 1].x - 8;
         if (!portalObject && iceChunkSpawnX <= horizon) {
-          const entry = th.iceChunkPattern[iceChunkPatternIndex % th.iceChunkPattern.length];
-          if (!spawnWouldHitPortal(iceChunkSpawnX, 48)) spawnIceChunkCluster(iceChunkSpawnX);
-          iceChunkSpawnX += entry.spacing;
+          const bounds = terrainBoundsAt(iceChunkSpawnX) || terrainBoundsAt(horizon);
+          const gap = bounds ? bounds.bottom - bounds.top : 0;
+          const playHeight = PLAY_BOTTOM - PLAY_TOP;
+          let field = '';
+          for (let i = terrainSegments.length - 1; i >= 0; i--) {
+            if (terrainSegments[i].x <= iceChunkSpawnX + 8) {
+              field = terrainSegments[i].field || '';
+              break;
+            }
+          }
+          let spacingAdd = 220;
+          const blocked = spawnWouldHitPortal(iceChunkSpawnX, 80);
+          if (field === 'floe' && gap > playHeight * 0.9) {
+            spacingAdd = blocked ? th.iceFloePattern[iceFloePatternIndex % th.iceFloePattern.length].spacing : spawnIceFloeCluster(iceChunkSpawnX);
+          } else if (field === 'berg' && bounds && bounds.top < PLAY_TOP + 40) {
+            // One pass. A repeat puts the first snowball on top of the last gust.
+            if (iceBergPatternIndex >= th.iceBergPattern.length) spacingAdd = 480;
+            else spacingAdd = blocked ? th.iceBergPattern[iceBergPatternIndex].spacing : spawnIceBergCluster(iceChunkSpawnX);
+          } else if (!field && gap > 0 && gap < playHeight * 0.55) {
+            const entry = th.iceChunkPattern[iceChunkPatternIndex % th.iceChunkPattern.length];
+            if (!blocked) spawnIceChunkCluster(iceChunkSpawnX);
+            spacingAdd = entry.spacing;
+          }
+          iceChunkSpawnX += spacingAdd;
         }
       }
     } else {
@@ -1620,8 +2724,11 @@ function update() {
         if (g.type === 'bossdrone') continue; // moved separately below via vx
         if (g.type === 'bossember') continue; // moved separately below via vx/vy
         if (g.type === 'bossashcloud') continue; // moved separately below via vx
-        g.x -= (g.type === 'fireball' ? effScroll * fireballSpeedMult : (g.type === 'zone2storm' ? effScroll * 1.4 : (g.type === 'securitydrone' ? effScroll * g.speedMult : effScroll)));
+        g.x -= (g.type === 'fireball' ? effScroll * fireballSpeedMult : (g.type === 'zone2storm' ? effScroll * 1.4 : (g.type === 'securitydrone' || g.type === 'headlamp' ? effScroll * g.speedMult : effScroll)));
         if (g.type === 'cloudarc') g.x2 -= effScroll; // second endpoint isn't covered by the g.x update above
+        // A school scrolls with the trench until it enters, then dashes across.
+        if (g.type === 'school' && g.x < W + 40) g.x -= g.swim;
+        if (g.type === 'headlamp') updateHeadlamp(g);
       }
       for (const g of gates) {
         if (g.type === 'turretshot') { g.x += g.vx; g.y += g.vy; }
@@ -1674,7 +2781,8 @@ function update() {
         }
       } else if (th.obstacleShape !== 'none') {
         lastSpawnX -= effScroll;
-        if (!portalObject && (gates.length === 0 || lastSpawnX < W + 150)) {
+        const courseDone = (th.obstacleShape === 'kelp' || th.obstacleShape === 'copper' || th.obstacleShape === 'chrome') && patternIndex >= th.pattern.length;
+        if (!portalObject && !courseDone && (gates.length === 0 || lastSpawnX < W + 150)) {
           const nextSpacing = th.pattern[patternIndex % th.pattern.length].spacing;
           const nextX = (gates.length ? lastSpawnX : W + 150) + nextSpacing;
           if (!spawnWouldHitPortal(nextX, 180)) {
@@ -2054,6 +3162,17 @@ function update() {
           return onScreen && withinSafetyNet;
         }
         if (g.type === 'hbar') return g.x + g.width / 2 > -80;
+        if (g.type === 'marquee') return g.x + g.width / 2 > -80;
+        if (g.type === 'courier') return g.x + (g.podR || 16) > -80;
+        if (g.type === 'bloom') return g.x + g.maxR > -80;
+        if (g.type === 'coil') return g.x + g.halfW > -80;
+        if (g.type === 'headlamp') return g.x + g.r > -80;
+        if (g.type === 'kelp') return g.x + Math.abs(g.sway || 0) + 30 > -80;
+        if (g.type === 'jelly') return g.x + (g.bellR || 24) + 20 > -80;
+        if (g.type === 'sponge') return spongeRight(g) > -80;
+        if (g.type === 'school') return g.x + g.width / 2 > -80;
+        if (g.type === 'urchin') return g.x + g.coreR + g.spine > -80;
+        if (g.type === 'current') return g.x + g.width / 2 > -80;
         if (g.type === 'billboard') return g.x + g.panelWidth / 2 > -80;
         if (g.type === 'emp') return g.x + 30 > -80;
         if (g.type === 'echotrail') return g.x + g.zoneWidth / 2 > -80;
@@ -2072,6 +3191,7 @@ function update() {
         if (g.type === 'lbolt') return g.x + g.swingWidth / 2 > -80;
         if (g.type === 'barrier') return g.x + g.width / 2 > -50;
         if (g.type === 'lightning') return g.x + g.span / 2 > -50;
+        if (g.type === 'wedge') return g.x + g.width / 2 + Math.abs(g.lean || 0) > -50;
         return g.x + GATE_WIDTH > -50;
       });
 
@@ -2181,6 +3301,68 @@ function update() {
           if (shipRight > barLeft && shipLeft < barRight && shipBottom > barTop && shipTop < barBottom) {
             tryEndGame(g.type);
           }
+        } else if (g.type === 'marquee') {
+          const left = g.x - g.width / 2;
+          const right = g.x + g.width / 2;
+          const top = g.anchor === 'ceiling' ? PLAY_TOP : PLAY_BOTTOM - g.height;
+          const bottom = g.anchor === 'ceiling' ? PLAY_TOP + g.height : PLAY_BOTTOM;
+          if (shipRight > left && shipLeft < right && shipBottom > top && shipTop < bottom) tryEndGame('marquee');
+        } else if (g.type === 'courier') {
+          for (const y of courierPods(g)) {
+            if (Math.hypot(ship.x - g.x, ship.y - y) < shipR + g.podR) {
+              tryEndGame('courier');
+              break;
+            }
+          }
+        } else if (g.type === 'bloom') {
+          if (Math.hypot(ship.x - g.x, ship.y - PLAY_BOTTOM) < bloomRadius(g) + shipR) tryEndGame('bloom');
+        } else if (g.type === 'coil') {
+          const sparkTop = PLAY_BOTTOM - g.sparkH;
+          if (coilFiring(g) && Math.abs(ship.x - g.x) < g.halfW + shipR && shipBottom > sparkTop) tryEndGame('coil');
+        } else if (g.type === 'headlamp') {
+          if (Math.hypot(ship.x - g.x, ship.y - g.y) < shipR + g.r) tryEndGame('headlamp');
+        } else if (g.type === 'neonbar') {
+          const left = g.x - g.width / 2;
+          const right = g.x + g.width / 2;
+          const top = g.y - g.thick / 2;
+          const bottom = g.y + g.thick / 2;
+          if (shipRight > left && shipLeft < right && shipBottom > top && shipTop < bottom) tryEndGame('neonbar');
+        } else if (g.type === 'wedge') {
+          if (rectIntersectsPolygon(shipLeft, shipTop, shipRight, shipBottom, wedgePolygon(g))) tryEndGame('wedge');
+        } else if (g.type === 'kelp') {
+          const pose = kelpPose(g);
+          const hit = distToSegment(ship.x, ship.y, pose.x0, pose.y0, pose.x1, pose.y1);
+          const midHit = distToSegment(ship.x, ship.y, pose.x0, pose.y0, pose.mx, pose.my);
+          const tipHit = distToSegment(ship.x, ship.y, pose.mx, pose.my, pose.x1, pose.y1);
+          if (Math.min(hit, midHit, tipHit) < shipR + pose.thick * 0.5) tryEndGame('kelp');
+        } else if (g.type === 'jelly') {
+          const pose = jellyPose(g);
+          const dx = ship.x - pose.x;
+          const dy = ship.y - pose.y;
+          const bellHit = Math.hypot(dx, dy) < shipR + pose.bellR;
+          const tentHit = distToSegment(ship.x, ship.y, pose.x, pose.y + pose.bellR * 0.35, pose.tx, pose.ty) < shipR + 5;
+          const tentHit2 = distToSegment(ship.x, ship.y, pose.x - 8, pose.y + pose.bellR * 0.2, pose.tx2, pose.ty2) < shipR + 5;
+          if (bellHit || tentHit || tentHit2) tryEndGame('jelly');
+        } else if (g.type === 'sponge') {
+          for (const tube of spongeTubes(g)) {
+            const cx = tube.x + tube.lean * 0.5;
+            const left = cx - tube.w / 2;
+            const right = cx + tube.w / 2;
+            const top = PLAY_BOTTOM - tube.h;
+            if (shipRight > left && shipLeft < right && shipBottom > top) {
+              tryEndGame('sponge');
+              break;
+            }
+          }
+        } else if (g.type === 'school') {
+          const halfW = g.width / 2;
+          const halfH = g.height / 2;
+          if (shipRight > g.x - halfW && shipLeft < g.x + halfW && shipBottom > g.y - halfH && shipTop < g.y + halfH) {
+            tryEndGame('school');
+          }
+        } else if (g.type === 'urchin') {
+          const uy = urchinCenter(g);
+          if (Math.hypot(ship.x - g.x, ship.y - uy) < shipR + urchinReach(g)) tryEndGame('urchin');
         } else if (g.type === 'billboard') {
           const panelLeft = g.x - g.panelWidth / 2;
           const panelRight = g.x + g.panelWidth / 2;
@@ -2431,200 +3613,3 @@ function update() {
   }
 }
 
-function endGame(mercyEligible, opts) {
-  if (state !== 'playing') return; // already dying/dead/not in a run
-  if (ghostMode) {
-    clampGhostShipToPlayfield();
-    return;
-  }
-  if (bossFinalChargeActive || bossExplosionActive || bossFullyDefeated) return; // victory is already secured -- wall collisions are normally unconditional instant death, but not during the boss's death sequence or the fly-off that follows
-  if (!opts || opts.playCollision !== false) sfxCollision();
-  stopLiftSound();
-  stopGlowDangerSound();
-  stopFireballBreathSound();
-  stopToxicHazardSounds();
-  stopDustStormSound();
-  stopMeteorStreakSound();
-  stopStormSkiesHazardSounds();
-  stopMovingDoorSound();
-  stopBlackHoleSound();
-  stopMoltenCoreIdleSound();
-  stopMoltenFlameWallSound();
-  stopMoltenSqueezeSound();
-  stopMoltenDeathAshSound();
-  stopCoreBulkheadHoldSound();
-  stopCoreOverload(0.03);
-  stopMegaManCharge(0.03);
-  if (!isPracticeRun) {
-    totalDeaths++;
-    const zoneName = currentTheme().name;
-    deathsByZone[zoneName] = (deathsByZone[zoneName] || 0) + 1;
-    lifetimeDeathsByZone[themeIndex] = (lifetimeDeathsByZone[themeIndex] || 0) + 1;
-    savePlayerProfile();
-  }
-  lastDeathDistance = Math.max(0, Math.floor(distance - zoneStartDistance));
-  lives--;
-  diedInCurrentZone = true;
-  if (lives > 0) {
-    respawnInZone();
-    // note: the post-respawn protection window itself is granted when the
-    // player actually resumes play (see startPress), not here -- using
-    // real time now means granting it at this exact moment could waste
-    // most or all of it while they're still looking at the "Life Lost"
-    // screen. Only remember whether this specific death is even eligible:
-    // a hazard death (forgiven or not) can grant it, but a wall death
-    // never can, regardless of difficulty or what state the ship was in
-    // right before hitting the wall.
-    pendingRespawnMercyEligible = !!mercyEligible;
-    restartBossFileBgm();
-  } else if (continuesRemaining > 0) {
-    state = 'continue-prompt';
-    restartBossFileBgm();
-  } else if (isPracticeRun) {
-    endPracticeRun();
-  } else {
-    state = 'gameover';
-    sfxGameOver();
-    const distInt = Math.floor(maxDistanceReached);
-    if (distInt > best) {
-      best = distInt;
-      savePlayerProfile();
-      sfxNewBest();
-    }
-  }
-}
-
-function hexToRgb(hex) {
-  const h = hex.replace('#', '');
-  return {
-    r: parseInt(h.substring(0, 2), 16),
-    g: parseInt(h.substring(2, 4), 16),
-    b: parseInt(h.substring(4, 6), 16)
-  };
-}
-
-function lerpColor(hexA, hexB, t) {
-  const a = hexToRgb(hexA), b = hexToRgb(hexB);
-  const r = Math.round(a.r + (b.r - a.r) * t);
-  const g = Math.round(a.g + (b.g - a.g) * t);
-  const bl = Math.round(a.b + (b.b - a.b) * t);
-  return `rgb(${r},${g},${bl})`;
-}
-
-// ---- Audio ----
-// SFX: SNES / Mega Man X -- round triangle+sine blips, echo, punchy hits.
-// BGM: slow space pads (not SNES stage themes).
-// No sample files. AudioContext is unlocked on the first pointer/key gesture.
-let audioCtx = null;
-let masterGain = null;
-let sfxGain = null;
-let bgmGain = null;
-let delayInput = null;
-let audioUnlocked = false;
-
-const AUDIO_SETTINGS_STORAGE_KEY = 'synthFlight2AudioSettings';
-const DEFAULT_SFX_VOLUME = 0.64;
-const DEFAULT_BGM_VOLUME = 0.26;
-function clampAudioVolume(value, fallback) {
-  const n = typeof value === 'number' ? value : Number(value);
-  if (!isFinite(n)) return fallback;
-  return Math.max(0, Math.min(1, n));
-}
-function audioVolumePercent(value) {
-  return Math.round(clampAudioVolume(value, 0) * 100);
-}
-function loadAudioSettings() {
-  try {
-    const raw = localStorage.getItem(AUDIO_SETTINGS_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        sfxEnabled: typeof parsed.sfxEnabled === 'boolean' ? parsed.sfxEnabled : true,
-        bgmEnabled: typeof parsed.bgmEnabled === 'boolean' ? parsed.bgmEnabled : true,
-        sfxVolume: clampAudioVolume(parsed.sfxVolume, DEFAULT_SFX_VOLUME),
-        bgmVolume: clampAudioVolume(parsed.bgmVolume, DEFAULT_BGM_VOLUME),
-        chargeTelegraph: typeof parsed.chargeTelegraph === 'string' && parsed.chargeTelegraph !== 'xCharge'
-          ? parsed.chargeTelegraph
-          : 'static',
-        glowDanger: typeof parsed.glowDanger === 'string' ? parsed.glowDanger : 'siren',
-        lifeLost: typeof parsed.lifeLost === 'string' ? parsed.lifeLost : 'lifeChip',
-        respawn: typeof parsed.respawn === 'string' ? parsed.respawn : 'systemsOn',
-      };
-    }
-  } catch (e) { /* corrupted/missing data -- fall through to defaults */ }
-  return { sfxEnabled: true, bgmEnabled: true, sfxVolume: DEFAULT_SFX_VOLUME, bgmVolume: DEFAULT_BGM_VOLUME, chargeTelegraph: 'static', glowDanger: 'siren', lifeLost: 'lifeChip', respawn: 'systemsOn' };
-}
-function saveAudioSettings() {
-  try {
-    localStorage.setItem(AUDIO_SETTINGS_STORAGE_KEY, JSON.stringify({
-      sfxEnabled: audioSettings.sfxEnabled,
-      bgmEnabled: audioSettings.bgmEnabled,
-      sfxVolume: audioSettings.sfxVolume,
-      bgmVolume: audioSettings.bgmVolume,
-      chargeTelegraph: audioSettings.chargeTelegraph,
-      glowDanger: audioSettings.glowDanger,
-      lifeLost: audioSettings.lifeLost,
-      respawn: audioSettings.respawn,
-    }));
-  } catch (e) { /* storage unavailable -- fail silently, never crash the game over a preference */ }
-  if (!durableWriteLock) queueDurableSave();
-}
-const __loadedAudioSettings = loadAudioSettings();
-
-const audioSettings = {
-  masterVolume: 1.0,
-  sfxVolume: __loadedAudioSettings.sfxVolume,
-  bgmVolume: __loadedAudioSettings.bgmVolume,
-  muted: false,
-  sfxEnabled: __loadedAudioSettings.sfxEnabled,
-  bgmEnabled: __loadedAudioSettings.bgmEnabled,
-  chargeTelegraph: __loadedAudioSettings.chargeTelegraph,
-  glowDanger: __loadedAudioSettings.glowDanger || 'siren',
-  lifeLost: __loadedAudioSettings.lifeLost || 'lifeChip',
-  respawn: __loadedAudioSettings.respawn || 'systemsOn',
-};
-
-// recomputes the live gain node values from current settings -- called on
-// init and whenever a Settings-screen toggle changes
-function applyAudioSettings() {
-  if (bgmHtmlAudio) {
-    bgmHtmlAudio.volume = (!audioSettings.muted && audioSettings.bgmEnabled)
-      ? Math.max(0, Math.min(1, audioSettings.bgmVolume * 0.8))
-      : 0;
-  }
-  if (!audioCtx) return;
-  masterGain.gain.value = audioSettings.muted ? 0 : audioSettings.masterVolume;
-  sfxGain.gain.value = audioSettings.sfxEnabled ? audioSettings.sfxVolume : 0;
-  bgmGain.gain.value = audioSettings.bgmEnabled ? audioSettings.bgmVolume : 0;
-}
-
-function normalizeSaveId(raw) {
-  const id = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  return id.length >= 6 && id.length <= 16 ? id : '';
-}
-function generateSaveId() {
-  let id = '';
-  const cryptoObj = typeof crypto !== 'undefined' ? crypto : null;
-  for (let i = 0; i < 8; i++) {
-    let n = 0;
-    if (cryptoObj && cryptoObj.getRandomValues) {
-      const buf = new Uint8Array(1);
-      cryptoObj.getRandomValues(buf);
-      n = buf[0] % SAVE_ID_ALPHABET.length;
-    } else {
-      n = Math.floor(Math.random() * SAVE_ID_ALPHABET.length);
-    }
-    id += SAVE_ID_ALPHABET[n];
-  }
-  return id;
-}
-function readSaveIdCookie() {
-  try {
-    const parts = String(document.cookie || '').split(';');
-    for (let i = 0; i < parts.length; i++) {
-      const piece = parts[i].trim();
-      if (piece.indexOf(SAVE_ID_COOKIE + '=') === 0) return normalizeSaveId(piece.slice(SAVE_ID_COOKIE.length + 1));
-    }
-  } catch (e) { /* cookies blocked */ }
-  return '';
-}

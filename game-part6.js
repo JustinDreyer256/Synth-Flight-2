@@ -1,3 +1,168 @@
+function bgmStepDuration(profile) {
+  return (60 / profile.tempo) / 4;
+}
+
+function scheduleKick(time, volume) {
+  playSynth({ type: 'sine', freq: 52, freqEnd: 28, when: time, duration: 0.35, attack: 0.02, decay: 0.12, sustain: 0.35, release: 0.2, volume, filterFreq: 180, dest: bgmGain });
+}
+
+function scheduleBgmStep(profile, stepIndex, time) {
+  const stepDur = bgmStepDuration(profile);
+  const step = stepIndex % BGM_STEPS_PER_BAR;
+  const leadVol = profile.leadVolume != null ? profile.leadVolume : 0.07;
+  const bassVol = profile.bassVolume != null ? profile.bassVolume : 0.22;
+  const padVol = profile.padVolume != null ? profile.padVolume : 0.045;
+
+  const leadNote = profile.leadPattern[step];
+  if (leadNote) {
+    playSynth({
+      type: 'sine', freq: leadNote, when: time, duration: stepDur * 2.4,
+      attack: 0.04, decay: 0.2, sustain: 0.35, release: 0.8, volume: leadVol,
+      filterFreq: 1800, dest: bgmGain, delaySend: 0.7,
+    });
+    playSynth({
+      type: 'triangle', freq: leadNote * 2, when: time, duration: stepDur * 1.6,
+      attack: 0.06, decay: 0.15, sustain: 0.2, release: 0.7, volume: leadVol * 0.35,
+      filterFreq: 2400, dest: bgmGain, delaySend: 0.55,
+    });
+  }
+
+  const bassNote = profile.bassPattern[step];
+  if (bassNote) {
+    playSynth({
+      type: 'sine', freq: bassNote, when: time, duration: stepDur * 8,
+      attack: 0.25, decay: 0.8, sustain: 0.7, release: 1.2, volume: bassVol,
+      filterFreq: 160, dest: bgmGain,
+    });
+  }
+
+  const chord = profile.padChords && profile.padChords[step];
+  if (chord) {
+    chord.forEach((freq, i) => {
+      playSynth({
+        type: i === 0 ? 'sine' : 'triangle', freq, when: time, duration: stepDur * 16,
+        attack: 0.6, decay: 1.2, sustain: 0.45, release: 1.4, volume: padVol,
+        filterFreq: 700, dest: bgmGain, delaySend: 0.4, detune: i === 1 ? 5 : (i === 2 ? -4 : 0),
+      });
+    });
+  }
+
+  if (profile.kickSteps.includes(step) && profile.kickVolume) {
+    scheduleKick(time, profile.kickVolume);
+  }
+}
+
+function bgmSchedulerTick() {
+  if (!audioCtx || !bgmCurrentProfileName) return;
+  const profile = BGM_PROFILES[bgmCurrentProfileName];
+  while (bgmNextStepTime < audioCtx.currentTime + BGM_SCHEDULE_AHEAD_S) {
+    scheduleBgmStep(profile, bgmCurrentStep, bgmNextStepTime);
+    bgmNextStepTime += bgmStepDuration(profile);
+    bgmCurrentStep++;
+  }
+}
+
+const BGM_FILE_TRACKS = [
+  { id: 'bgm-00-solar-chrome', src: 'audio/bgm/bgm-01-synthwave.mp3', themeIndex: 0, start: 0, loopStart: 0, loopEnd: 192 },
+  { id: 'bgm-01-glacier', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 2, start: 0, loopStart: 0, loopEnd: 22 },
+  { id: 'bgm-whiteout', src: 'audio/bgm/bgm-03-deep-space.mp3', themeIndex: 3, start: 0, loopStart: 0, loopEnd: 22 },
+  { id: 'bgm-02-gravity-well', src: 'audio/bgm/bgm-02-gravity-well.mp3', themeIndex: 1, start: 0, loopStart: 0 },
+  { id: 'bgm-03-deep-space', src: 'audio/bgm/bgm-03-deep-space.mp3', start: 0, loopStart: 0, loopEnd: 22 },
+  { id: 'bgm-solar-chrome-zone', src: 'audio/bgm/bgm-01-synthwave.mp3', themeIndex: 4, start: 0, loopStart: 0, loopEnd: 192 },
+  { id: 'bgm-04-inferno', src: 'audio/bgm/bgm-04-inferno.mp3', themeIndex: 5, start: 0, loopStart: 0, loopEnd: 104 },
+  { id: 'bgm-05-molten-core-boss', src: 'audio/bgm/bgm-05-molten-core-boss.mp3?v=snes272', themeIndex: 6, phaseMin: 1, phaseMax: 1, start: 0, loopStart: 0 },
+  { id: 'bgm-05-molten-core', src: 'audio/bgm/bgm-05-molten-core.mp3', themeIndex: 6, phaseMin: 2, phaseMax: 99, start: 0, loopStart: 0, loopEnd: 104 },
+  { id: 'bgm-06-storm-skies', src: 'audio/bgm/bgm-06-storm-skies.mp3', themeIndex: 7, start: 0, loopStart: 0 },
+  { id: 'bgm-07-ancient-ruins', src: 'audio/bgm/bgm-07-ancient-ruins.ogg', themeIndex: 8, start: 0, loopStart: 0 },
+  { id: 'bgm-08-toxic-wasteland', src: 'audio/bgm/bgm-08-toxic-wasteland.mp3', themeIndex: 9, start: 0, loopStart: 0, loopEnd: 46 },
+  { id: 'bgm-09-derelict-station', src: 'audio/bgm/bgm-09-derelict-station.mp3?v=snes271', themeIndex: 10, start: 2, loopStart: 2, loopEnd: 101 },
+  { id: 'bgm-10-reactor-core-p1', src: 'audio/bgm/bgm-10-reactor-core-p1.mp3', themeIndex: 11, phaseMin: 1, phaseMax: 7, start: 0, loopStart: 0 },
+  { id: 'bgm-10-reactor-core-p8', src: 'audio/bgm/bgm-10-reactor-core-p8.mp3?v=snes267', themeIndex: 11, phaseMin: 8, phaseMax: 99, start: 50, loopStart: 50 },
+  { id: 'bgm-11-the-void', src: 'audio/bgm/bgm-11-the-void.mp3', themeIndex: 12, start: 1, loopStart: 1, loopEnd: 38 },
+  { id: 'bgm-12-neon-city', src: 'audio/bgm/bgm-12-neon-city.mp3', themeIndex: 13, start: 0, loopStart: 0 },
+  { id: 'bgm-13-the-signal-p1', src: 'audio/bgm/bgm-13-the-signal-p1.mp3?v=snes266', themeIndex: 14, phaseMin: 1, phaseMax: 2, start: 0, loopStart: 0 },
+  { id: 'bgm-13-the-signal-p3', src: 'audio/bgm/bgm-13-the-signal-p3.mp3', themeIndex: 14, phaseMin: 3, phaseMax: 4, start: 0, loopStart: 0 },
+  { id: 'bgm-13-the-signal-p5', src: 'audio/bgm/bgm-13-the-signal-p5.mp3', themeIndex: 14, phaseMin: 5, phaseMax: 99, start: 0, loopStart: 0 },
+];
+const bgmElementCache = {};
+const bgmMediaNodeCache = {};
+let bgmHtmlAudio = null;
+let bgmFileGainNode = null;
+let bgmFileTrackId = null;
+let bgmActiveFileTrack = null;
+let bgmFileLoadToken = 0;
+
+function bgmFileTrackById(id) {
+  return BGM_FILE_TRACKS.find((t) => t.id === id) || null;
+}
+
+function currentPlayPhase() {
+  const th = THEMES[warpActive ? nextThemeIndex : themeIndex];
+  if (!th) return 1;
+  if (th.isBossZone) {
+    if (bossTransitioning && bossTransitionTargetPhase) return bossTransitionTargetPhase;
+    return bossPhase || 1;
+  }
+  if (th.miniBossVariant === 'core') return coreBossPhase || 1;
+  if (th.isMiniBossZone) return (miniBossDefeated || miniBossEscapeRunActive) ? 2 : 1;
+  return 1;
+}
+
+function currentFileBgmTrack() {
+  if (!(state === 'playing' || state === 'paused' || state === 'respawn' || state === 'continue-prompt')) return null;
+  const idx = warpActive ? nextThemeIndex : themeIndex;
+  const tracks = BGM_FILE_TRACKS.filter((t) => t.themeIndex === idx);
+  if (!tracks.length) return null;
+  const phase = currentPlayPhase();
+  const hit = tracks.find((t) => phase >= (t.phaseMin || 1) && phase <= (t.phaseMax == null ? 99 : t.phaseMax));
+  return hit || tracks[0];
+}
+
+function getBgmElement(src) {
+  if (!bgmElementCache[src]) {
+    const el = new Audio();
+    el.preload = 'auto';
+    el.playsInline = true;
+    el.src = src + (src.includes('?') ? '&' : '?') + 'build=snes381';
+    bgmElementCache[src] = el;
+  }
+  return bgmElementCache[src];
+}
+
+function getBgmMediaNode(src, el) {
+  if (!bgmMediaNodeCache[src]) bgmMediaNodeCache[src] = audioCtx.createMediaElementSource(el);
+  return bgmMediaNodeCache[src];
+}
+
+function stopSynthBgm() {
+  if (bgmSchedulerId !== null) {
+    clearInterval(bgmSchedulerId);
+    bgmSchedulerId = null;
+  }
+  bgmCurrentProfileName = null;
+}
+
+function stopFileBgm(fadeSec) {
+  bgmFileLoadToken++;
+  const el = bgmHtmlAudio;
+  const gain = bgmFileGainNode;
+  bgmHtmlAudio = null;
+  bgmFileGainNode = null;
+  bgmFileTrackId = null;
+  bgmActiveFileTrack = null;
+  if (el) {
+    try { el.pause(); } catch (e) { /* already paused */ }
+  }
+  if (!audioCtx || !gain) return;
+  const t0 = audioCtx.currentTime;
+  const fade = fadeSec != null ? fadeSec : 0.12;
+  try {
+    gain.gain.cancelScheduledValues(t0);
+    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + fade);
+  } catch (e) { /* already stopped */ }
+}
+
 function stopBgm() {
   stopSynthBgm();
   stopFileBgm(0.08);
@@ -492,9 +657,11 @@ const SFX_CATALOG = [
   { id: 'bgmMenu', section: '6. Background Music', name: 'Menu / home loop (synth)', kind: 'bgm', profile: 'menu', play: () => {} },
   { id: 'bgmVictory', section: '6. Background Music', name: 'Victory — Neon Rise (synth)', kind: 'bgm', profile: 'victory', play: () => {} },
   { id: 'bgmGameOver', section: '6. Background Music', name: 'Game over stinger', kind: 'oneshot', play: () => sfxGameOver() },
+  { id: 'bgm00', section: '6. Background Music', name: '01 Copper Midnight', kind: 'bgm', trackId: 'bgm-00-solar-chrome', play: () => {} },
   { id: 'bgm01', section: '6. Background Music', name: '01 Glacier', kind: 'bgm', trackId: 'bgm-01-glacier', play: () => {} },
   { id: 'bgm02', section: '6. Background Music', name: '02 Gravity Well', kind: 'bgm', trackId: 'bgm-02-gravity-well', play: () => {} },
   { id: 'bgm03', section: '6. Background Music', name: '03 Deep Space', kind: 'bgm', trackId: 'bgm-03-deep-space', play: () => {} },
+  { id: 'bgmChrome', section: '6. Background Music', name: '05 Solar Chrome', kind: 'bgm', trackId: 'bgm-solar-chrome-zone', play: () => {} },
   { id: 'bgm04', section: '6. Background Music', name: '04 Inferno', kind: 'bgm', trackId: 'bgm-04-inferno', play: () => {} },
   { id: 'bgm05a', section: '6. Background Music', name: '05 Molten Core (boss)', kind: 'bgm', trackId: 'bgm-05-molten-core-boss', play: () => {} },
   { id: 'bgm05b', section: '6. Background Music', name: '05 Molten Core (escape)', kind: 'bgm', trackId: 'bgm-05-molten-core', play: () => {} },
@@ -1889,6 +2056,12 @@ function drawMiniBoss(theme) {
     drawReactorCoreWallBoss(x, r);
     return;
   }
+  if (theme.miniBossVariant === 'snow') {
+    drawSnowChargeWake();
+    if (!miniBossDefeated) drawSnowBossBody(x, y, r);
+    drawSnowBossHazards();
+    return;
+  }
 
   const motion = moltenCoreChargeMotion();
   if (motion) {
@@ -2325,6 +2498,7 @@ function drawBossArenaVignette(theme, bossEntity) {
 // seeded once per mini boss spawn so the crack pattern doesn't jitter frame
 // to frame; regenerated in resetGame's mini boss setup alongside restX
 let miniBossWallCracks = [];
+let snowWallDetail = [];
 
 // seeded once per core boss spawn, mirrors miniBossWallCracks' pattern but
 // for panel seams/rivets instead of rock cracks
@@ -2450,257 +2624,3 @@ function drawReactorCoreWallBoss(x, effR) {
   ctx.restore();
 }
 
-function drawBossArenaBulkheadWall(theme, bossEntity) {
-  if (!bossEntity) return;
-  const wallX = bossEntity.restX + bossEntity.maxR + 150;
-  if (wallX >= W) return;
-  ctx.save();
-
-  const pulse = 0.7 + 0.3 * Math.sin(frame * 0.06);
-  const wallThickness = 46;
-
-  ctx.fillStyle = 'rgba(2,3,5,0.97)';
-  ctx.fillRect(wallX, 0, W - wallX, H);
-
-  const glowGrad = ctx.createLinearGradient(wallX - 35, 0, wallX + 10, 0);
-  glowGrad.addColorStop(0, 'rgba(94,200,232,0)');
-  glowGrad.addColorStop(1, `rgba(94,200,232,${0.3 * pulse})`);
-  ctx.fillStyle = glowGrad;
-  ctx.fillRect(wallX - 35, 0, 45, H);
-
-  // the bulkhead band itself -- dark reinforced metal plating
-  const plateGrad = ctx.createLinearGradient(wallX, 0, wallX + wallThickness, 0);
-  plateGrad.addColorStop(0, '#1c2833');
-  plateGrad.addColorStop(0.5, '#101820');
-  plateGrad.addColorStop(1, '#0a0e14');
-  ctx.fillStyle = plateGrad;
-  ctx.fillRect(wallX, 0, wallThickness, H);
-
-  // panel seams with rivets, seeded once so they hold still
-  if (coreWallPanels.length === 0) {
-    const panelCount = Math.max(4, Math.ceil(H / 90));
-    for (let i = 0; i < panelCount; i++) {
-      const seamY = (i / panelCount) * H + Math.random() * 20;
-      coreWallPanels.push({ seamY, phase: Math.random() * Math.PI * 2, hasLight: Math.random() < 0.6 });
-    }
-  }
-  for (const panel of coreWallPanels) {
-    ctx.strokeStyle = 'rgba(94,200,232,0.2)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(wallX + 4, panel.seamY);
-    ctx.lineTo(wallX + wallThickness - 4, panel.seamY);
-    ctx.stroke();
-    // rivets at each end of the seam
-    ctx.fillStyle = 'rgba(150,170,185,0.4)';
-    ctx.beginPath();
-    ctx.arc(wallX + 8, panel.seamY, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(wallX + wallThickness - 8, panel.seamY, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-    if (panel.hasLight) {
-      const lightPulse = 0.5 + 0.5 * Math.sin(frame * 0.05 + panel.phase);
-      ctx.fillStyle = `rgba(94,200,232,${0.8 * lightPulse})`;
-      ctx.shadowColor = '#5ec8e8';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.arc(wallX + wallThickness / 2, panel.seamY + 22, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-  }
-
-  // near-edge highlight
-  ctx.fillStyle = `rgba(94,200,232,${0.5 * pulse})`;
-  ctx.fillRect(wallX, 0, 2, H);
-
-  ctx.restore();
-}
-
-function drawBossArenaObsidianWall(theme, bossEntity) {
-  if (!bossEntity) return;
-  // anchored to the boss's stable resting x, not its live (charge-swept)
-  // position -- keeps the wall visually steady throughout the whole fight,
-  // including charges where the boss itself sweeps across the screen
-  let wallX = bossEntity.restX + bossEntity.maxR + 150;
-  if (miniBossWallRecedeStartFrame !== -1) {
-    // fight's over -- the wall breaks away and recedes off the right edge,
-    // progressively revealing the escape run terrain that's already been
-    // set up and is scrolling underneath it, rather than the scene cutting
-    const recedeElapsed = frame - miniBossWallRecedeStartFrame;
-    const recedeProgress = Math.min(1, recedeElapsed / MINI_BOSS_WALL_RECEDE_DURATION);
-    const eased = recedeProgress * recedeProgress * recedeProgress; // ease-in cubic
-    wallX = wallX + ((W + 200) - wallX) * eased;
-  }
-  if (wallX >= W) return;
-  ctx.save();
-
-  const pulse = 0.7 + 0.3 * Math.sin(frame * 0.06);
-  const wallThickness = 46;
-
-  // dark backdrop beyond the wall -- "outside the arena"
-  ctx.fillStyle = 'rgba(4,2,3,0.97)';
-  ctx.fillRect(wallX, 0, W - wallX, H);
-
-  // soft glow bleeding out from the wall's near edge
-  const glowGrad = ctx.createLinearGradient(wallX - 35, 0, wallX + 10, 0);
-  glowGrad.addColorStop(0, 'rgba(255,90,20,0)');
-  glowGrad.addColorStop(1, `rgba(255,90,20,${0.3 * pulse})`);
-  ctx.fillStyle = glowGrad;
-  ctx.fillRect(wallX - 35, 0, 45, H);
-
-  // the obsidian rock band itself -- dark volcanic glass
-  const rockGrad = ctx.createLinearGradient(wallX, 0, wallX + wallThickness, 0);
-  rockGrad.addColorStop(0, '#231b1d');
-  rockGrad.addColorStop(0.5, '#150f11');
-  rockGrad.addColorStop(1, '#0c0709');
-  ctx.fillStyle = rockGrad;
-  ctx.fillRect(wallX, 0, wallThickness, H);
-
-  // glowing fissure cracks running through the rock, seeded once so they
-  // hold still rather than jittering
-  if (miniBossWallCracks.length === 0) {
-    const crackCount = Math.max(4, Math.ceil(H / 90));
-    for (let i = 0; i < crackCount; i++) {
-      const points = [];
-      let cx = wallThickness * (0.3 + Math.random() * 0.4);
-      let cy = (i / crackCount) * H + Math.random() * 40;
-      const segments = 5 + Math.floor(Math.random() * 3);
-      for (let s = 0; s <= segments; s++) {
-        points.push({ x: cx, y: cy });
-        cx = Math.max(4, Math.min(wallThickness - 4, cx + (Math.random() - 0.5) * 22));
-        cy += (H / crackCount) / segments * 0.9 + Math.random() * 10;
-      }
-      miniBossWallCracks.push({ points, phase: Math.random() * Math.PI * 2 });
-    }
-  }
-  ctx.lineCap = 'round';
-  for (const crack of miniBossWallCracks) {
-    const crackPulse = 0.6 + 0.4 * Math.sin(frame * 0.05 + crack.phase);
-    ctx.strokeStyle = `rgba(255,110,30,${0.75 * crackPulse})`;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(wallX + crack.points[0].x, crack.points[0].y);
-    for (let i = 1; i < crack.points.length; i++) {
-      ctx.lineTo(wallX + crack.points[i].x, crack.points[i].y);
-    }
-    ctx.stroke();
-  }
-
-  // near-edge highlight so the boundary still reads clearly at a glance
-  ctx.fillStyle = `rgba(255,140,50,${0.5 * pulse})`;
-  ctx.fillRect(wallX, 0, 2, H);
-
-  ctx.restore();
-}
-
-function drawBoss(theme) {
-  if (!theme || !theme.isBossZone) return;
-  if (!boss) return;
-  if (bossFullyDefeated) return; // gone for good -- downtime, fly-off, and victory screen all render nothing here
-
-  const entranceElapsed = frame - bossSpawnFrame;
-  const entranceProgress = Math.min(1, entranceElapsed / BOSS_ENTRANCE_DURATION);
-
-  if (entranceProgress < BOSS_ENTRANCE_CHARGE_END) {
-    drawBossCharge(theme, entranceProgress / BOSS_ENTRANCE_CHARGE_END);
-    return; // orb itself not visible yet
-  }
-  if (entranceProgress < BOSS_ENTRANCE_ASSEMBLE_END) {
-    drawBossFragments(theme, (entranceProgress - BOSS_ENTRANCE_CHARGE_END) / (BOSS_ENTRANCE_ASSEMBLE_END - BOSS_ENTRANCE_CHARGE_END));
-    return; // orb itself not visible yet
-  }
-
-  if (bossTransitioning && bossTransitionTargetPhase === 5) {
-    const stageProgress = Math.min(1, (frame - bossTransitionStartFrame) / BOSS_PHASE5_TRANSITION_DURATION);
-    drawBossPhase5Transformation(theme, stageProgress);
-    return;
-  }
-
-  if (bossExplosionActive) {
-    const stageProgress = Math.min(1, (frame - bossExplosionStartFrame) / BOSS_EXPLOSION_DURATION);
-    drawBossExplosion(theme, stageProgress);
-    return;
-  }
-
-  if (bossFinalChargeActive) {
-    const stageProgress = Math.min(1, (frame - bossFinalChargeStartFrame) / BOSS_FINAL_CHARGE_DURATION);
-    drawBossFinalCharge(theme, stageProgress);
-    return;
-  }
-
-  const r = boss.r * (bossDefeated ? Math.max(0, 1 - (frame - bossDefeatFrame) / 90) : 1);
-  if (r <= 0) return;
-
-  if (bossPhase === 5) {
-    drawBossEclipseForm(boss.x, boss.y, r, theme);
-    return;
-  }
-
-  const colorProgress = getBossColorProgress();
-  const effAccentA = lerpHexColor(theme.accentA, theme.phase3AccentA, colorProgress);
-  const effAccentB = lerpHexColor(theme.accentB, theme.phase3AccentB, colorProgress);
-  const effSkyTop = lerpHexColor(theme.skyTop, theme.phase3SkyTop, colorProgress);
-
-  // while straining to transform, a fast jitter conveys effort --
-  // intensity builds through most of the transition then eases right
-  // as the new form locks in, with crackling energy particles and a
-  // building glow layered on top for a more dramatic strain
-  let jitterX = 0, jitterY = 0, strainGlow = 0;
-  if (bossTransitioning) {
-    const strainElapsed = frame - bossTransitionStartFrame;
-    const strainProgress = Math.min(1, strainElapsed / BOSS_TRANSITION_DURATION);
-    const jitterMag = 7 * Math.sin(strainProgress * Math.PI);
-    jitterX = Math.sin(frame * 2.3) * jitterMag;
-    jitterY = Math.cos(frame * 2.9) * jitterMag;
-    strainGlow = strainProgress;
-  }
-  const bx = boss.x + jitterX, by = boss.y + jitterY;
-
-  if (bossTransitioning) {
-    ctx.save();
-    for (let i = 0; i < 10; i++) {
-      const flicker = Math.sin(frame * 0.6 + i * 2.8);
-      if (flicker > 0.15) {
-        const ang = i * 2.1 + frame * 0.02;
-        const dist = boss.maxR * (0.9 + 0.35 * Math.sin(i * 1.7 + frame * 0.05));
-        const px = bx + Math.cos(ang) * dist;
-        const py = by + Math.sin(ang) * dist;
-        ctx.fillStyle = i % 2 === 0 ? theme.accentA : theme.phase3AccentA;
-        ctx.globalAlpha = 0.5 * strainGlow;
-        ctx.shadowColor = theme.phase3AccentB;
-        ctx.shadowBlur = 8;
-        ctx.fillRect(px - 3, py - 3, 6, 6);
-      }
-    }
-    ctx.restore();
-  }
-
-  drawBossStandardSphere(bx, by, r, effAccentA, effAccentB, effSkyTop);
-
-  if (bossPhase === 4) {
-    const elapsed = theme.bossDuration - bossTimer;
-    const framesSincePhase4 = elapsed - 3 * BOSS_PHASE_DURATION;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(bx, by, r, 0, Math.PI * 2);
-    ctx.clip();
-    drawBossCracks(bx, by, r, framesSincePhase4);
-    ctx.restore();
-  }
-
-  if (entranceProgress < 1) {
-    drawBossSnapEffect(theme, (entranceProgress - BOSS_ENTRANCE_ASSEMBLE_END) / (1 - BOSS_ENTRANCE_ASSEMBLE_END));
-  }
-
-  const sinceTransitionEnd = frame - bossTransitionEndFrame;
-  if (sinceTransitionEnd >= 0 && sinceTransitionEnd < BOSS_TRANSITION_COMPLETE_FX_DURATION) {
-    drawBossTransitionCompleteEffect(theme, sinceTransitionEnd / BOSS_TRANSITION_COMPLETE_FX_DURATION);
-  }
-}
-
-// "corrupted synthwave" background elements for phase 3+, fading in
-// alongside the existing sky/grid color transition (same colorProgress
-// value). purely decorative atmosphere -- does not touch the boss
-// sprite or any gameplay object
